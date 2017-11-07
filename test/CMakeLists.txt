@@ -1,0 +1,44 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
+PROJECT(obj-io-test)
+
+ENABLE_TESTING(true)
+
+ADD_SUBDIRECTORY(gtest-1.7.0)
+
+# Default to release build
+IF(NOT CMAKE_BUILD_TYPE)
+  SET(CMAKE_BUILD_TYPE Release)
+ENDIF()
+MESSAGE(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
+IF(MSVC)
+  SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
+  SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
+  SET(CompilerFlags
+          CMAKE_CXX_FLAGS
+          CMAKE_CXX_FLAGS_DEBUG
+          CMAKE_CXX_FLAGS_RELEASE
+          CMAKE_C_FLAGS
+          CMAKE_C_FLAGS_DEBUG
+          CMAKE_C_FLAGS_RELEASE)
+  FOREACH(CompilerFlag ${CompilerFlags})
+    STRING(REPLACE "/MD" "/MT" ${CompilerFlag} "${${CompilerFlag}}")
+  ENDFOREACH()
+  MESSAGE(STATUS "CXX flags (release): ${CMAKE_CXX_FLAGS_RELEASE}")
+  MESSAGE(STATUS "CXX flags (debug): ${CMAKE_CXX_FLAGS_DEBUG}")
+ENDIF()
+
+# Project Compiler Flags
+# ADD_DEFINITIONS(-Wall)
+
+INCLUDE_DIRECTORIES(
+  ${gtest_SOURCE_DIR}
+  ${gtest_SOURCE_DIR}/include)
+
+ADD_EXECUTABLE(obj-io-test
+  main.cpp
+  obj_io_test.cpp)
+
+TARGET_LINK_LIBRARIES(obj-io-test gtest gtest_main)
+
+ADD_TEST(NAME obj-io-test COMMAND obj-io-test)

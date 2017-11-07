@@ -30,3 +30,5 @@
 *.exe
 *.out
 *.app
+test/.vs/ProjectSettings.json
+test/.vs/test/v15/.suo
