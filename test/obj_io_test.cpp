@@ -35,12 +35,11 @@ TEST(ObjIoTest, Test)
 {
   auto ss = stringstream();
   const auto pos = vector<float>{ 1.0f, 2.0f, 3.0f };
-  const auto tex = vector<float>{ 0.1f, 0.2f };
+  //const auto tex = vector<float>{ 0.1f, 0.2f };
   const auto idx = vector<uint32_t>{ 0, 1, 2 };
-  thinks::obj_io::Write(
+  thinks::obj_io::WritePositions(
     ss,
     begin(pos), end(pos),
-    begin(tex), end(tex),
     begin(idx), end(idx));
 
   EXPECT_TRUE(false) << ss.str();
