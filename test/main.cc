@@ -18,31 +18,15 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+#include <iostream>
 #include <gtest/gtest.h>
 
-#include "../include/thinks/obj_io.hpp"
-
-#include <sstream>
-#include <vector>
-
-using std::begin;
-using std::end;
-using std::stringstream;
-using std::vector;
-
-
-TEST(ObjIoTest, Test)
+int main(int argc, char *argv[])
 {
-  auto ss = stringstream();
-  const auto pos = vector<float>{ 1.0f, 2.0f, 3.0f };
-  //const auto tex = vector<float>{ 0.1f, 0.2f };
-  const auto idx = vector<uint32_t>{ 0, 1, 2 };
-  thinks::obj_io::WritePositions(
-    ss,
-    begin(pos), end(pos),
-    begin(idx), end(idx));
-
-  EXPECT_TRUE(false) << ss.str();
+  ::testing::InitGoogleTest(&argc, argv);
+  //::testing::GTEST_FLAG(list_tests) = true;
+  //::testing::GTEST_FLAG(filter) =
+  const auto r = RUN_ALL_TESTS();
+  std::cin.get();
+  return r;
 }
-
-

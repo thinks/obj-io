@@ -36,8 +36,12 @@ INCLUDE_DIRECTORIES(
   ${gtest_SOURCE_DIR}/include)
 
 ADD_EXECUTABLE(obj-io-test
-  main.cpp
-  obj_io_test.cpp)
+  main.cc
+  normals_test.cc
+  positions_test.cc
+  tex_coords_test.cc
+  utils.cc
+  write_test.cc)
 
 TARGET_LINK_LIBRARIES(obj-io-test gtest gtest_main)
 
