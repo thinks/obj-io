@@ -613,6 +613,7 @@ Positions<ElementIter, IndexIter> make_positions(
     elements_per_vertex, indices_per_face);
 }
 
+
 template<typename ElementIter, typename IndexIter>
 class TexCoords
 {
@@ -858,8 +859,8 @@ private:
     const auto element_count = distance(elements_begin, elements_end);
     if (element_count % elements_per_vertex != 0) {
       auto ss = stringstream();
-      ss << "normal element count " << element_count
-        << " must be a multiple of " << elements_per_vertex;
+      ss << "normal element count (" << element_count
+        << ") must be a multiple of " << elements_per_vertex;
       throw runtime_error(ss.str());
     }
   }
@@ -891,6 +892,33 @@ private:
       throw runtime_error(ss.str());
     }
   }
+
+  static void ThrowIfInvalidIndexRange_(
+    const IndexIter indices_begin,
+    const IndexIter indices_end,
+    const ElementIter elements_begin,
+    const ElementIter elements_end,
+    const uint32_t elements_per_vertex)
+  {
+    using namespace std;
+    //ThrowIfIndicesEmpty_(indices_begin, indices_end); // TODO!!
+    const auto min_index = *min_element(indices_begin, indices_end);
+    const auto max_index = *max_element(indices_begin, indices_end);
+    if (min_index != 0) {
+      auto ss = stringstream();
+      ss << "min normal index must be zero, was " << min_index;
+      throw runtime_error(ss.str());
+    }
+
+    const auto vertex_count =
+      distance(elements_begin, elements_end) / elements_per_vertex;
+    if (max_index >= vertex_count) {
+      auto ss = stringstream();
+      ss << "max normal index must be less than vertex count ("
+        << vertex_count << "), was " << max_index;
+      throw runtime_error(ss.str());
+    }
+  }
 };
 
 /// Named constructor to help with template type deduction.
@@ -900,7 +928,7 @@ Normals<ElementIter, IndexIter> make_normals(
   const ElementIter elements_end,
   const IndexIter indices_begin,
   const IndexIter indices_end,
-  const uint32_t indices_per_face = 3)
+  const uint32_t indices_per_face)
 {
   return Normals<ElementIter, IndexIter>(
     elements_begin, elements_end,
@@ -932,8 +960,9 @@ std::ostream& WriteTriangles(
       begin(normals), end(normals),
       begin(normal_indices), end(normal_indices)),
     make_tex_coords(
-      begin(tex_coords), end(tex_coords), 2
-      begin(tex_coord_indices), end(tex_coord_indices), 
+      begin(tex_coords), end(tex_coords), 
+      begin(tex_coord_indices), end(tex_coord_indices),
+      tex_coord_elements_per_vertex,
       positions.indices_per_face),
     newline);
 }

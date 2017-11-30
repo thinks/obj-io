@@ -30,13 +30,22 @@ struct Mesh
 
   std::vector<float> tex_coord_elements;
   std::vector<uint32_t> tex_coord_indices;
+
+  std::vector<float> normal_elements;
+  std::vector<uint32_t> normal_indices;
 };
 
 /// Returns a mesh with:
-/// - 8 * 3 position elements, 
-/// - 12 * 3 position index elements.
+/// -  8 * 3 position elements 
+/// - 12 * 3 position index elements
+/// -  4 * 2 tex coord elements
+/// - 12 * 3 tex coord indices
+/// -  6 * 3 normal elements
+/// - 12 * 3 normal indices
+///
 /// Centered at origin, vertices in range [-1,1].
 Mesh CubeMesh();
+
 
 template <typename T> inline
 void IncrementAndClampToMaxElement(

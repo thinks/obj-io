@@ -35,7 +35,7 @@ using util::IncrementNonZeroElements;
 using util::VertexCount;
 
 
-TEST(TexCoordTest, Ctor)
+TEST(TexCoordsTest, Ctor)
 {
   const auto mesh = CubeMesh();
   const auto elements_per_vertex = uint32_t{ 2 };
@@ -52,12 +52,12 @@ TEST(TexCoordTest, Ctor)
   EXPECT_EQ(3, tex_coords.indices_per_face);
 }
 
-TEST(TexCoordTest, CtorEmptyElementsAndIndices)
+TEST(TexCoordsTest, CtorEmptyElementsAndIndices)
 {
   FAIL() << "not implemented";
 }
 
-TEST(TexCoordTest, CtorThrowIsElementsNotNormalized)
+TEST(TexCoordsTest, CtorThrowIfElementsNotNormalized)
 {
   const auto invalid_elements = vector<float>{ -0.1f, 1.1f };
   for (const auto invalid_element : invalid_elements) {
@@ -84,7 +84,7 @@ TEST(TexCoordTest, CtorThrowIsElementsNotNormalized)
   }
 }
 
-TEST(TexCoordTest, CtorThrowsIfElementsPerVertexIsNotTwoOrThree)
+TEST(TexCoordsTest, CtorThrowsIfElementsPerVertexIsNotTwoOrThree)
 {
   const auto mesh = CubeMesh();
   const auto elements_per_vertex = uint32_t{ 5 };
@@ -107,7 +107,7 @@ TEST(TexCoordTest, CtorThrowsIfElementsPerVertexIsNotTwoOrThree)
   }
 }
 
-TEST(TexCoordTest, CtorThrowsIfElementCountNotMultipleOfElementsPerVertex)
+TEST(TexCoordsTest, CtorThrowsIfElementCountNotMultipleOfElementsPerVertex)
 {
   // Add an extra element.
   auto mesh = CubeMesh();
@@ -132,7 +132,7 @@ TEST(TexCoordTest, CtorThrowsIfElementCountNotMultipleOfElementsPerVertex)
   }
 }
 
-TEST(TexCoordTest, CtorThrowsIfIndicesPerFaceIsLessThanThree)
+TEST(TexCoordsTest, CtorThrowsIfIndicesPerFaceIsLessThanThree)
 {
   // Resize indices to be two per face.
   const auto elements_per_vertex = uint32_t{ 2 };
@@ -159,7 +159,7 @@ TEST(TexCoordTest, CtorThrowsIfIndicesPerFaceIsLessThanThree)
   }
 }
 
-TEST(TexCoordTest, CtorThrowsIfIndexCountNotMultipleOfIndicesPerFace)
+TEST(TexCoordsTest, CtorThrowsIfIndexCountNotMultipleOfIndicesPerFace)
 {
   // Add an extra index element.
   auto mesh = CubeMesh();
@@ -184,7 +184,7 @@ TEST(TexCoordTest, CtorThrowsIfIndexCountNotMultipleOfIndicesPerFace)
   }
 }
 
-TEST(TexCoordTest, CtorThrowIfInvalidIndexRange_MinNotZero)
+TEST(TexCoordsTest, CtorThrowIfInvalidIndexRange_MinNotZero)
 {
   auto mesh = CubeMesh();
   IncrementAndClampToMaxElement(mesh.tex_coord_indices);
@@ -209,7 +209,7 @@ TEST(TexCoordTest, CtorThrowIfInvalidIndexRange_MinNotZero)
   }
 }
 
-TEST(TexCoordTest, CtorThrowIfInvalidIndexRange_MaxTooHigh)
+TEST(TexCoordsTest, CtorThrowIfInvalidIndexRange_MaxTooHigh)
 {
   auto mesh = CubeMesh();
   IncrementNonZeroElements(mesh.tex_coord_indices);
