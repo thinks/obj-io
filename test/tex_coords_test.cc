@@ -25,6 +25,7 @@
 
 using std::begin;
 using std::end;
+using std::exception;
 using std::runtime_error;
 using std::stringstream;
 using std::vector;
@@ -54,7 +55,22 @@ TEST(TexCoordsTest, Ctor)
 
 TEST(TexCoordsTest, CtorEmptyElementsAndIndices)
 {
-  FAIL() << "not implemented";
+  const auto elements_per_vertex = uint32_t{ 2 };
+  const auto indices_per_face = uint32_t{ 3 };
+  const auto elements = vector<float>{};
+  const auto indices = vector<uint32_t>{};
+  try {
+    const auto tex_coords = make_tex_coords(
+      begin(elements), end(elements),
+      begin(indices), end(indices),
+      elements_per_vertex, indices_per_face);
+  }
+  catch (const exception& ex) {
+    FAIL() << "empty tex coords should be allowed: " << ex.what();
+  }
+  catch (...) {
+    FAIL() << "empty tex coords should be allowed";
+  }
 }
 
 TEST(TexCoordsTest, CtorThrowIfElementsNotNormalized)

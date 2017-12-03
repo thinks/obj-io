@@ -442,6 +442,17 @@ std::ostream& WriteTriangles(
 }
 #endif
 
+namespace detail {
+
+template<typename IterType> inline
+bool IsEmpty(const IterType iter_begin, const IterType iter_end)
+{
+  return iter_begin == iter_end;
+}
+
+} // namespace detail
+
+
 template<typename ElementIter, typename IndexIter>
 class Positions
 {
@@ -499,7 +510,7 @@ private:
     const ElementIter elements_end)
   {
     using namespace std;
-    if (elements_begin == elements_end) {
+    if (detail::IsEmpty(elements_begin, elements_end)) {
       throw runtime_error("position elements cannot be empty");
     }
   }
@@ -643,7 +654,6 @@ public:
       "tex coord index elements must be integral");
 
     // Elements.
-    //ThrowIfElementsEmpty_(elements_begin, elements_end);
     ThrowIfElementsPerVertexIsNotTwoOrThree_(elements_per_vertex);
     ThrowIfElementCountNotMultipleOfElementsPerVertex_(
       elements_begin, elements_end, elements_per_vertex);
@@ -651,7 +661,6 @@ public:
       elements_begin, elements_end);
 
     // Indices.
-    //ThrowIfIndicesEmpty_(indices_begin, indices_end);
     ThrowIfIndicesPerFaceIsLessThanThree_(indices_per_face);
     ThrowIfIndexCountNotMultipleOfIndicesPerFace_(
       indices_begin, indices_end, indices_per_face);
@@ -747,7 +756,11 @@ private:
     const uint32_t elements_per_vertex)
   {
     using namespace std;
-    //ThrowIfIndicesEmpty_(indices_begin, indices_end); // TODO!!
+
+    if (detail::IsEmpty(indices_begin, indices_end)) {
+      return;
+    }
+
     const auto min_index = *min_element(indices_begin, indices_end);
     const auto max_index = *max_element(indices_begin, indices_end);
     if (min_index != 0) {
@@ -813,15 +826,11 @@ public:
       "normal index elements must be integral");
 
     // Elements, can be empty.
-    if (elements_begin != elements_end) {
-      //ThrowIfElementsEmpty_(elements_begin, elements_end);
-      ThrowIfElementsPerVertexIsNotThree_(elements_per_vertex);
-      ThrowIfElementCountNotMultipleOfElementsPerVertex_(
-        elements_begin, elements_end, elements_per_vertex);
-    }
+    ThrowIfElementsPerVertexIsNotThree_(elements_per_vertex);
+    ThrowIfElementCountNotMultipleOfElementsPerVertex_(
+      elements_begin, elements_end, elements_per_vertex);
 
     // Indices, can be empty.
-    //ThrowIfIndicesEmpty_(indices_begin, indices_end);
     ThrowIfIndicesPerFaceIsLessThanThree_(indices_per_face);
     ThrowIfIndexCountNotMultipleOfIndicesPerFace_(
       indices_begin, indices_end, indices_per_face);
@@ -901,7 +910,11 @@ private:
     const uint32_t elements_per_vertex)
   {
     using namespace std;
-    //ThrowIfIndicesEmpty_(indices_begin, indices_end); // TODO!!
+
+    if (detail::IsEmpty(indices_begin, indices_end)) {
+      return;
+    }
+
     const auto min_index = *min_element(indices_begin, indices_end);
     const auto max_index = *max_element(indices_begin, indices_end);
     if (min_index != 0) {
@@ -941,8 +954,6 @@ template<typename PosIter, typename PosIdxIter>
 std::ostream& WriteTriangles(
   std::ostream& os,
   const Positions<PosIter, PosIdxIter>& positions,
-  //const Normals normals,
-  //const TexCoords tex_coords,
   const std::string& newline = "\n")
 {
   using namespace std;

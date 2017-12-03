@@ -25,6 +25,7 @@
 
 using std::begin;
 using std::end;
+using std::exception;
 using std::runtime_error;
 using std::stringstream;
 using std::vector;
@@ -61,6 +62,9 @@ TEST(NormalsTest, CtorEmptyElementsAndIndices)
       begin(elements), end(elements),
       begin(indices), end(indices),
       indices_per_face);
+  }
+  catch (const exception& ex) {
+    FAIL() << "empty normals should be allowed: " << ex.what();
   }
   catch (...) {
     FAIL() << "empty normals should be allowed";
