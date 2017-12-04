@@ -450,42 +450,102 @@ bool IsEmpty(const IterType iter_begin, const IterType iter_end)
   return iter_begin == iter_end;
 }
 
+inline
+uint32_t IsMultipleOf(const uint32_t count, const uint32_t denominator)
+{
+  return count != 0 && count % denominator == 0;
+}
+
+template<typename IterType> inline
+uint32_t Count(const IterType iter_begin, const IterType iter_end)
+{
+  return static_cast<uint32_t>(std::distance(iter_begin, iter_end));
+}
+
+template<typename IterType> inline
+uint32_t ObjectCount(
+  const IterType iter_begin, 
+  const IterType iter_end, 
+  const uint32_t elements_per_object)
+{
+  using namespace std;
+
+  if (elements_per_object == 0) {
+    throw runtime_error("elements per object cannot be zero");
+  }
+
+  const auto count = Count(iter_begin, iter_end);
+  if (!IsMultipleOf(count, elements_per_object)) {
+    auto ss = stringstream();
+    ss << count << "must be a multiple of " << elements_per_object;
+    throw runtime_error(ss.str());
+  }
+
+  return count / elements_per_object;
+}
+
+template<typename IterType> inline
+typename std::iterator_traits<IterType>::value_type MinElement(
+  const IterType iter_begin,
+  const IterType iter_end)
+{
+  using namespace std;
+
+  if (IsEmpty(iter_begin, iter_end)) {
+    throw runtime_error("cannot find min element of empty range");
+  }
+  return *min_element(iter_begin, iter_end);
+}
+
+template<typename IterType> inline
+typename std::iterator_traits<IterType>::value_type MaxElement(
+  const IterType iter_begin,
+  const IterType iter_end)
+{
+  using namespace std;
+
+  if (IsEmpty(iter_begin, iter_end)) {
+    throw runtime_error("cannot find max element of empty range");
+  }
+  return *max_element(iter_begin, iter_end);
+}
+
 } // namespace detail
 
 
-template<typename ElementIter, typename IndexIter>
+template<typename ComponentIter, typename IndexIter>
 class Positions
 {
 public:
   Positions(
-    const ElementIter elements_begin,
-    const ElementIter elements_end,
+    const ComponentIter components_begin,
+    const ComponentIter components_end,
     const IndexIter indices_begin,
     const IndexIter indices_end,
-    const uint32_t elements_per_vertex,
+    const uint32_t components_per_vertex,
     const uint32_t indices_per_face)
-    : elements_begin(elements_begin)
-    , elements_end(elements_end)
+    : components_begin(components_begin)
+    , components_end(components_end)
     , indices_begin(indices_begin)
     , indices_end(indices_end)
-    , elements_per_vertex(elements_per_vertex)
+    , components_per_vertex(components_per_vertex) 
     , indices_per_face(indices_per_face)
   {
     using namespace std;
 
-    typedef typename iterator_traits<ElementIter>::value_type ElementType;
+    typedef typename iterator_traits<ComponentIter>::value_type ComponentType;
     typedef typename iterator_traits<IndexIter>::value_type IndexType;
 
-    static_assert(is_arithmetic<ElementType>::value,
-      "position elements must be arithmetic");
+    static_assert(is_arithmetic<ComponentType>::value,
+      "position components must be arithmetic");
     static_assert(is_integral<IndexType>::value,
       "position index elements must be integral");
 
-    // Elements.
-    ThrowIfElementsEmpty_(elements_begin, elements_end);
-    ThrowIfElementsPerVertexIsNotThreeOrFour_(elements_per_vertex);
-    ThrowIfElementCountNotMultipleOfElementsPerVertex_(
-      elements_begin, elements_end, elements_per_vertex);
+    // Components.
+    ThrowIfComponentsEmpty_(components_begin, components_end);
+    ThrowIfComponentsPerVertexIsNotThreeOrFour_(components_per_vertex);
+    ThrowIfComponentCountNotMultipleOfComponentsPerVertex_(
+      components_begin, components_end, components_per_vertex);
 
     // Indices.
     ThrowIfIndicesEmpty_(indices_begin, indices_end);
@@ -494,50 +554,52 @@ public:
       indices_begin, indices_end, indices_per_face);
     ThrowIfInvalidIndexRange_(
       indices_begin, indices_end,
-      elements_begin, elements_end, elements_per_vertex);
+      components_begin, components_end,
+      components_per_vertex);
   }
 
-  const ElementIter elements_begin;
-  const ElementIter elements_end;
+  const ComponentIter components_begin;
+  const ComponentIter components_end;
   const IndexIter indices_begin;
   const IndexIter indices_end;
-  const uint32_t elements_per_vertex;
+  const uint32_t components_per_vertex;
   const uint32_t indices_per_face;
 
 private:
-  static void ThrowIfElementsEmpty_(
-    const ElementIter elements_begin, 
-    const ElementIter elements_end)
+  static void ThrowIfComponentsEmpty_(
+    const ComponentIter components_begin,
+    const ComponentIter components_end)
   {
     using namespace std;
-    if (detail::IsEmpty(elements_begin, elements_end)) {
-      throw runtime_error("position elements cannot be empty");
+    if (detail::IsEmpty(components_begin, components_end)) {
+      throw runtime_error("position components cannot be empty");
     }
   }
 
-  static void ThrowIfElementsPerVertexIsNotThreeOrFour_(
-    const uint32_t elements_per_vertex)
+  static void ThrowIfComponentsPerVertexIsNotThreeOrFour_(
+    const uint32_t components_per_vertex)
   {
     using namespace std;
-    if (!(elements_per_vertex == 3 || elements_per_vertex == 4)) {
+    if (!(components_per_vertex == 3 || components_per_vertex == 4)) {
       auto ss = stringstream();
-      ss << "position elements per vertex must be 3 or 4, was " 
-        << elements_per_vertex;
+      ss << "position components per vertex must be 3 or 4, was " 
+        << components_per_vertex;
       throw runtime_error(ss.str());
     }
   }
 
-  static void ThrowIfElementCountNotMultipleOfElementsPerVertex_(
-    const ElementIter elements_begin,
-    const ElementIter elements_end,
-    const uint32_t elements_per_vertex)
+  static void ThrowIfComponentCountNotMultipleOfComponentsPerVertex_(
+    const ComponentIter components_begin,
+    const ComponentIter components_end,
+    const uint32_t components_per_vertex)
   {
+    using namespace detail;
     using namespace std;
-    const auto element_count = distance(elements_begin, elements_end);
-    if (element_count % elements_per_vertex != 0) {
+    const auto component_count = detail::Count(components_begin, components_end);
+    if (!detail::IsMultipleOf(component_count, components_per_vertex)) {
       auto ss = stringstream();
-      ss << "position element count (" << element_count 
-        << ") must be a multiple of " << elements_per_vertex;
+      ss << "position component count (" << component_count
+        << ") must be a multiple of " << components_per_vertex;
       throw runtime_error(ss.str());
     }
   }
@@ -547,7 +609,7 @@ private:
     const IndexIter indices_end)
   {
     using namespace std;
-    if (indices_begin == indices_end) {
+    if (detail::IsEmpty(indices_begin, indices_end)) {
       throw runtime_error("position indices cannot be empty");
     }
   }
@@ -558,8 +620,7 @@ private:
     using namespace std;
     if (!(indices_per_face >= 3)) {
       auto ss = stringstream();
-      ss << "position indices per face must be " 
-        << "greater than or equal to 3, was "
+      ss << "position indices per face cannot be less than 3, was "
         << indices_per_face;
       throw runtime_error(ss.str());
     }
@@ -571,8 +632,8 @@ private:
     const uint32_t indices_per_face)
   {
     using namespace std;
-    const auto index_count = distance(indices_begin, indices_end);
-    if (index_count % indices_per_face != 0) {
+    const auto index_count = detail::Count(indices_begin, indices_end);
+    if (!detail::IsMultipleOf(index_count, indices_per_face)) {
       auto ss = stringstream();
       ss << "position index count (" << index_count
         << ") must be a multiple of " << indices_per_face;
@@ -583,25 +644,25 @@ private:
   static void ThrowIfInvalidIndexRange_(
     const IndexIter indices_begin,
     const IndexIter indices_end,
-    const ElementIter elements_begin,
-    const ElementIter elements_end,
-    const uint32_t elements_per_vertex)
+    const ComponentIter components_begin,
+    const ComponentIter components_end,
+    const uint32_t components_per_vertex)
   {
     using namespace std;
-    ThrowIfIndicesEmpty_(indices_begin, indices_end);
-    const auto min_index = *min_element(indices_begin, indices_end);
-    const auto max_index = *max_element(indices_begin, indices_end);
+    
+    const auto min_index = detail::MinElement(indices_begin, indices_end);
+    const auto max_index = detail::MaxElement(indices_begin, indices_end);
     if (min_index != 0) {
       auto ss = stringstream();
-      ss << "min position index must be zero, was " << min_index;
+      ss << "position min index must be zero, was " << min_index;
       throw runtime_error(ss.str());
     }
 
-    const auto vertex_count = 
-      distance(elements_begin, elements_end) / elements_per_vertex;
+    const auto vertex_count = detail::ObjectCount(
+      components_begin, components_end, components_per_vertex);
     if (max_index >= vertex_count) {
       auto ss = stringstream();
-      ss << "max position index must be less than vertex count ("
+      ss << "position max index must be less than vertex count ("
         << vertex_count << "), was " << max_index;
       throw runtime_error(ss.str());
     }
@@ -615,13 +676,13 @@ Positions<ElementIter, IndexIter> make_positions(
   const ElementIter elements_end,
   const IndexIter indices_begin,
   const IndexIter indices_end,
-  const uint32_t elements_per_vertex,
+  const uint32_t components_per_vertex,
   const uint32_t indices_per_face)
 {
   return Positions<ElementIter, IndexIter>(
     elements_begin, elements_end, 
     indices_begin, indices_end, 
-    elements_per_vertex, indices_per_face);
+    components_per_vertex, indices_per_face);
 }
 
 
@@ -812,7 +873,7 @@ public:
     , elements_end(elements_end)
     , indices_begin(indices_begin)
     , indices_end(indices_end)
-    , elements_per_vertex(3)
+    , components_per_vertex(3)
     , indices_per_face(indices_per_face)
   {
     using namespace std;
@@ -826,9 +887,9 @@ public:
       "normal index elements must be integral");
 
     // Elements, can be empty.
-    ThrowIfElementsPerVertexIsNotThree_(elements_per_vertex);
+    ThrowIfElementsPerVertexIsNotThree_(components_per_vertex);
     ThrowIfElementCountNotMultipleOfElementsPerVertex_(
-      elements_begin, elements_end, elements_per_vertex);
+      elements_begin, elements_end, components_per_vertex);
 
     // Indices, can be empty.
     ThrowIfIndicesPerFaceIsLessThanThree_(indices_per_face);
@@ -836,14 +897,15 @@ public:
       indices_begin, indices_end, indices_per_face);
     ThrowIfInvalidIndexRange_(
       indices_begin, indices_end,
-      elements_begin, elements_end, elements_per_vertex);
+      elements_begin, elements_end, 
+      components_per_vertex);
   }
 
   const ElementIter elements_begin;
   const ElementIter elements_end;
   const IndexIter indices_begin;
   const IndexIter indices_end;
-  const uint32_t elements_per_vertex;
+  const uint32_t components_per_vertex;
   const uint32_t indices_per_face;
 
 private:
@@ -862,14 +924,14 @@ private:
   static void ThrowIfElementCountNotMultipleOfElementsPerVertex_(
     const ElementIter elements_begin,
     const ElementIter elements_end,
-    const uint32_t elements_per_vertex)
+    const uint32_t components_per_vertex)
   {
     using namespace std;
     const auto element_count = distance(elements_begin, elements_end);
-    if (element_count % elements_per_vertex != 0) {
+    if (element_count % components_per_vertex != 0) {
       auto ss = stringstream();
-      ss << "normal element count (" << element_count
-        << ") must be a multiple of " << elements_per_vertex;
+      ss << "normal component count (" << element_count
+        << ") must be a multiple of " << components_per_vertex;
       throw runtime_error(ss.str());
     }
   }
@@ -907,7 +969,7 @@ private:
     const IndexIter indices_end,
     const ElementIter elements_begin,
     const ElementIter elements_end,
-    const uint32_t elements_per_vertex)
+    const uint32_t components_per_vertex)
   {
     using namespace std;
 
@@ -924,7 +986,7 @@ private:
     }
 
     const auto vertex_count =
-      distance(elements_begin, elements_end) / elements_per_vertex;
+      distance(elements_begin, elements_end) / components_per_vertex;
     if (max_index >= vertex_count) {
       auto ss = stringstream();
       ss << "max normal index must be less than vertex count ("

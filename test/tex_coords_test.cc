@@ -39,12 +39,12 @@ using util::VertexCount;
 TEST(TexCoordsTest, Ctor)
 {
   const auto mesh = CubeMesh();
-  const auto elements_per_vertex = uint32_t{ 2 };
+  const auto components_per_vertex = uint32_t{ 2 };
   const auto indices_per_face = uint32_t{ 3 };
   const auto tex_coords = make_tex_coords(
     begin(mesh.tex_coord_elements), end(mesh.tex_coord_elements),
     begin(mesh.tex_coord_indices), end(mesh.tex_coord_indices),
-    elements_per_vertex, indices_per_face);
+    components_per_vertex, indices_per_face);
   EXPECT_EQ(begin(mesh.tex_coord_elements), tex_coords.elements_begin);
   EXPECT_EQ(end(mesh.tex_coord_elements), tex_coords.elements_end);
   EXPECT_EQ(begin(mesh.tex_coord_indices), tex_coords.indices_begin);
@@ -55,7 +55,7 @@ TEST(TexCoordsTest, Ctor)
 
 TEST(TexCoordsTest, CtorEmptyElementsAndIndices)
 {
-  const auto elements_per_vertex = uint32_t{ 2 };
+  const auto components_per_vertex = uint32_t{ 2 };
   const auto indices_per_face = uint32_t{ 3 };
   const auto elements = vector<float>{};
   const auto indices = vector<uint32_t>{};
@@ -63,7 +63,7 @@ TEST(TexCoordsTest, CtorEmptyElementsAndIndices)
     const auto tex_coords = make_tex_coords(
       begin(elements), end(elements),
       begin(indices), end(indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
   }
   catch (const exception& ex) {
     FAIL() << "empty tex coords should be allowed: " << ex.what();
@@ -79,13 +79,13 @@ TEST(TexCoordsTest, CtorThrowIfElementsNotNormalized)
   for (const auto invalid_element : invalid_elements) {
     auto mesh = CubeMesh();
     mesh.tex_coord_elements.back() = invalid_element;
-    const auto elements_per_vertex = uint32_t{ 2 };
+    const auto components_per_vertex = uint32_t{ 2 };
     const auto indices_per_face = uint32_t{ 3 };
     try {
       const auto tex_coords = make_tex_coords(
         begin(mesh.tex_coord_elements), end(mesh.tex_coord_elements),
         begin(mesh.tex_coord_indices), end(mesh.tex_coord_indices),
-        elements_per_vertex, indices_per_face);
+        components_per_vertex, indices_per_face);
       FAIL() << "exception not thrown";
     }
     catch (const runtime_error& ex) {
@@ -103,19 +103,19 @@ TEST(TexCoordsTest, CtorThrowIfElementsNotNormalized)
 TEST(TexCoordsTest, CtorThrowsIfElementsPerVertexIsNotTwoOrThree)
 {
   const auto mesh = CubeMesh();
-  const auto elements_per_vertex = uint32_t{ 5 };
+  const auto components_per_vertex = uint32_t{ 5 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
     const auto tex_coords = make_tex_coords(
       begin(mesh.tex_coord_elements), end(mesh.tex_coord_elements),
       begin(mesh.tex_coord_indices), end(mesh.tex_coord_indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (const runtime_error& ex) {
     auto ss = stringstream();
     ss << "tex coord elements per vertex must be 2 or 3, was "
-      << elements_per_vertex;
+      << components_per_vertex;
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }
   catch (...) {
@@ -128,19 +128,19 @@ TEST(TexCoordsTest, CtorThrowsIfElementCountNotMultipleOfElementsPerVertex)
   // Add an extra element.
   auto mesh = CubeMesh();
   mesh.tex_coord_elements.push_back(0.25f);
-  const auto elements_per_vertex = uint32_t{ 2 };
+  const auto components_per_vertex = uint32_t{ 2 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
     const auto tex_coords = make_tex_coords(
       begin(mesh.tex_coord_elements), end(mesh.tex_coord_elements),
       begin(mesh.tex_coord_indices), end(mesh.tex_coord_indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (const runtime_error& ex) {
     auto ss = stringstream();
     ss << "tex coord element count (" << mesh.tex_coord_elements.size()
-      << ") must be a multiple of " << elements_per_vertex;
+      << ") must be a multiple of " << components_per_vertex;
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }
   catch (...) {
@@ -151,7 +151,7 @@ TEST(TexCoordsTest, CtorThrowsIfElementCountNotMultipleOfElementsPerVertex)
 TEST(TexCoordsTest, CtorThrowsIfIndicesPerFaceIsLessThanThree)
 {
   // Resize indices to be two per face.
-  const auto elements_per_vertex = uint32_t{ 2 };
+  const auto components_per_vertex = uint32_t{ 2 };
   const auto indices_per_face = uint32_t{ 2 };
   auto mesh = CubeMesh();
   mesh.tex_coord_indices.resize(
@@ -160,7 +160,7 @@ TEST(TexCoordsTest, CtorThrowsIfIndicesPerFaceIsLessThanThree)
     const auto tex_coords = make_tex_coords(
       begin(mesh.tex_coord_elements), end(mesh.tex_coord_elements),
       begin(mesh.tex_coord_indices), end(mesh.tex_coord_indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (const runtime_error& ex) {
@@ -180,13 +180,13 @@ TEST(TexCoordsTest, CtorThrowsIfIndexCountNotMultipleOfIndicesPerFace)
   // Add an extra index element.
   auto mesh = CubeMesh();
   mesh.tex_coord_indices.push_back(0);
-  const auto elements_per_vertex = uint32_t{ 2 };
+  const auto components_per_vertex = uint32_t{ 2 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
     const auto tex_coords = make_tex_coords(
       begin(mesh.tex_coord_elements), end(mesh.tex_coord_elements),
       begin(mesh.tex_coord_indices), end(mesh.tex_coord_indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (const runtime_error& ex) {
@@ -204,13 +204,13 @@ TEST(TexCoordsTest, CtorThrowIfInvalidIndexRange_MinNotZero)
 {
   auto mesh = CubeMesh();
   IncrementAndClampToMaxElement(mesh.tex_coord_indices);
-  const auto elements_per_vertex = uint32_t{ 2 };
+  const auto components_per_vertex = uint32_t{ 2 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
     const auto tex_coords = make_tex_coords(
       begin(mesh.tex_coord_elements), end(mesh.tex_coord_elements),
       begin(mesh.tex_coord_indices), end(mesh.tex_coord_indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (const runtime_error& ex) {
@@ -229,13 +229,13 @@ TEST(TexCoordsTest, CtorThrowIfInvalidIndexRange_MaxTooHigh)
 {
   auto mesh = CubeMesh();
   IncrementNonZeroElements(mesh.tex_coord_indices);
-  const auto elements_per_vertex = uint32_t{ 2 };
+  const auto components_per_vertex = uint32_t{ 2 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
     const auto tex_coords = make_tex_coords(
       begin(mesh.tex_coord_elements), end(mesh.tex_coord_elements),
       begin(mesh.tex_coord_indices), end(mesh.tex_coord_indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (const runtime_error& ex) {
@@ -243,7 +243,7 @@ TEST(TexCoordsTest, CtorThrowIfInvalidIndexRange_MaxTooHigh)
       *max_element(begin(mesh.tex_coord_indices), end(mesh.tex_coord_indices));
     auto ss = stringstream();
     ss << "max tex coord index must be less than vertex count ("
-      << VertexCount(mesh.tex_coord_elements, elements_per_vertex) << "), was "
+      << VertexCount(mesh.tex_coord_elements, components_per_vertex) << "), was "
       << max_index;
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }

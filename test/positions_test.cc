@@ -44,17 +44,17 @@ TEST(PositionsTest, CtorThrowsIfEmptyElements)
 {
   const auto pos = vector<float>{};
   const auto idx = vector<uint32_t>{ 0, 1, 2 };
-  const auto elements_per_vertex = uint32_t{ 3 };
+  const auto components_per_vertex = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
     const auto positions = make_positions(
       begin(pos), end(pos),
       begin(idx), end(idx),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (runtime_error& ex) {
-    EXPECT_STREQ("position elements cannot be empty", ex.what());
+    EXPECT_STREQ("position components cannot be empty", ex.what());
   }
   catch (...) {
     FAIL() << "incorrect exception";
@@ -64,19 +64,19 @@ TEST(PositionsTest, CtorThrowsIfEmptyElements)
 TEST(PositionsTest, CtorThrowsIfElementsPerVertexIsNotThreeOrFour)
 {
   const auto mesh = CubeMesh();
-  const auto elements_per_vertex = uint32_t{ 5 };
+  const auto components_per_vertex = uint32_t{ 5 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
     const auto positions = make_positions(
       begin(mesh.position_elements), end(mesh.position_elements),
       begin(mesh.position_indices), end(mesh.position_indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (runtime_error& ex) {
     auto ss = stringstream();
-    ss << "position elements per vertex must be 3 or 4, was " 
-      << elements_per_vertex;
+    ss << "position components per vertex must be 3 or 4, was " 
+      << components_per_vertex;
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }
   catch (...) {
@@ -89,19 +89,19 @@ TEST(PositionsTest, CtorThrowsIfElementCountNotMultipleOfElementsPerVertex)
   // Add an extra position element.
   auto mesh = CubeMesh();
   mesh.position_elements.push_back(25.f);
-  const auto elements_per_vertex = uint32_t{ 3 };
+  const auto components_per_vertex = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
     const auto positions = make_positions(
       begin(mesh.position_elements), end(mesh.position_elements),
       begin(mesh.position_indices), end(mesh.position_indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (runtime_error& ex) {
     auto ss = stringstream();
-    ss << "position element count (" << mesh.position_elements.size()
-      << ") must be a multiple of " << elements_per_vertex;
+    ss << "position component count (" << mesh.position_elements.size()
+      << ") must be a multiple of " << components_per_vertex;
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }
   catch (...) {
@@ -113,13 +113,13 @@ TEST(PositionsTest, CtorThrowsIfEmptyIndices)
 {
   auto mesh = CubeMesh();
   mesh.position_indices.clear();
-  const auto elements_per_vertex = uint32_t{ 3 };
+  const auto components_per_vertex = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
     const auto positions = make_positions(
       begin(mesh.position_elements), end(mesh.position_elements),
       begin(mesh.position_indices), end(mesh.position_indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (runtime_error& ex) {
@@ -133,19 +133,18 @@ TEST(PositionsTest, CtorThrowsIfEmptyIndices)
 TEST(PositionsTest, CtorThrowsIfIndicesPerFaceIsLessThanThree)
 {
   const auto mesh = CubeMesh();
-  const auto elements_per_vertex = uint32_t{ 3 };
+  const auto components_per_vertex = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 2 };
   try {
     const auto positions = make_positions(
       begin(mesh.position_elements), end(mesh.position_elements),
       begin(mesh.position_indices), end(mesh.position_indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (runtime_error& ex) {
     auto ss = stringstream();
-    ss << "position indices per face must be "
-      << "greater than or equal to 3, was "
+    ss << "position indices per face cannot be less than 3, was "
       << indices_per_face;
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }
@@ -159,13 +158,13 @@ TEST(PositionsTest, CtorThrowsIfIndexCountNotMultipleOfIndicesPerFace)
   // Add an extra index element.
   auto mesh = CubeMesh();
   mesh.position_indices.push_back(0);
-  const auto elements_per_vertex = uint32_t{ 3 };
+  const auto components_per_vertex = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
     const auto positions = make_positions(
       begin(mesh.position_elements), end(mesh.position_elements),
       begin(mesh.position_indices), end(mesh.position_indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (runtime_error& ex) {
@@ -183,20 +182,20 @@ TEST(PositionsTest, CtorThrowIfInvalidIndexRange_MinNotZero)
 {
   auto mesh = CubeMesh();
   IncrementAndClampToMaxElement(mesh.position_indices);
-  const auto elements_per_vertex = uint32_t{ 3 };
+  const auto components_per_vertex = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
     const auto positions = make_positions(
       begin(mesh.position_elements), end(mesh.position_elements),
       begin(mesh.position_indices), end(mesh.position_indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (runtime_error& ex) {
     const auto min_index =
       *min_element(begin(mesh.position_indices), end(mesh.position_indices));
     auto ss = stringstream();
-    ss << "min position index must be zero, was " << min_index;
+    ss << "position min index must be zero, was " << min_index;
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }
   catch (...) {
@@ -208,21 +207,21 @@ TEST(PositionsTest, CtorThrowIfInvalidIndexRange_MaxTooHigh)
 {
   auto mesh = CubeMesh();
   IncrementNonZeroElements(mesh.position_indices);
-  const auto elements_per_vertex = uint32_t{ 3 };
+  const auto components_per_vertex = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
     const auto positions = make_positions(
       begin(mesh.position_elements), end(mesh.position_elements),
       begin(mesh.position_indices), end(mesh.position_indices),
-      elements_per_vertex, indices_per_face);
+      components_per_vertex, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (runtime_error& ex) {
     const auto max_index =
       *max_element(begin(mesh.position_indices), end(mesh.position_indices));
     auto ss = stringstream();
-    ss << "max position index must be less than vertex count ("
-      << VertexCount(mesh.position_elements, elements_per_vertex) << "), was " 
+    ss << "position max index must be less than vertex count ("
+      << VertexCount(mesh.position_elements, components_per_vertex) << "), was " 
       << max_index;
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }

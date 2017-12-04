@@ -48,7 +48,7 @@ TEST(NormalsTest, Ctor)
   EXPECT_EQ(end(mesh.normal_elements), normals.elements_end);
   EXPECT_EQ(begin(mesh.normal_indices), normals.indices_begin);
   EXPECT_EQ(end(mesh.normal_indices), normals.indices_end);
-  EXPECT_EQ(3, normals.elements_per_vertex); // Constant.
+  EXPECT_EQ(3, normals.components_per_vertex); // Constant.
   EXPECT_EQ(3, normals.indices_per_face);
 }
 
@@ -86,7 +86,7 @@ TEST(NormalsTest, CtorThrowsIfElementCountNotMultipleOfElementsPerVertex)
   }
   catch (const runtime_error& ex) {
     auto ss = stringstream();
-    ss << "normal element count (" << mesh.normal_elements.size()
+    ss << "normal component count (" << mesh.normal_elements.size()
       << ") must be a multiple of " << 3; // Constant.
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }

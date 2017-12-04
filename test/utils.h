@@ -79,9 +79,9 @@ void IncrementNonZeroElements(std::vector<T>& v)
 template <typename T> inline
 uint32_t VertexCount(
   const std::vector<T>& elements,
-  const uint32_t elements_per_vertex)
+  const uint32_t components_per_vertex)
 {
-  return static_cast<uint32_t>(elements.size() / elements_per_vertex);
+  return static_cast<uint32_t>(elements.size() / components_per_vertex);
 }
 
 } // namespace util
