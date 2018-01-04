@@ -33,12 +33,15 @@ using std::runtime_error;
 using std::stringstream;
 using std::vector;
 using thinks::obj_io::make_positions;
+using thinks::obj_io::Write;
 
 namespace {
 
 struct Mesh
 {
-  vector<float> position_elements;
+  uint32_t position_components_per_vertex;
+  vector<float> position_components;
+  uint32_t position_indices_per_face;
   vector<uint32_t> position_indices;
 };
 
@@ -47,7 +50,8 @@ struct Mesh
 Mesh CubeMesh()
 {
   auto mesh = Mesh{};
-  mesh.position_elements = vector<float>{
+  mesh.position_components_per_vertex = 3;
+  mesh.position_components = vector<float>{
     1.f, 1.f, -1.f,
     1.f, -1.f, 1.f,
     1.f, -1.f, -1.f,
@@ -57,6 +61,7 @@ Mesh CubeMesh()
     -1.f, 1.f, 1.f,
     -1.f, -1.f, 1.f
   };
+  mesh.position_indices_per_face = 3;
   mesh.position_indices = vector<uint32_t>{
     0, 1, 2,
     1, 0, 3,
@@ -76,5 +81,17 @@ Mesh CubeMesh()
 
 } // namespace
 
+TEST(WriteTest, PositionsOnly)
+{
+  auto mesh = CubeMesh();
+  const auto positions = make_positions(
+    begin(mesh.position_components), end(mesh.position_components),
+    begin(mesh.position_indices), end(mesh.position_indices),
+    mesh.position_components_per_vertex, 
+    mesh.position_indices_per_face);
+  auto ss = stringstream();
+  Write(ss, positions);
+
+}
 
 

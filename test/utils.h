@@ -47,7 +47,7 @@ struct Mesh
 Mesh CubeMesh();
 
 
-template <typename T> inline
+template<typename T> inline
 void IncrementAndClampToMaxElement(
   std::vector<T>& v)
 {
@@ -65,7 +65,7 @@ void IncrementAndClampToMaxElement(
     });
 }
 
-template <typename T> inline
+template<typename T> inline
 void IncrementNonZeroElements(std::vector<T>& v)
 {
   std::for_each(begin(v), end(v),
@@ -76,12 +76,12 @@ void IncrementNonZeroElements(std::vector<T>& v)
     });
 }
 
-template <typename T> inline
+template<typename T> inline
 uint32_t VertexCount(
-  const std::vector<T>& elements,
+  const std::vector<T>& components,
   const uint32_t components_per_vertex)
 {
-  return static_cast<uint32_t>(elements.size() / components_per_vertex);
+  return static_cast<uint32_t>(components.size() / components_per_vertex);
 }
 
 } // namespace util

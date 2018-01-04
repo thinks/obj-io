@@ -37,11 +37,13 @@ INCLUDE_DIRECTORIES(
 
 ADD_EXECUTABLE(obj-io-test
   main.cc
-  normals_test.cc
-  positions_test.cc
-  tex_coords_test.cc
+  face_channel_test.cc
+  #normals_test.cc
+  position_channel_test.cc
+  #tex_coords_test.cc
   utils.cc
-  write_test.cc)
+  #write_test.cc)
+  )
 
 TARGET_LINK_LIBRARIES(obj-io-test gtest gtest_main)
 
