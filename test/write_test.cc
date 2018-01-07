@@ -32,7 +32,7 @@ using std::for_each;
 using std::runtime_error;
 using std::stringstream;
 using std::vector;
-using thinks::obj_io::make_positions;
+using thinks::obj_io::make_position_channel;
 using thinks::obj_io::Write;
 
 namespace {
@@ -84,14 +84,13 @@ Mesh CubeMesh()
 TEST(WriteTest, PositionsOnly)
 {
   auto mesh = CubeMesh();
-  const auto positions = make_positions(
+  const auto positions = make_position_channel(
     begin(mesh.position_components), end(mesh.position_components),
+    mesh.position_components_per_vertex,
     begin(mesh.position_indices), end(mesh.position_indices),
-    mesh.position_components_per_vertex, 
     mesh.position_indices_per_face);
   auto ss = stringstream();
   Write(ss, positions);
-
 }
 
 

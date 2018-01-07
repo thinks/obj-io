@@ -42,8 +42,7 @@ ADD_EXECUTABLE(obj-io-test
   position_channel_test.cc
   #tex_coords_test.cc
   utils.cc
-  #write_test.cc)
-  )
+  write_test.cc)
 
 TARGET_LINK_LIBRARIES(obj-io-test gtest gtest_main)
 

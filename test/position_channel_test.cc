@@ -20,16 +20,13 @@
 
 #include <gtest/gtest.h>
 
-#include "utils.h"
 #include "../include/thinks/obj_io.h"
 
-#include <algorithm>
 #include <sstream>
 #include <vector>
 
 using std::begin;
 using std::end;
-using std::for_each;
 using std::invalid_argument;
 using std::stringstream;
 using std::vector;
@@ -48,7 +45,7 @@ TEST(PositionChannelTest, CtorThrowsIfComponentCountIsZero)
   }
   catch (invalid_argument& ex) {
     auto ss = stringstream();
-    ss << "channel element count (" << 0
+    ss << "element count (" << 0
       << ") must be a multiple of elements per object (" 
       << components_per_value << ")";
     EXPECT_STREQ(ss.str().c_str(), ex.what());
@@ -108,7 +105,7 @@ TEST(PositionChannelTest, CtorThrowsIfComponentCountNotMultipleOfComponentsPerVa
   }
   catch (invalid_argument& ex) {
     auto ss = stringstream();
-    ss << "channel element count (" << 2
+    ss << "element count (" << 2
       << ") must be a multiple of elements per object (" 
       << components_per_value << ")";
     EXPECT_STREQ(ss.str().c_str(), ex.what());
@@ -130,7 +127,7 @@ TEST(PositionChannelTest, CtorThrowsIfIndexCountIsZero)
   }
   catch (invalid_argument& ex) {
     auto ss = stringstream();
-    ss << "channel element count (" << 0
+    ss << "element count (" << 0
       << ") must be a multiple of elements per object ("
       << components_per_value << ")";
     EXPECT_STREQ(ss.str().c_str(), ex.what());
@@ -152,7 +149,7 @@ TEST(PositionChannelTest, CtorThrowsIfIndicesPerFaceIsLessThanThree)
   }
   catch (invalid_argument& ex) {
     auto ss = std::stringstream();
-    ss << "face channel indices per face (" << indices_per_face
+    ss << "indices per face (" << indices_per_face
       << ") cannot be less than 3";
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }
@@ -173,7 +170,7 @@ TEST(PositionChannelTest, CtorThrowsIfIndexCountNotMultipleOfIndicesPerFace)
   }
   catch (invalid_argument& ex) {
     auto ss = stringstream();
-    ss << "channel element count (" << 3
+    ss << "element count (" << 3
       << ") must be a multiple of elements per object ("
       << indices_per_face << ")";
     EXPECT_STREQ(ss.str().c_str(), ex.what());
