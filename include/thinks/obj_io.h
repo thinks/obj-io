@@ -48,12 +48,9 @@ bool IsEmpty(const Iter iter_begin, const Iter iter_end)
 inline
 uint32_t IsMultipleOf(const uint32_t count, const uint32_t denominator)
 {
-  using namespace std;
-
   if (denominator == 0) {
-    throw runtime_error("denominator cannot be zero");
+    throw std::invalid_argument("denominator cannot be zero");
   }
-
   return count != 0 && count % denominator == 0;
 }
 
@@ -63,12 +60,10 @@ typename std::iterator_traits<IterType>::value_type MinElement(
   const IterType iter_begin,
   const IterType iter_end)
 {
-  using namespace std;
-
   if (IsEmpty(iter_begin, iter_end)) {
-    throw invalid_argument("cannot find min element of empty range");
+    throw std::invalid_argument("cannot find min element of empty range");
   }
-  return *min_element(iter_begin, iter_end);
+  return *std::min_element(iter_begin, iter_end);
 }
 
 template<typename IterType>
@@ -76,12 +71,10 @@ typename std::iterator_traits<IterType>::value_type MaxElement(
   const IterType iter_begin,
   const IterType iter_end)
 {
-  using namespace std;
-
   if (IsEmpty(iter_begin, iter_end)) {
-    throw invalid_argument("cannot find max element of empty range");
+    throw std::invalid_argument("cannot find max element of empty range");
   }
-  return *max_element(iter_begin, iter_end);
+  return *std::max_element(iter_begin, iter_end);
 }
 
 
@@ -538,68 +531,38 @@ void WriteValues(
   }
 }
 
-template<
-  typename PosIdxType,
-  typename TexIdxType,
-  typename NmlIdxType>
+template<typename PosIndexType, typename TexIndexType, typename NmlIndexType>
 void WriteFaceIndex(
   std::ostream& os,
-  const PosIdxType pos_index,
-  const TexIdxType* tex_index,
-  const NmlIdxType* nml_index)
+  const PosIndexType pos_index,
+  const TexIndexType* const tex_index,
+  const NmlIndexType* const nml_index)
 {
-  os << pos_index + 1; // One-based indices!
-  if (tex_index != nullptr) {
-    os << "/" << *tex_index + 1; // One-based indices!
+  // One-based indices!
+  os << pos_index + 1;
+  if (tex_index != nullptr && nml_index != nullptr) {
+    os << "/" << *tex_index + 1 << "/" << *nml_index + 1;
   }
-  if (nml_index != nullptr) {
-    if (tex_index == nullptr) {
-      os << "/";
-    }
-    os << "/" << *nml_index + 1; // One-based indices!
+  else if (tex_index != nullptr) {
+    os << "/" << *tex_index + 1;
+  }
+  else if (nml_index != nullptr) {
+    os << "//" << *nml_index + 1;
   }
 }
 
-template<
-  typename PosIdxIter,
-  typename TexIdxIter,
-  typename NmlIdxIter>
-void WriteFace(
-  std::ostream& os,
-  PosIdxIter& pos_index_iter,
-  TexIdxIter* tex_index_iter,
-  NmlIdxIter* nml_index_iter,
-  const uint32_t indices_per_face,
-  const std::string& newline)
-{
-  // One line per face.
-  os << "f: ";
-  for (auto i = uint32_t{ 0 }; i < indices_per_face; ++i) {
-    WriteFaceIndex(os, 
-      *pos_index_iter,
-      tex_index_iter != nullptr ? &*(*tex_index_iter) : nullptr,
-      nml_index_iter != nullptr ? &*(*nml_index_iter) : nullptr);
-    ++pos_index_iter;
-    if (tex_index_iter != nullptr) {
-      ++(*tex_index_iter);
-    }
-    if (nml_index_iter != nullptr) {
-      ++(*nml_index_iter);
-    }
-    os << (i != indices_per_face - 1 ? " " : "");
-  }
-  os << newline;
-}
-
-template<
-  typename PosCompIter, typename PosIndexIter,
-  typename TexCompIter, typename TexIndexIter,
-  typename NmlCompIter, typename NmlIndexIter>
+template<typename PosIndexIter, typename TexIndexIter, typename NmlIndexIter>
 void WriteFaces(
   std::ostream& os,
-  const PositionChannel<PosCompIter, PosIndexIter>& position_channel,
-  const TexCoordChannel<TexCompIter, TexIndexIter>* const tex_coord_channel,
-  const NormalChannel<NmlCompIter, NmlIndexIter>* const normal_channel,
+  const PosIndexIter pos_indices_begin, 
+  const PosIndexIter pos_indices_end,
+  const uint32_t pos_indices_per_face,
+  const TexIndexIter tex_indices_begin, 
+  const TexIndexIter tex_indices_end,
+  const uint32_t tex_indices_per_face,
+  const NmlIndexIter nml_indices_begin,
+  const NmlIndexIter nml_indices_end,
+  const uint32_t nml_indices_per_face,
   const std::string& newline)
 {
   // TODO
@@ -615,35 +578,39 @@ void WriteFaces(
   // If these two tests hold then the face count is also equal.
   */
 
-  auto pos_index_iter = position_channel.indices_begin();
-  TexIndexIter* tex_index_iter = nullptr;
-  if (tex_coord_channel != nullptr) {
-    tex_index_iter = &tex_coord_channel->indices_begin();
-  }
-  NmlIndexIter* nml_index_iter = nullptr;
-  if (normal_channel != nullptr) {
-    nml_index_iter = &normal_channel->indices_begin();
-  }
-  while (pos_index_iter != position_channel.indices_end())
-  {
-    WriteFace(os,
-      pos_index_iter,
-      tex_index_iter,
-      nml_index_iter,
-      position_channel.indices_per_face(),
-      newline);
+  auto pos_index_iter = pos_indices_begin;
+  auto tex_index_iter = tex_indices_begin;
+  auto nml_index_iter = nml_indices_begin;
+  while (pos_index_iter != pos_indices_end) {
+    // One line per face.
+    os << "f: ";
+    for (auto i = uint32_t{ 0 }; i < pos_indices_per_face; ++i) {
+      WriteFaceIndex(os,
+        *pos_index_iter,
+        tex_index_iter != TexIndexIter{} ? &(*tex_index_iter) : nullptr,
+        nml_index_iter != NmlIndexIter{} ? &(*nml_index_iter) : nullptr);
+      ++pos_index_iter;
+      if (tex_index_iter != TexIndexIter{}) {
+        ++tex_index_iter;
+      }
+      if (nml_index_iter != NmlIndexIter{}) {
+        ++nml_index_iter;
+      }
+      os << (i != pos_indices_per_face - 1 ? " " : "");
+    }
+    os << newline;
   }
 }
 
 template<
-  typename PosCompIter, typename PosIdxIter,
-  typename TexCompIter, typename TexIdxIter,
-  typename NmlCompIter, typename NmlIdxIter>
+  typename PosCompIter, typename PosIndexIter,
+  typename TexCompIter, typename TexIndexIter,
+  typename NmlCompIter, typename NmlIndexIter>
 std::ostream& Write(
   std::ostream& os,
-  const PositionChannel<PosCompIter, PosIdxIter>& position_channel,
-  const TexCoordChannel<TexCompIter, TexIdxIter>* const tex_coord_channel,
-  const NormalChannel<NmlCompIter, NmlIdxIter>* const normal_channel,
+  const PositionChannel<PosCompIter, PosIndexIter>& position_channel,
+  const TexCoordChannel<TexCompIter, TexIndexIter>* const tex_coord_channel,
+  const NormalChannel<NmlCompIter, NmlIndexIter>* const normal_channel,
   const std::string& newline)
 {
   WriteHeader(os, position_channel, newline);
@@ -670,9 +637,21 @@ std::ostream& Write(
   }
 
   WriteFaces(os, 
-    position_channel, 
-    tex_coord_channel, 
-    normal_channel, 
+    position_channel.indices_begin(),
+    position_channel.indices_end(),
+    position_channel.indices_per_face(),
+    tex_coord_channel != nullptr ? 
+      tex_coord_channel->indices_begin() : TexIndexIter{} /* dummy */,
+    tex_coord_channel != nullptr ? 
+      tex_coord_channel->indices_end() : TexIndexIter{} /* dummy */,
+    tex_coord_channel != nullptr ? 
+      tex_coord_channel->indices_per_face() : 0,
+    normal_channel != nullptr ? 
+      normal_channel->indices_begin() : NmlIndexIter{} /* dummy */,
+    normal_channel != nullptr ? 
+      normal_channel->indices_end() : NmlIndexIter{} /* dummy */,
+    normal_channel != nullptr ? 
+      normal_channel->indices_per_face() : 0,
     newline);
 
   return os;

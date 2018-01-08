@@ -91,6 +91,23 @@ TEST(WriteTest, PositionsOnly)
     mesh.position_indices_per_face);
   auto ss = stringstream();
   Write(ss, positions);
+
+  std::cout << ss.str();
+}
+
+TEST(WriteTest, PositionsAndTexCoords)
+{
+  FAIL() << "todo";
+}
+
+TEST(WriteTest, PositionsAndNormals)
+{
+  FAIL() << "todo";
+}
+
+TEST(WriteTest, ThrowsIfChannelsNotEqualFaceCount)
+{
+  FAIL() << "todo";
 }
 
 
