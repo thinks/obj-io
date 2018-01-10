@@ -43,7 +43,7 @@ struct Mesh
 /// -  6 * 3 normal elements
 /// - 12 * 3 normal indices
 ///
-/// Centered at origin, vertices in range [-1,1].
+/// Centered at origin, positions in range [-1,1].
 Mesh CubeMesh();
 
 

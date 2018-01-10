@@ -343,7 +343,7 @@ public:
         indices_begin, indices_end, indices_per_face)
   {
     typedef typename std::iterator_traits<ComponentIter>::value_type ComponentType;
-    static_assert(std::is_floating_point<ElementType>::value,
+    static_assert(std::is_floating_point<ComponentType>::value,
       "tex coord components must be floating point");
 
     ThrowIfComponentsPerValueIsNotTwoOrThree_();
@@ -362,25 +362,25 @@ private:
   const detail::IndexedValueChannel<ComponentIter, IndexIter>
     indexed_value_channel_;
 
-  void ThrowIfElementsPerVertexIsNotTwoOrThree_()
+  void ThrowIfComponentsPerValueIsNotTwoOrThree_()
   {
-    if (!(elements_per_vertex == 2 || elements_per_vertex == 3)) {
+    if (!(components_per_value() == 2 || components_per_value() == 3)) {
       auto ss = std::stringstream();
       ss << "tex coord components per value (" 
-        << elements_per_vertex << ") must be 2 or 3";
-      throw std::runtime_error(ss.str());
+        << components_per_value() << ") must be 2 or 3";
+      throw std::invalid_argument(ss.str());
     }
   }
 
-  void ThrowIfElementsNotNormalized_()
+  void ThrowIfComponentsNotNormalized_()
   {
-    typedef typename std::iterator_traits<ElementIter>::value_type ElementType;
-    std::for_each(elements_begin, elements_end,
-      [](const auto& e) {
-        if (!(ElementType(0) <= e && e <= ElementType(1))) {
+    typedef typename std::iterator_traits<ComponentIter>::value_type ComponentType;
+    std::for_each(components_begin(), components_end(),
+      [](const auto e) {
+        if (!(ComponentType(0) <= e && e <= ComponentType(1))) {
           auto ss = std::stringstream();
           ss << "tex coord elements must be in range [0, 1], found " << e;
-          throw std::runtime_error(ss.str());
+          throw std::invalid_argument(ss.str());
         }
       });
   }
@@ -583,7 +583,7 @@ void WriteFaces(
   auto nml_index_iter = nml_indices_begin;
   while (pos_index_iter != pos_indices_end) {
     // One line per face.
-    os << "f: ";
+    os << "f ";
     for (auto i = uint32_t{ 0 }; i < pos_indices_per_face; ++i) {
       WriteFaceIndex(os,
         *pos_index_iter,
@@ -614,14 +614,14 @@ std::ostream& Write(
   const std::string& newline)
 {
   WriteHeader(os, position_channel, newline);
-  WriteValues(os, "v: ", 
+  WriteValues(os, "v ", 
     position_channel.components_begin(), 
     position_channel.components_end(),
     position_channel.components_per_value(),
     newline);
   
   if (tex_coord_channel != nullptr) {
-    WriteValues(os, "vt: ", 
+    WriteValues(os, "vt ", 
       tex_coord_channel->components_begin(), 
       tex_coord_channel->components_end(),
       tex_coord_channel->components_per_value(),
@@ -629,7 +629,7 @@ std::ostream& Write(
   }
 
   if (normal_channel != nullptr) {
-    WriteValues(os, "vn: ", 
+    WriteValues(os, "vn ", 
       normal_channel->components_begin(),
       normal_channel->components_end(),
       normal_channel->components_per_value(),
@@ -692,7 +692,7 @@ std::ostream& Write(
     PosCompIter, PosIdxIter>(
       os,
       position_channel,
-      tex_coord_channel,
+      &tex_coord_channel,
       nullptr,
       newline);
 }
@@ -713,7 +713,7 @@ std::ostream& Write(
       os,
       position_channel,
       nullptr,
-      normal_channel,
+      &normal_channel,
       newline);
 }
 
