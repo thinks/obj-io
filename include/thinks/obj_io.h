@@ -429,11 +429,11 @@ public:
     const IndexIter indices_end,
     const uint32_t indices_per_face)
     : indexed_value_channel_(
-      components_begin, components_end, uint32_t{ 3 },
-      indices_begin, indices_end, indices_per_face)
+        components_begin, components_end, uint32_t{ 3 },
+        indices_begin, indices_end, indices_per_face)
   {
     typedef typename std::iterator_traits<ComponentIter>::value_type ComponentType;
-    static_assert(std::is_floating_point<ElementType>::value,
+    static_assert(std::is_floating_point<ComponentType>::value,
       "normal components must be floating point");
   }
 
@@ -455,13 +455,12 @@ template<typename ComponentIter, typename IndexIter>
 NormalChannel<ComponentIter, IndexIter> make_normal_channel(
   const ComponentIter components_begin,
   const ComponentIter components_end,
-  const uint32_t components_per_value,
   const IndexIter indices_begin,
   const IndexIter indices_end,
   const uint32_t indices_per_face)
 {
   return NormalChannel<ComponentIter, IndexIter>(
-    components_begin, components_end, components_per_value,
+    components_begin, components_end, 
     indices_begin, indices_end, indices_per_face);
 }
 
@@ -472,12 +471,11 @@ NormalChannel<
   typename std::vector<IndexType>::const_iterator>
 make_normal_channel(
   const std::vector<ComponentType>& components,
-  const uint32_t components_per_value,
   const std::vector<IndexType>& indices,
   const uint32_t indices_per_face)
 {
   return make_normal_channel(
-    std::begin(components), std::end(components), components_per_value,
+    std::begin(components), std::end(components),
     std::begin(indices), std::end(indices), indices_per_face);
 }
 
@@ -668,8 +666,8 @@ std::ostream& Write(
 {
   return detail::Write<
     PosCompIter, PosIdxIter,
-    PosCompIter, PosIdxIter, 
-    PosCompIter, PosIdxIter>(
+    PosCompIter, PosIdxIter,  // Dummy!
+    PosCompIter, PosIdxIter>( // Dummy!
       os,
       position_channel,
       nullptr,
@@ -689,7 +687,7 @@ std::ostream& Write(
   return detail::Write<
     PosCompIter, PosIdxIter,
     TexCompIter, TexIdxIter,
-    PosCompIter, PosIdxIter>(
+    PosCompIter, PosIdxIter>( // Dummy!
       os,
       position_channel,
       &tex_coord_channel,
@@ -708,7 +706,7 @@ std::ostream& Write(
 {
   return detail::Write<
     PosCompIter, PosIdxIter,
-    PosCompIter, PosIdxIter,
+    PosCompIter, PosIdxIter, // Dummy!
     NmlCompIter, NmlIdxIter>(
       os,
       position_channel,
@@ -734,8 +732,8 @@ std::ostream& Write(
     NmlCompIter, NmlIdxIter>(
       os,
       position_channel,
-      tex_coord_channel,
-      normal_channel,
+      &tex_coord_channel,
+      &normal_channel,
       newline);
 }
 
