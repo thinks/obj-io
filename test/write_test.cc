@@ -30,7 +30,7 @@
 using std::begin;
 using std::end;
 using std::for_each;
-using std::runtime_error;
+using std::invalid_argument;
 using std::string;
 using std::stringstream;
 using std::vector;
@@ -346,9 +346,160 @@ TEST(WriteTest, PositionsAndTexCoordsAndNormals)
   EXPECT_STREQ(expected_string.c_str(), ss.str().c_str());
 }
 
-TEST(WriteTest, ThrowsIfChannelsNotEqualFaceCount)
+TEST(WriteTest, ThrowIfIndicesPerFaceNotEqualForAllChannels_TexCoords)
 {
-  FAIL() << "todo";
+  try {
+    auto ss = stringstream();
+    Write(
+      ss,
+      make_position_channel(
+        vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
+        vector<uint32_t>{ 0, 0, 0}, 3),
+      make_tex_coord_channel(
+        vector<float>{ 1.0f, 1.0f }, 2,
+        vector<uint32_t>{ 0, 0, 0, 0}, 4));
+    FAIL() << "exception not thrown";
+  }
+  catch (invalid_argument& ex) {
+    auto ss = stringstream();
+    ss << "indices per face must be equal for all channels: "
+      << "positions (" << 3 << "), tex_coords (" << 4 << ")";
+    EXPECT_STREQ(ss.str().c_str(), ex.what());
+  }
+  catch (...) {
+    FAIL() << "incorrect exception";
+  }
 }
 
+TEST(WriteTest, ThrowIfIndicesPerFaceNotEqualForAllChannels_Normals)
+{
+  try {
+    auto ss = stringstream();
+    Write(
+      ss,
+      make_position_channel(
+        vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
+        vector<uint32_t>{ 0, 0, 0}, 3),
+      make_normal_channel(
+        vector<float>{ 1.0f, 1.0f, 1.0f }, 
+        vector<uint32_t>{ 0, 0, 0, 0}, 4));
+    FAIL() << "exception not thrown";
+  }
+  catch (invalid_argument& ex) {
+    auto ss = stringstream();
+    ss << "indices per face must be equal for all channels: "
+      << "positions (" << 3 << "), normals (" << 4 << ")";
+    EXPECT_STREQ(ss.str().c_str(), ex.what());
+  }
+  catch (...) {
+    FAIL() << "incorrect exception";
+  }
+}
 
+TEST(WriteTest, ThrowIfIndicesPerFaceNotEqualForAllChannels_TexCoordsAndNormals)
+{
+  try {
+    auto ss = stringstream();
+    Write(
+      ss,
+      make_position_channel(
+        vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
+        vector<uint32_t>{ 0, 0, 0}, 3),
+      make_tex_coord_channel(
+        vector<float>{ 1.0f, 1.0f }, 2,
+        vector<uint32_t>{ 0, 0, 0, 0, 0}, 5),
+      make_normal_channel(
+        vector<float>{ 1.0f, 1.0f, 1.0f },
+        vector<uint32_t>{ 0, 0, 0, 0}, 4));
+    FAIL() << "exception not thrown";
+  }
+  catch (invalid_argument& ex) {
+    auto ss = stringstream();
+    ss << "indices per face must be equal for all channels: "
+      << "positions (" << 3 << "), tex_coords (" << 5 
+      << "), normals (" << 4 << ")";
+    EXPECT_STREQ(ss.str().c_str(), ex.what());
+  }
+  catch (...) {
+    FAIL() << "incorrect exception";
+  }
+}
+
+TEST(WriteTest, ThrowIfIndexCountNotEqualForAllChannels_TexCoords)
+{
+  try {
+    auto ss = stringstream();
+    Write(
+      ss,
+      make_position_channel(
+        vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
+        vector<uint32_t>{ 0, 0, 0}, 3),
+      make_tex_coord_channel(
+        vector<float>{ 1.0f, 1.0f }, 2,
+        vector<uint32_t>{ 0, 0, 0, 0, 0, 0 }, 3));
+    FAIL() << "exception not thrown";
+  }
+  catch (invalid_argument& ex) {
+    auto ss = stringstream();
+    ss << "index count must be equal for all channels: "
+      << "positions (" << 3 << "), tex_coords (" << 6 << ")";
+    EXPECT_STREQ(ss.str().c_str(), ex.what());
+  }
+  catch (...) {
+    FAIL() << "incorrect exception";
+  }
+}
+
+TEST(WriteTest, ThrowIfIndexCountNotEqualForAllChannels_Normals)
+{
+  try {
+    auto ss = stringstream();
+    Write(
+      ss,
+      make_position_channel(
+        vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
+        vector<uint32_t>{ 0, 0, 0}, 3),
+      make_normal_channel(
+        vector<float>{ 1.0f, 1.0f, 1.0f },
+        vector<uint32_t>{ 0, 0, 0, 0, 0, 0 }, 3));
+    FAIL() << "exception not thrown";
+  }
+  catch (invalid_argument& ex) {
+    auto ss = stringstream();
+    ss << "index count must be equal for all channels: "
+      << "positions (" << 3 << "), normals (" << 6 << ")";
+    EXPECT_STREQ(ss.str().c_str(), ex.what());
+  }
+  catch (...) {
+    FAIL() << "incorrect exception";
+  }
+}
+
+TEST(WriteTest, ThrowIfIndexCountNotEqualForAllChannels_TexCoordsAndNormals)
+{
+  try {
+    auto ss = stringstream();
+    Write(
+      ss,
+      make_position_channel(
+        vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
+        vector<uint32_t>{ 0, 0, 0}, 3),
+      make_tex_coord_channel(
+        vector<float>{ 1.0f, 1.0f }, 2,
+        vector<uint32_t>{ 0, 0, 0, 0, 0, 0 }, 3),
+      make_normal_channel(
+        vector<float>{ 1.0f, 1.0f, 1.0f },
+        vector<uint32_t>{ 0, 0, 0, 0, 0, 0 }, 3));
+    FAIL() << "exception not thrown";
+  }
+  catch (invalid_argument& ex) {
+    auto ss = stringstream();
+    ss << "index count must be equal for all channels: "
+      << "positions (" << 3 << "), tex_coords (" << 6
+      << "), normals (" << 6 << ")";
+    EXPECT_STREQ(ss.str().c_str(), ex.what());
+  }
+  catch (...) {
+    FAIL() << "incorrect exception";
+  }
+}

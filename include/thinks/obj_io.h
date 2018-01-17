@@ -482,16 +482,77 @@ make_normal_channel(
 
 namespace detail {
 
+template<
+  typename PosIndexType, 
+  typename TexIndexType, 
+  typename NmlIndexType>
+void ThrowIfIndicesPerFaceNotEqualForAllChannels(
+  const PosIndexType pos_indices_per_face,
+  const TexIndexType tex_indices_per_face,
+  const NmlIndexType nml_indices_per_face)
+{
+  const auto invalid_tex =
+    tex_indices_per_face != TexIndexType{ 0 } &&
+    tex_indices_per_face != pos_indices_per_face;
+  const auto invalid_nml =
+    nml_indices_per_face != NmlIndexType{ 0 } &&
+    nml_indices_per_face != pos_indices_per_face;
+  if (invalid_tex || invalid_nml) {
+    auto ss = std::stringstream();
+    ss << "indices per face must be equal for all channels: "
+      << "positions (" << pos_indices_per_face << ")";
+    if (tex_indices_per_face != TexIndexType{ 0 }) {
+      ss << ", tex_coords (" << tex_indices_per_face << ")";
+    }
+    if (nml_indices_per_face != NmlIndexType{ 0 }) {
+      ss << ", normals (" << nml_indices_per_face << ")";
+    }
+    throw std::invalid_argument(ss.str());
+  }
+}
+
+inline
+void ThrowIfIndexCountNotEqualForAllChannels(
+  const uint32_t pos_index_count,
+  const uint32_t tex_index_count,
+  const uint32_t nml_index_count)
+{
+  const auto invalid_tex =
+    tex_index_count != 0 &&
+    tex_index_count != pos_index_count;
+  const auto invalid_nml =
+    nml_index_count != 0 &&
+    nml_index_count != pos_index_count;
+  if (invalid_tex || invalid_nml) {
+    auto ss = std::stringstream();
+    ss << "index count must be equal for all channels: "
+      << "positions (" << pos_index_count << ")";
+    if (tex_index_count != 0) {
+      ss << ", tex_coords (" << tex_index_count << ")";
+    }
+    if (nml_index_count != 0) {
+      ss << ", normals (" << nml_index_count << ")";
+    }
+    throw std::invalid_argument(ss.str());
+  }
+}
+
 template<typename ChannelType>
 uint32_t ValueCount(const ChannelType& channel)
 {
-  return Count(channel.components_begin(), channel.components_end()) / 
+  if (channel.components_per_value() == 0) {
+    throw std::invalid_argument("components per value cannot be zero");
+  }
+  return Count(channel.components_begin(), channel.components_end()) /
     channel.components_per_value();
 }
 
 template<typename ChannelType>
 uint32_t FaceCount(const ChannelType& channel)
 {
+  if (channel.indices_per_face() == 0) {
+    throw std::invalid_argument("indices per face cannot be zero");
+  }
   return Count(channel.indices_begin(), channel.indices_end()) /
     channel.indices_per_face();
 }
@@ -552,6 +613,7 @@ void WriteFaceIndex(
 template<typename PosIndexIter, typename TexIndexIter, typename NmlIndexIter>
 void WriteFaces(
   std::ostream& os,
+  const std::string& line_start,
   const PosIndexIter pos_indices_begin, 
   const PosIndexIter pos_indices_end,
   const uint32_t pos_indices_per_face,
@@ -563,25 +625,22 @@ void WriteFaces(
   const uint32_t nml_indices_per_face,
   const std::string& newline)
 {
-  // TODO
-  /*
   ThrowIfIndicesPerFaceNotEqualForAllChannels(
-  pos_face_channel.indices_per_face,
-  tex_index_channel.indices_per_face,
-  nml_index_channel.indices_per_face);
-  ThrowIfFaceCountNotEqualForAllChannels( // or empty
-  Count(pos_face_channel.begin, pos_face_channel.end),
-  Count(tex_index_channel.begin, tex_index_channel.end),
-  Count(nml_index_channel.begin, nml_index_channel.end));
+    pos_indices_per_face,
+    tex_indices_per_face,
+    nml_indices_per_face);
+  ThrowIfIndexCountNotEqualForAllChannels(
+    Count(pos_indices_begin, pos_indices_end),
+    Count(tex_indices_begin, tex_indices_end),
+    Count(nml_indices_begin, nml_indices_end));
   // If these two tests hold then the face count is also equal.
-  */
 
   auto pos_index_iter = pos_indices_begin;
   auto tex_index_iter = tex_indices_begin;
   auto nml_index_iter = nml_indices_begin;
   while (pos_index_iter != pos_indices_end) {
     // One line per face.
-    os << "f ";
+    os << line_start;
     for (auto i = uint32_t{ 0 }; i < pos_indices_per_face; ++i) {
       WriteFaceIndex(os,
         *pos_index_iter,
@@ -634,7 +693,7 @@ std::ostream& Write(
       newline);
   }
 
-  WriteFaces(os, 
+  WriteFaces(os, "f ",
     position_channel.indices_begin(),
     position_channel.indices_end(),
     position_channel.indices_per_face(),
