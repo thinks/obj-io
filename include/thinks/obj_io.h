@@ -232,6 +232,8 @@ private:
 
   void ThrowIfInvalidIndexRange_()
   {
+    // TODO: Could check that all indices in range exist?!
+    //       If they don't it means that there are unreferences values.
     const auto min_index = detail::MinElement(
       face_channel_.indices_begin(), face_channel_.indices_end());
     if (min_index != 0) {

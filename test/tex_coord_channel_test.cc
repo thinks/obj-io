@@ -215,7 +215,7 @@ TEST(TexCoordChannelTest, CtorThrowIfInvalidIndexRange_MinNotZero)
         0.1f, 0.2f, 0.3f,
         0.1f, 0.2f, 0.3f,
         0.1f, 0.2f, 0.3f,
-        0.1f, 0.2f, 0.3f}, components_per_value,
+        0.1f, 0.2f, 0.3f }, components_per_value,
       vector<uint32_t>{ 1, 2, 3 }, indices_per_face);
     FAIL() << "exception not thrown";
   }
@@ -238,7 +238,7 @@ TEST(TexCoordChannelTest, CtorThrowIfInvalidIndexRange_MaxNotLessThanValueCount)
       vector<float>{
         0.1f, 0.2f, 0.3f,
         0.1f, 0.2f, 0.3f,
-        0.1f, 0.2f, 0.3f}, components_per_value,
+        0.1f, 0.2f, 0.3f }, components_per_value,
       vector<uint32_t>{ 0, 1, 3 }, indices_per_face);
     FAIL() << "exception not thrown";
   }

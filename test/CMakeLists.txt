@@ -37,8 +37,7 @@ INCLUDE_DIRECTORIES(
 
 ADD_EXECUTABLE(obj-io-test
   main.cc
-  face_channel_test.cc
-  #normals_test.cc
+  normal_channel_test.cc
   position_channel_test.cc
   tex_coord_channel_test.cc
   utils.cc
