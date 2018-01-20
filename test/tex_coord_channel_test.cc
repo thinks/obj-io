@@ -30,15 +30,15 @@ using std::end;
 using std::invalid_argument;
 using std::stringstream;
 using std::vector;
-using thinks::obj_io::make_position_channel;
+using thinks::obj_io::make_tex_coord_channel;
 
 
-TEST(PositionChannelTest, CtorThrowsIfComponentCountIsZero)
+TEST(TexCoordChannelTest, CtorThrowsIfComponentCountIsZero)
 {
   const auto components_per_value = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
-    const auto channel = make_position_channel(
+    const auto channel = make_tex_coord_channel(
       vector<float>{}, components_per_value,
       vector<uint32_t>{ 0, 1, 2 }, indices_per_face);
     FAIL() << "exception not thrown";
@@ -46,7 +46,7 @@ TEST(PositionChannelTest, CtorThrowsIfComponentCountIsZero)
   catch (const invalid_argument& ex) {
     auto ss = stringstream();
     ss << "element count (" << 0
-      << ") must be a multiple of elements per object (" 
+      << ") must be a multiple of elements per object ("
       << components_per_value << ")";
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }
@@ -55,12 +55,12 @@ TEST(PositionChannelTest, CtorThrowsIfComponentCountIsZero)
   }
 }
 
-TEST(PositionChannelTest, CtorThrowsIfComponentsPerValueIsZero)
+TEST(TexCoordChannelTest, CtorThrowsIfComponentsPerValueIsZero)
 {
   const auto components_per_value = uint32_t{ 0 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
-    const auto channel = make_position_channel(
+    const auto channel = make_tex_coord_channel(
       vector<float>{ 0.1f, 0.1f }, components_per_value,
       vector<uint32_t>{ 0, 1, 2 }, indices_per_face);
   }
@@ -72,12 +72,12 @@ TEST(PositionChannelTest, CtorThrowsIfComponentsPerValueIsZero)
   }
 }
 
-TEST(PositionChannelTest, CtorThrowsIfComponentCountNotMultipleOfComponentsPerValue)
+TEST(TexCoordChannelTest, CtorThrowsIfComponentCountNotMultipleOfComponentsPerValue)
 {
   const auto components_per_value = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
-    const auto positions = make_position_channel(
+    const auto channel = make_tex_coord_channel(
       vector<float>{ 0.1f, 0.1f }, components_per_value,
       vector<uint32_t>{ 0, 1, 2 }, indices_per_face);
     FAIL() << "exception not thrown";
@@ -94,20 +94,20 @@ TEST(PositionChannelTest, CtorThrowsIfComponentCountNotMultipleOfComponentsPerVa
   }
 }
 
-TEST(PositionChannelTest, CtorThrowsIfComponentsPerValueIsNotThreeOrFour)
+TEST(TexCoordChannelTest, CtorThrowsIfComponentsPerValueIsNotTwoOrThree)
 {
-  const auto components_per_value = uint32_t{ 2 };
+  const auto components_per_value = uint32_t{ 1 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
-    const auto channel = make_position_channel(
-      vector<float>{ 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f }, components_per_value,
+    const auto channel = make_tex_coord_channel(
+      vector<float>{ 0.1f, 0.2f, 0.3f }, components_per_value,
       vector<uint32_t>{ 0, 1, 2 }, indices_per_face);
     FAIL() << "exception not thrown";
   }
   catch (const invalid_argument& ex) {
     auto ss = stringstream();
-    ss << "position components per value (" 
-      << components_per_value << ") must be 3 or 4";
+    ss << "tex coord components per value (" 
+      << components_per_value << ") must be 2 or 3";
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }
   catch (...) {
@@ -115,12 +115,37 @@ TEST(PositionChannelTest, CtorThrowsIfComponentsPerValueIsNotThreeOrFour)
   }
 }
 
-TEST(PositionChannelTest, CtorThrowsIfIndexCountIsZero)
+TEST(TexCoordChannelTest, CtorThrowIfComponentsNotNormalized)
+{
+  const auto invalid_components = vector<float>{ -0.1f, 1.1f };
+  for (const auto invalid_component : invalid_components) {
+    const auto components_per_value = uint32_t{ 2 };
+    const auto indices_per_face = uint32_t{ 3 };
+    try {
+      const auto channel = make_tex_coord_channel(
+        vector<float>{ 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, invalid_component}, 
+        components_per_value,
+        vector<uint32_t>{ 0, 1, 2 }, indices_per_face);
+      FAIL() << "exception not thrown";
+    }
+    catch (const invalid_argument& ex) {
+      auto ss = stringstream();
+      ss << "tex coord elements must be in range [0, 1], found " 
+        << invalid_component;
+      EXPECT_STREQ(ss.str().c_str(), ex.what());
+    }
+    catch (...) {
+      FAIL() << "incorrect exception";
+    }
+  }
+}
+
+TEST(TexCoordChannelTest, CtorThrowsIfIndexCountIsZero)
 {
   const auto components_per_value = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
-    const auto channel = make_position_channel(
+    const auto channel = make_tex_coord_channel(
       vector<float>{ 0.1f, 0.2f, 0.3f }, components_per_value,
       vector<uint32_t>{}, indices_per_face);
     FAIL() << "exception not thrown";
@@ -137,12 +162,12 @@ TEST(PositionChannelTest, CtorThrowsIfIndexCountIsZero)
   }
 }
 
-TEST(PositionChannelTest, CtorThrowsIfIndicesPerFaceIsLessThanThree)
+TEST(TexCoordChannelTest, CtorThrowsIfIndicesPerFaceIsLessThanThree)
 {
   const auto components_per_value = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 2 };
   try {
-    const auto channel = make_position_channel(
+    const auto channel = make_tex_coord_channel(
       vector<float>{ 0.1f, 0.2f, 0.3f }, components_per_value,
       vector<uint32_t>{ 0, 1 }, indices_per_face);
     FAIL() << "exception not thrown";
@@ -158,12 +183,12 @@ TEST(PositionChannelTest, CtorThrowsIfIndicesPerFaceIsLessThanThree)
   }
 }
 
-TEST(PositionChannelTest, CtorThrowsIfIndexCountNotMultipleOfIndicesPerFace)
+TEST(TexCoordChannelTest, CtorThrowsIfIndexCountNotMultipleOfIndicesPerFace)
 {
   const auto components_per_value = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
-    const auto positions = make_position_channel(
+    const auto positions = make_tex_coord_channel(
       vector<float>{ 0.1f, 0.2f, 0.3f }, components_per_value,
       vector<uint32_t>{ 0, 0, 0, 0 }, indices_per_face);
     FAIL() << "exception not thrown";
@@ -180,13 +205,13 @@ TEST(PositionChannelTest, CtorThrowsIfIndexCountNotMultipleOfIndicesPerFace)
   }
 }
 
-TEST(PositionChannelTest, CtorThrowIfInvalidIndexRange_MinNotZero)
+TEST(TexCoordChannelTest, CtorThrowIfInvalidIndexRange_MinNotZero)
 {
   const auto components_per_value = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
-    const auto channel = make_position_channel(
-      vector<float>{
+    const auto channel = make_tex_coord_channel(
+      vector<float>{ 
         0.1f, 0.2f, 0.3f,
         0.1f, 0.2f, 0.3f,
         0.1f, 0.2f, 0.3f,
@@ -204,12 +229,12 @@ TEST(PositionChannelTest, CtorThrowIfInvalidIndexRange_MinNotZero)
   }
 }
 
-TEST(PositionChannelTest, CtorThrowIfInvalidIndexRange_MaxNotLessThanValueCount)
+TEST(TexCoordChannelTest, CtorThrowIfInvalidIndexRange_MaxNotLessThanValueCount)
 {
   const auto components_per_value = uint32_t{ 3 };
   const auto indices_per_face = uint32_t{ 3 };
   try {
-    const auto channel = make_position_channel(
+    const auto channel = make_tex_coord_channel(
       vector<float>{
         0.1f, 0.2f, 0.3f,
         0.1f, 0.2f, 0.3f,

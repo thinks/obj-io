@@ -40,7 +40,7 @@ ADD_EXECUTABLE(obj-io-test
   face_channel_test.cc
   #normals_test.cc
   position_channel_test.cc
-  #tex_coords_test.cc
+  tex_coord_channel_test.cc
   utils.cc
   write_test.cc)
 

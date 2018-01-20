@@ -22,6 +22,7 @@
 #define THINKS_OBJ_IO_H_INCLUDED
 
 #include <algorithm>
+#include <cassert>
 #include <exception>
 #include <iterator>
 #include <ostream>
@@ -517,6 +518,10 @@ void ThrowIfIndexCountNotEqualForAllChannels(
   const uint32_t tex_index_count,
   const uint32_t nml_index_count)
 {
+  assert(pos_index_count > 0 && 
+    "position index count must be greater than zero");
+
+  // Allow count to be zero for tex coord and normal indices.
   const auto invalid_tex =
     tex_index_count != 0 &&
     tex_index_count != pos_index_count;
@@ -540,9 +545,8 @@ void ThrowIfIndexCountNotEqualForAllChannels(
 template<typename ChannelType>
 uint32_t ValueCount(const ChannelType& channel)
 {
-  if (channel.components_per_value() == 0) {
-    throw std::invalid_argument("components per value cannot be zero");
-  }
+  assert(channel.components_per_value() != 0 &&
+    "components per value cannot be zero");
   return Count(channel.components_begin(), channel.components_end()) /
     channel.components_per_value();
 }
@@ -550,9 +554,8 @@ uint32_t ValueCount(const ChannelType& channel)
 template<typename ChannelType>
 uint32_t FaceCount(const ChannelType& channel)
 {
-  if (channel.indices_per_face() == 0) {
-    throw std::invalid_argument("indices per face cannot be zero");
-  }
+  assert(channel.indices_per_face() != 0 && 
+    "indices per face cannot be zero");
   return Count(channel.indices_begin(), channel.indices_end()) /
     channel.indices_per_face();
 }
@@ -729,8 +732,8 @@ std::ostream& Write(
     PosCompIter, PosIdxIter>( // Dummy!
       os,
       position_channel,
-      nullptr,
-      nullptr,
+      nullptr, // No tex coords.
+      nullptr, // No normals.
       newline);
 }
 
@@ -750,45 +753,45 @@ std::ostream& Write(
       os,
       position_channel,
       &tex_coord_channel,
-      nullptr,
+      nullptr, // No normals.
       newline);
 }
 
 template<
-  typename PosCompIter, typename PosIdxIter,
-  typename NmlCompIter, typename NmlIdxIter>
+  typename PosCompIter, typename PosIndexIter,
+  typename NmlCompIter, typename NmlIndexIter>
 std::ostream& Write(
   std::ostream& os,
-  const PositionChannel<PosCompIter, PosIdxIter>& position_channel,
-  const NormalChannel<NmlCompIter, NmlIdxIter>& normal_channel,
+  const PositionChannel<PosCompIter, PosIndexIter>& position_channel,
+  const NormalChannel<NmlCompIter, NmlIndexIter>& normal_channel,
   const std::string& newline = "\n")
 {
   return detail::Write<
-    PosCompIter, PosIdxIter,
-    PosCompIter, PosIdxIter, // Dummy!
-    NmlCompIter, NmlIdxIter>(
+    PosCompIter, PosIndexIter,
+    PosCompIter, PosIndexIter, // Dummy!
+    NmlCompIter, NmlIndexIter>(
       os,
       position_channel,
-      nullptr,
+      nullptr, // No tex coords.
       &normal_channel,
       newline);
 }
 
 template<
-  typename PosCompIter, typename PosIdxIter,
-  typename TexCompIter, typename TexIdxIter,
-  typename NmlCompIter, typename NmlIdxIter>
+  typename PosCompIter, typename PosIndexIter,
+  typename TexCompIter, typename TexIndexIter,
+  typename NmlCompIter, typename NmlIndexIter>
 std::ostream& Write(
   std::ostream& os,
-  const PositionChannel<PosCompIter, PosIdxIter>& position_channel,
-  const TexCoordChannel<TexCompIter, TexIdxIter>& tex_coord_channel,
-  const NormalChannel<NmlCompIter, NmlIdxIter>& normal_channel,
+  const PositionChannel<PosCompIter, PosIndexIter>& position_channel,
+  const TexCoordChannel<TexCompIter, TexIndexIter>& tex_coord_channel,
+  const NormalChannel<NmlCompIter, NmlIndexIter>& normal_channel,
   const std::string& newline = "\n")
 {
   return detail::Write<
-    PosCompIter, PosIdxIter,
-    TexCompIter, TexIdxIter,
-    NmlCompIter, NmlIdxIter>(
+    PosCompIter, PosIndexIter,
+    TexCompIter, TexIndexIter,
+    NmlCompIter, NmlIndexIter>(
       os,
       position_channel,
       &tex_coord_channel,
