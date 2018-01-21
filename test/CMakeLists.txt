@@ -36,6 +36,7 @@ INCLUDE_DIRECTORIES(
   ${gtest_SOURCE_DIR}/include)
 
 ADD_EXECUTABLE(obj-io-test
+  common_channel_test.cc
   main.cc
   normal_channel_test.cc
   position_channel_test.cc

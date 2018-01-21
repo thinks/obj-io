@@ -282,7 +282,7 @@ TEST(WriteTest, PositionsAndNormals)
       mesh.position_components, mesh.position_components_per_vertex,
       mesh.position_indices, mesh.position_indices_per_face),
     make_normal_channel(
-      mesh.normal_components, 
+      mesh.normal_components, 3,
       mesh.normal_indices, mesh.normal_indices_per_face));
 
   // Assert.
@@ -339,7 +339,7 @@ TEST(WriteTest, PositionsAndTexCoordsAndNormals)
       mesh.tex_coord_components, mesh.tex_coord_components_per_vertex,
       mesh.tex_coord_indices, mesh.position_indices_per_face),
     make_normal_channel(
-      mesh.normal_components,
+      mesh.normal_components, 3,
       mesh.normal_indices, mesh.normal_indices_per_face));
 
   // Assert.
@@ -381,7 +381,7 @@ TEST(WriteTest, ThrowIfIndicesPerFaceNotEqualForAllChannels_Normals)
         vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
         vector<uint32_t>{ 0, 0, 0}, 3),
       make_normal_channel(
-        vector<float>{ 1.0f, 1.0f, 1.0f }, 
+        vector<float>{ 1.0f, 1.0f, 1.0f }, 3,
         vector<uint32_t>{ 0, 0, 0, 0}, 4));
     FAIL() << "exception not thrown";
   }
@@ -409,7 +409,7 @@ TEST(WriteTest, ThrowIfIndicesPerFaceNotEqualForAllChannels_TexCoordsAndNormals)
         vector<float>{ 1.0f, 1.0f }, 2,
         vector<uint32_t>{ 0, 0, 0, 0, 0}, 5),
       make_normal_channel(
-        vector<float>{ 1.0f, 1.0f, 1.0f },
+        vector<float>{ 1.0f, 1.0f, 1.0f }, 3,
         vector<uint32_t>{ 0, 0, 0, 0}, 4));
     FAIL() << "exception not thrown";
   }
@@ -460,7 +460,7 @@ TEST(WriteTest, ThrowIfIndexCountNotEqualForAllChannels_Normals)
         vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
         vector<uint32_t>{ 0, 0, 0}, 3),
       make_normal_channel(
-        vector<float>{ 1.0f, 1.0f, 1.0f },
+        vector<float>{ 1.0f, 1.0f, 1.0f }, 3,
         vector<uint32_t>{ 0, 0, 0, 0, 0, 0 }, 3));
     FAIL() << "exception not thrown";
   }
@@ -488,7 +488,7 @@ TEST(WriteTest, ThrowIfIndexCountNotEqualForAllChannels_TexCoordsAndNormals)
         vector<float>{ 1.0f, 1.0f }, 2,
         vector<uint32_t>{ 0, 0, 0, 0, 0, 0 }, 3),
       make_normal_channel(
-        vector<float>{ 1.0f, 1.0f, 1.0f },
+        vector<float>{ 1.0f, 1.0f, 1.0f }, 3,
         vector<uint32_t>{ 0, 0, 0, 0, 0, 0 }, 3));
     FAIL() << "exception not thrown";
   }

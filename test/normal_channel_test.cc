@@ -18,176 +18,32 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+#include <sstream>
+#include <vector>
+
 #include <gtest/gtest.h>
 
-#include "utils.h"
 #include "../include/thinks/obj_io.h"
 
-using std::begin;
-using std::end;
-using std::exception;
-using std::runtime_error;
+using std::invalid_argument;
 using std::stringstream;
 using std::vector;
-using thinks::obj_io::make_normals;
-using util::CubeMesh;
-using util::IncrementAndClampToMaxElement;
-using util::IncrementNonZeroElements;
-using util::VertexCount;
+using thinks::obj_io::make_normal_channel;
 
 
-TEST(NormalsTest, Ctor)
+TEST(NormalChannelTest, CtorThrowsIfComponentsPerValueIsNotThree)
 {
-  const auto indices_per_face = uint32_t{ 3 };
-  const auto mesh = CubeMesh();
-  const auto normals = make_normals(
-    begin(mesh.normal_elements), end(mesh.normal_elements),
-    begin(mesh.normal_indices), end(mesh.normal_indices),
-    indices_per_face);
-  EXPECT_EQ(begin(mesh.normal_elements), normals.elements_begin);
-  EXPECT_EQ(end(mesh.normal_elements), normals.elements_end);
-  EXPECT_EQ(begin(mesh.normal_indices), normals.indices_begin);
-  EXPECT_EQ(end(mesh.normal_indices), normals.indices_end);
-  EXPECT_EQ(3, normals.components_per_vertex); // Constant.
-  EXPECT_EQ(3, normals.indices_per_face);
-}
-
-TEST(NormalsTest, CtorEmptyElementsAndIndices)
-{
-  const auto indices_per_face = uint32_t{ 3 };
-  const auto elements = vector<float>{};
-  const auto indices = vector<uint32_t>{};
+  const auto components_per_value = uint32_t{ 2 };
   try {
-    const auto normals = make_normals(
-      begin(elements), end(elements),
-      begin(indices), end(indices),
-      indices_per_face);
-  }
-  catch (const exception& ex) {
-    FAIL() << "empty normals should be allowed: " << ex.what();
-  }
-  catch (...) {
-    FAIL() << "empty normals should be allowed";
-  }
-}
-
-TEST(NormalsTest, CtorThrowsIfElementCountNotMultipleOfElementsPerVertex)
-{
-  // Add an extra element.
-  const auto indices_per_face = uint32_t{ 3 };
-  auto mesh = CubeMesh();
-  mesh.normal_elements.push_back(0.25f);
-  try {
-    const auto normals = make_normals(
-      begin(mesh.normal_elements), end(mesh.normal_elements),
-      begin(mesh.normal_indices), end(mesh.normal_indices),
-      indices_per_face);
+    const auto channel = make_normal_channel(
+      vector<float>{ 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f }, components_per_value,
+      vector<uint32_t>{ 0, 1, 2 }, 3);
     FAIL() << "exception not thrown";
   }
-  catch (const runtime_error& ex) {
+  catch (const invalid_argument& ex) {
     auto ss = stringstream();
-    ss << "normal component count (" << mesh.normal_elements.size()
-      << ") must be a multiple of " << 3; // Constant.
-    EXPECT_STREQ(ss.str().c_str(), ex.what());
-  }
-  catch (...) {
-    FAIL() << "incorrect exception";
-  }
-}
-
-TEST(NormalsTest, CtorThrowsIfIndicesPerFaceIsLessThanThree)
-{
-  // Resize indices to be two per face.
-  const auto indices_per_face = uint32_t{ 2 };
-  auto mesh = CubeMesh();
-  mesh.normal_indices.resize(
-    (mesh.normal_indices.size() / 3) * indices_per_face);
-  try {
-    const auto normals = make_normals(
-      begin(mesh.normal_elements), end(mesh.normal_elements),
-      begin(mesh.normal_indices), end(mesh.normal_indices),
-      indices_per_face);
-    FAIL() << "exception not thrown";
-  }
-  catch (const runtime_error& ex) {
-    auto ss = stringstream();
-    ss << "normal indices per face must be "
-      << "greater than or equal to 3, was "
-      << indices_per_face;
-    EXPECT_STREQ(ss.str().c_str(), ex.what());
-  }
-  catch (...) {
-    FAIL() << "incorrect exception";
-  }
-}
-
-TEST(NormalsTest, CtorThrowsIfIndexCountNotMultipleOfIndicesPerFace)
-{
-  // Add an extra index element.
-  auto mesh = CubeMesh();
-  mesh.normal_indices.push_back(0);
-  const auto indices_per_face = uint32_t{ 3 };
-  try {
-    const auto normals = make_normals(
-      begin(mesh.normal_elements), end(mesh.normal_elements),
-      begin(mesh.normal_indices), end(mesh.normal_indices),
-      indices_per_face);
-    FAIL() << "exception not thrown";
-  }
-  catch (const runtime_error& ex) {
-    auto ss = stringstream();
-    ss << "normal index count (" << mesh.normal_indices.size()
-      << ") must be a multiple of " << indices_per_face;
-    EXPECT_STREQ(ss.str().c_str(), ex.what());
-  }
-  catch (...) {
-    FAIL() << "incorrect exception";
-  }
-}
-
-TEST(NormalsTest, CtorThrowIfInvalidIndexRange_MinNotZero)
-{
-  const auto indices_per_face = uint32_t{ 3 };
-  auto mesh = CubeMesh();
-  IncrementAndClampToMaxElement(mesh.normal_indices);
-  try {
-    const auto normals = make_normals(
-      begin(mesh.normal_elements), end(mesh.normal_elements),
-      begin(mesh.normal_indices), end(mesh.normal_indices),
-      indices_per_face);
-    FAIL() << "exception not thrown";
-  }
-  catch (const runtime_error& ex) {
-    const auto min_index =
-      *min_element(begin(mesh.normal_indices), end(mesh.normal_indices));
-    auto ss = stringstream();
-    ss << "min normal index must be zero, was " << min_index;
-    EXPECT_STREQ(ss.str().c_str(), ex.what());
-  }
-  catch (...) {
-    FAIL() << "incorrect exception";
-  }
-}
-
-TEST(NormalsTest, CtorThrowIfInvalidIndexRange_MaxTooHigh)
-{
-  const auto indices_per_face = uint32_t{ 3 };
-  auto mesh = CubeMesh();
-  IncrementNonZeroElements(mesh.normal_indices);
-  try {
-    const auto normals = make_normals(
-      begin(mesh.normal_elements), end(mesh.normal_elements),
-      begin(mesh.normal_indices), end(mesh.normal_indices),
-      indices_per_face);
-    FAIL() << "exception not thrown";
-  }
-  catch (const runtime_error& ex) {
-    const auto max_index =
-      *max_element(begin(mesh.normal_indices), end(mesh.normal_indices));
-    auto ss = stringstream();
-    ss << "max normal index must be less than vertex count ("
-      << VertexCount(mesh.normal_elements, 3) << "), was "
-      << max_index;
+    ss << "normal components per value ("
+      << components_per_value << ") must be 3";
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }
   catch (...) {
