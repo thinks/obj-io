@@ -115,7 +115,7 @@ private:
   {
     const auto element_count = Count(elements_begin, elements_end);
     if (!IsMultipleOf(element_count, elements_per_object)) {
-      auto ss = std::stringstream();
+      auto ss = std::ostringstream();
       ss << "element count (" << element_count
         << ") must be a multiple of elements per object (" 
         << elements_per_object << ")";
@@ -176,7 +176,7 @@ private:
   void ThrowIfIndicesPerFaceLessThanThree_()
   {
     if (!(indices_per_face() >= 3)) {
-      auto ss = std::stringstream();
+      auto ss = std::ostringstream();
       ss << "indices per face (" << indices_per_face()
         << ") cannot be less than 3";
       throw std::invalid_argument(ss.str());
@@ -240,7 +240,7 @@ private:
     const auto min_index = detail::MinElement(
       face_channel_.indices_begin(), face_channel_.indices_end());
     if (min_index != 0) {
-      auto ss = std::stringstream();
+      auto ss = std::ostringstream();
       ss << "min index (" << min_index << ") must be zero";
       throw std::invalid_argument(ss.str());
     }
@@ -249,7 +249,7 @@ private:
     const auto max_index = detail::MaxElement(
       face_channel_.indices_begin(), face_channel_.indices_end());
     if (!(max_index < value_count)) {
-      auto ss = std::stringstream();
+      auto ss = std::ostringstream();
       ss << "max index (" << max_index
         << ") must be less than value count ("
         << value_count << ")";
@@ -294,7 +294,7 @@ private:
   void ThrowIfComponentsPerValueIsNotThreeOrFour_()
   {
     if (!(components_per_value() == 3 || components_per_value() == 4)) {
-      auto ss = std::stringstream();
+      auto ss = std::ostringstream();
       ss << "position components per value ("
         << components_per_value() << ") must be 3 or 4";
       throw std::invalid_argument(ss.str());
@@ -371,7 +371,7 @@ private:
   void ThrowIfComponentsPerValueIsNotTwoOrThree_()
   {
     if (!(components_per_value() == 2 || components_per_value() == 3)) {
-      auto ss = std::stringstream();
+      auto ss = std::ostringstream();
       ss << "tex coord components per value (" 
         << components_per_value() << ") must be 2 or 3";
       throw std::invalid_argument(ss.str());
@@ -384,7 +384,7 @@ private:
     std::for_each(components_begin(), components_end(),
       [](const auto e) {
         if (!(ComponentType(0) <= e && e <= ComponentType(1))) {
-          auto ss = std::stringstream();
+          auto ss = std::ostringstream();
           ss << "tex coord elements must be in range [0, 1], found " << e;
           throw std::invalid_argument(ss.str());
         }
@@ -461,7 +461,7 @@ private:
   void ThrowIfComponentsPerValueIsNotThree_()
   {
     if (components_per_value() != 3) {
-      auto ss = std::stringstream();
+      auto ss = std::ostringstream();
       ss << "normal components per value ("
         << components_per_value() << ") must be 3";
       throw std::invalid_argument(ss.str());
@@ -519,7 +519,7 @@ void ThrowIfIndicesPerFaceNotEqualForAllChannels(
     nml_indices_per_face != NmlIndexType{ 0 } &&
     nml_indices_per_face != pos_indices_per_face;
   if (invalid_tex || invalid_nml) {
-    auto ss = std::stringstream();
+    auto ss = std::ostringstream();
     ss << "indices per face must be equal for all channels: "
       << "positions (" << pos_indices_per_face << ")";
     if (tex_indices_per_face != TexIndexType{ 0 }) {
@@ -549,7 +549,7 @@ void ThrowIfIndexCountNotEqualForAllChannels(
     nml_index_count != 0 &&
     nml_index_count != pos_index_count;
   if (invalid_tex || invalid_nml) {
-    auto ss = std::stringstream();
+    auto ss = std::ostringstream();
     ss << "index count must be equal for all channels: "
       << "positions (" << pos_index_count << ")";
     if (tex_index_count != 0) {
@@ -828,20 +828,33 @@ void ParseComponents(
   std::vector<CompType>* const components,
   uint32_t* const components_per_value)
 {
-  auto components_size_before = components->size();
+  auto components_size_before = static_cast<uint32_t>(components->size());
   auto component = CompType{};
-  while (*iss >> component) {
+  while (*iss >> component || !iss->eof()) {
+    // Ignore tokens that cannot be parsed as components.
+    if (iss->fail()) {
+      iss->clear();
+      auto dummy = std::string();
+      *iss >> dummy;
+      continue;
+    }
     components->push_back(component);
   }
-  const auto component_count = components->size() - components_size_before;
+  const auto component_count = 
+    static_cast<uint32_t>(components->size()) - components_size_before;
 
   if (*components_per_value == 0) {
     // If this is the first component stream to be unpacked 
-    // (for a certain channel) store its component count. 
-    // All subsequent components streams  must have the same count.
+    // (for some channel) store its component count. 
+    // All subsequent components streams (for this channel) 
+    // must have the same count.
     *components_per_value = component_count;
   }
   else if (*components_per_value != component_count) {
+    auto ss = std::ostringstream();
+    ss << "invalid component count (" << component_count << ")"
+      << ", expected " << *components_per_value;
+    throw std::runtime_error(ss.str());
     // throw! all positions must have same number of components per value
   }
 }
@@ -856,9 +869,9 @@ void ParseFaceIndices(
   uint32_t* const tex_coord_indices_per_face,
   uint32_t* const normal_indices_per_face)
 {  
-  auto pos_size_before = position_indices->size();
-  auto tex_size_before = tex_coord_indices->size();
-  auto nml_size_before = normal_indices->size();
+  auto pos_size_before = static_cast<uint32_t>(position_indices->size());
+  auto tex_size_before = static_cast<uint32_t>(tex_coord_indices->size());
+  auto nml_size_before = static_cast<uint32_t>(normal_indices->size());
 
   auto face_index_group = std::string();
   while (*iss >> face_index_group) {
@@ -867,13 +880,20 @@ void ParseFaceIndices(
     auto indices = std::array<uint32_t, 3>{{0, 0, 0}};
     auto i = uint32_t{ 0 };
     while (std::getline(fig_ss, index_str, '/')) {
+      // Ignore tokens that cannot be parsed as indices.
       auto index_ss = std::istringstream(index_str);
-      index_ss >> indices[i++];
+      if (!index_ss.eof()) {
+        index_ss >> indices[i];
+        if (index_ss.fail()) {
+          indices[i] = uint32_t{ 0 };
+        }
+      }
+      ++i;
     }
 
     // Make indices zero-based!
     if (indices[0] == 0) {
-      // throw - face must have position index!
+      throw std::runtime_error("face must have position index");
     }
     position_indices->push_back(indices[0] - 1);
     if (indices[1] != 0) {
@@ -883,9 +903,12 @@ void ParseFaceIndices(
       normal_indices->push_back(indices[2] - 1);
     }
   }
-  const auto pos_count = position_indices->size() - pos_size_before;
-  const auto tex_count = tex_coord_indices->size() - tex_size_before;
-  const auto nml_count = normal_indices->size() - nml_size_before;
+  const auto pos_count = 
+    static_cast<uint32_t>(position_indices->size()) - pos_size_before;
+  const auto tex_count = 
+    static_cast<uint32_t>(tex_coord_indices->size()) - tex_size_before;
+  const auto nml_count = 
+    static_cast<uint32_t>(normal_indices->size()) - nml_size_before;
 
   if (*position_indices_per_face == 0) {
     *position_indices_per_face = pos_count;
@@ -1031,7 +1054,6 @@ Mesh<ComponentType> Read(std::istream& is)
   auto line = std::string();
   while (std::getline(is, line)) {
     auto iss = std::istringstream(line);
-
     auto prefix = std::string();
     std::getline(iss, prefix, ' ');
 
