@@ -18,14 +18,14 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-#include <gtest/gtest.h>
-
-#include "../include/thinks/obj_io.h"
-
 #include <algorithm>
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include <gtest/gtest.h>
+
+#include "../include/thinks/obj_io.h"
 
 using std::begin;
 using std::end;

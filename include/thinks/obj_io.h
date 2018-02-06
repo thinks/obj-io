@@ -22,10 +22,13 @@
 #define THINKS_OBJ_IO_H_INCLUDED
 
 #include <algorithm>
+#include <array>
 #include <cassert>
+#include <cstring>
 #include <exception>
+#include <memory>
 #include <iterator>
-#include <ostream>
+#include <iostream>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -814,6 +817,271 @@ std::ostream& Write(
       &tex_coord_channel,
       &normal_channel,
       newline);
+}
+
+
+namespace detail {
+
+template<typename CompType>
+void ParseComponents(
+  std::istringstream* iss,
+  std::vector<CompType>* const components,
+  uint32_t* const components_per_value)
+{
+  auto components_size_before = components->size();
+  auto component = CompType{};
+  while (*iss >> component) {
+    components->push_back(component);
+  }
+  const auto component_count = components->size() - components_size_before;
+
+  if (*components_per_value == 0) {
+    // If this is the first component stream to be unpacked 
+    // (for a certain channel) store its component count. 
+    // All subsequent components streams  must have the same count.
+    *components_per_value = component_count;
+  }
+  else if (*components_per_value != component_count) {
+    // throw! all positions must have same number of components per value
+  }
+}
+
+inline
+void ParseFaceIndices(
+  std::istringstream* iss,
+  std::vector<uint32_t>* position_indices,
+  std::vector<uint32_t>* tex_coord_indices,
+  std::vector<uint32_t>* normal_indices,
+  uint32_t* const position_indices_per_face,
+  uint32_t* const tex_coord_indices_per_face,
+  uint32_t* const normal_indices_per_face)
+{  
+  auto pos_size_before = position_indices->size();
+  auto tex_size_before = tex_coord_indices->size();
+  auto nml_size_before = normal_indices->size();
+
+  auto face_index_group = std::string();
+  while (*iss >> face_index_group) {
+    auto fig_ss = std::istringstream(face_index_group);
+    auto index_str = std::string();
+    auto indices = std::array<uint32_t, 3>{{0, 0, 0}};
+    auto i = uint32_t{ 0 };
+    while (std::getline(fig_ss, index_str, '/')) {
+      auto index_ss = std::istringstream(index_str);
+      index_ss >> indices[i++];
+    }
+
+    // Make indices zero-based!
+    if (indices[0] == 0) {
+      // throw - face must have position index!
+    }
+    position_indices->push_back(indices[0] - 1);
+    if (indices[1] != 0) {
+      tex_coord_indices->push_back(indices[1] - 1);
+    }
+    if (indices[2] != 0) {
+      normal_indices->push_back(indices[2] - 1);
+    }
+  }
+  const auto pos_count = position_indices->size() - pos_size_before;
+  const auto tex_count = tex_coord_indices->size() - tex_size_before;
+  const auto nml_count = normal_indices->size() - nml_size_before;
+
+  if (*position_indices_per_face == 0) {
+    *position_indices_per_face = pos_count;
+  }
+  else if (*position_indices_per_face != pos_count) {
+    // throw
+  }
+  
+  if (*tex_coord_indices_per_face == 0) {
+    *tex_coord_indices_per_face = tex_count;
+  }
+  else if (*tex_coord_indices_per_face != tex_count) {
+    // throw
+  }
+
+  if (*normal_indices_per_face == 0) {
+    *normal_indices_per_face = nml_count;
+  }
+  else if (*normal_indices_per_face != nml_count) {
+    // throw
+  }
+
+  // all face must have same number of index groups
+  // all index groups must have same number of indices.
+}
+
+} // namespace detail
+
+
+template<typename ComponentType>
+class Mesh
+{
+public:
+  typedef typename std::vector<ComponentType>::const_iterator ComponentIter;
+  typedef typename std::vector<uint32_t>::const_iterator IndexIter;
+
+  Mesh(
+    const std::vector<ComponentType>& position_components, // Positions.
+    const uint32_t position_components_per_value,
+    const std::vector<uint32_t>& position_indices,
+    const uint32_t position_indices_per_face,
+    const std::vector<ComponentType>& tex_coord_components, // Tex coords.
+    const uint32_t tex_coord_components_per_value,
+    const std::vector<uint32_t>& tex_coord_indices,
+    const uint32_t tex_coord_indices_per_face, 
+    const std::vector<ComponentType>& normal_components, // Normals.
+    const uint32_t normal_components_per_value,
+    const std::vector<uint32_t>& normal_indices,
+    const uint32_t normal_indices_per_face)
+    : position_components_(position_components)
+    , position_indices_(position_indices)
+    , tex_coord_components_(tex_coord_components)
+    , tex_coord_indices_(tex_coord_indices)
+    , normal_components_(normal_components)
+    , normal_indices_(normal_indices)
+    , position_channel_(make_position_channel(
+        position_components_,
+        position_components_per_value,
+        position_indices_,
+        position_indices_per_face))
+    , tex_coord_channel_(nullptr)
+    , normal_channel_(nullptr)
+  {
+    if (tex_coord_indices.size() == position_indices.size() &&
+        tex_coord_indices_per_face == position_indices_per_face) {
+      tex_coord_channel_ = 
+        std::make_unique<TexCoordChannel<ComponentIter, IndexIter>>(
+          std::begin(tex_coord_components_),
+          std::end(tex_coord_components_),
+          tex_coord_components_per_value,
+          std::begin(tex_coord_indices_),
+          std::end(tex_coord_indices_),
+          tex_coord_indices_per_face);
+    }
+
+    if (normal_indices.size() == position_indices.size() &&
+        normal_indices_per_face == position_indices_per_face) {
+      normal_channel_ = 
+        std::make_unique<NormalChannel<ComponentIter, IndexIter>>(
+          std::begin(normal_components_),
+          std::end(normal_components_),
+          normal_components_per_value,
+          std::begin(normal_indices_),
+          std::end(normal_indices_),
+          normal_indices_per_face);
+    }
+
+    // TODO: check that channels are compatible!?
+  }
+
+  const PositionChannel<ComponentIter, IndexIter>& position_channel() const
+  {
+    return position_channel_;
+  }
+
+  const TexCoordChannel<ComponentIter, IndexIter>* tex_coord_channel() const
+  {
+    return tex_coord_channel_.get();
+  }
+
+  const NormalChannel<ComponentIter, IndexIter>* normal_channel() const
+  {
+    return normal_channel_.get();
+  }
+
+private:
+  std::vector<ComponentType> position_components_;
+  std::vector<uint32_t> position_indices_;
+
+  std::vector<ComponentType> tex_coord_components_;
+  std::vector<uint32_t> tex_coord_indices_;
+
+  std::vector<ComponentType> normal_components_;
+  std::vector<uint32_t> normal_indices_;
+
+  PositionChannel<ComponentIter, IndexIter> position_channel_;
+  std::unique_ptr<TexCoordChannel<ComponentIter, IndexIter>> tex_coord_channel_;
+  std::unique_ptr<NormalChannel<ComponentIter, IndexIter>> normal_channel_;
+};
+
+
+template<typename ComponentType>
+Mesh<ComponentType> Read(std::istream& is)
+{
+  using std::vector;
+
+  // Positions.
+  auto position_components = vector<ComponentType>{};
+  auto position_components_per_value = uint32_t{ 0 };
+  auto position_indices = vector<uint32_t>{};
+  auto position_indices_per_face = uint32_t{ 0 };
+  // Tex coords.
+  auto tex_coord_components = vector<ComponentType>{};
+  auto tex_coord_components_per_value = uint32_t{ 0 };
+  auto tex_coord_indices = vector<uint32_t>{};
+  auto tex_coord_indices_per_face = uint32_t{ 0 };
+  // Normals.
+  auto normal_components = vector<ComponentType>{};
+  auto normal_components_per_value = uint32_t{ 0 };
+  auto normal_indices = vector<uint32_t>{};
+  auto normal_indices_per_face = uint32_t{ 0 };
+
+  auto line = std::string();
+  while (std::getline(is, line)) {
+    auto iss = std::istringstream(line);
+
+    auto prefix = std::string();
+    std::getline(iss, prefix, ' ');
+
+    if (prefix.empty() || prefix == "#") {
+      // Ignore empty lines and comments.
+      continue;
+    }
+    else if (prefix == "v") {
+      detail::ParseComponents(
+        &iss, 
+        &position_components, 
+        &position_components_per_value);
+    }
+    else if (prefix == "vt") {
+      detail::ParseComponents(
+        &iss,
+        &tex_coord_components,
+        &tex_coord_components_per_value);
+    }
+    else if (prefix == "vn") {
+      detail::ParseComponents(
+        &iss,
+        &normal_components,
+        &normal_components_per_value);
+    }
+    else if (prefix == "f") {
+      detail::ParseFaceIndices(
+        &iss,
+        &position_indices,
+        &tex_coord_indices,
+        &normal_indices,
+        &position_indices_per_face,
+        &tex_coord_indices_per_face,
+        &normal_indices_per_face);
+    }
+  }
+
+  return Mesh<ComponentType>(
+    position_components,
+    position_components_per_value,
+    position_indices,
+    position_indices_per_face,
+    tex_coord_components,
+    tex_coord_components_per_value,
+    tex_coord_indices,
+    tex_coord_indices_per_face,
+    normal_components,
+    normal_components_per_value,
+    normal_indices,
+    normal_indices_per_face);
 }
 
 } // namespace obj_io

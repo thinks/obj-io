@@ -1,49 +1,45 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
-PROJECT(obj-io-test)
+cmake_minimum_required(VERSION 2.8.11)
 
-ENABLE_TESTING(true)
+# Make PROJECT_SOURCE_DIR, PROJECT_BINARY_DIR, and PROJECT_NAME available.
+set(PROJECT_NAME obj-io-test)
+project(${PROJECT_NAME})
 
-ADD_SUBDIRECTORY(gtest-1.7.0)
+# set(CMAKE_CXX_FLAGS "-g -Wall")
 
-# Default to release build
-IF(NOT CMAKE_BUILD_TYPE)
-  SET(CMAKE_BUILD_TYPE Release)
-ENDIF()
-MESSAGE(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+# Force static runtime libraries for MSVC builds.
+if(MSVC)
+  set(variables 
+    CMAKE_CXX_FLAGS_DEBUG
+    CMAKE_CXX_FLAGS_RELEASE
+	CMAKE_CXX_FLAGS_RELWITHDEBINFO
+	CMAKE_CXX_FLAGS_MINSIZEREL
+  )
+  foreach(variable ${variables})
+	if(${variable} MATCHES "/MD")
+	  string(REGEX REPLACE "/MD" "/MT" ${variable} "${${variable}}")
+	endif()
+  endforeach()
+endif()
 
-IF(MSVC)
-  SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
-  SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
-  SET(CompilerFlags
-          CMAKE_CXX_FLAGS
-          CMAKE_CXX_FLAGS_DEBUG
-          CMAKE_CXX_FLAGS_RELEASE
-          CMAKE_C_FLAGS
-          CMAKE_C_FLAGS_DEBUG
-          CMAKE_C_FLAGS_RELEASE)
-  FOREACH(CompilerFlag ${CompilerFlags})
-    STRING(REPLACE "/MD" "/MT" ${CompilerFlag} "${${CompilerFlag}}")
-  ENDFOREACH()
-  MESSAGE(STATUS "CXX flags (release): ${CMAKE_CXX_FLAGS_RELEASE}")
-  MESSAGE(STATUS "CXX flags (debug): ${CMAKE_CXX_FLAGS_DEBUG}")
-ENDIF()
+# This adds another subdirectory, which has 'project(gtest)'.
+add_subdirectory(gtest-1.7.0)
 
-# Project Compiler Flags
-# ADD_DEFINITIONS(-Wall)
+enable_testing()
 
-INCLUDE_DIRECTORIES(
-  ${gtest_SOURCE_DIR}
-  ${gtest_SOURCE_DIR}/include)
+# Include the gtest library. gtest_SOURCE_DIR is available due to
+# 'project(gtest)' above.
+include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
-ADD_EXECUTABLE(obj-io-test
+add_executable(obj-io-test
   common_channel_test.cc
   main.cc
   normal_channel_test.cc
   position_channel_test.cc
+  read_test.cc
   tex_coord_channel_test.cc
-  utils.cc
+  #utils.cc
   write_test.cc)
 
-TARGET_LINK_LIBRARIES(obj-io-test gtest gtest_main)
+target_link_libraries(obj-io-test gtest gtest_main)
 
-ADD_TEST(NAME obj-io-test COMMAND obj-io-test)
+add_test(NAME obj-io-test COMMAND obj-io-test)
