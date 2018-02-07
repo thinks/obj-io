@@ -232,14 +232,14 @@ TEST(ReadTest, ThrowsIfDifferentComponentCountsInNormalChannel)
   }
 }
 
-TEST(ReadTest, ThrowsIfMissingPositionIndex)
+TEST(ReadTest, ThrowsIfEmptyComponents)
 {
   // Arrange.
   auto iss = istringstream(
     "v 0 0 0\n"
-    "v 1 1 1\n"
+    "v \n" // Empty components!
     "v 2 2 2\n"
-    "f /1 /2 /3\n"
+    "f 1 2 3\n"
   );
 
   // Act.
@@ -248,12 +248,92 @@ TEST(ReadTest, ThrowsIfMissingPositionIndex)
     FAIL() << "exception not thrown";
   }
   catch (const runtime_error& ex) {
-    EXPECT_STREQ("face must have position index", ex.what());
+    EXPECT_STREQ("empty components", ex.what());
   }
   catch (...) {
     FAIL() << "incorrect exception";
   }
 }
+
+TEST(ReadTest, ThrowsIfEmptyFace)
+{
+  // Arrange.
+  auto iss = istringstream(
+    "v 0 0 0\n"
+    "v 1 1 1\n"
+    "v 2 2 2\n"
+    "f\n"
+  );
+
+  // Act.
+  try {
+    const auto mesh = Read<float>(iss);
+    FAIL() << "exception not thrown";
+  }
+  catch (const runtime_error& ex) {
+    EXPECT_STREQ("empty face", ex.what());
+  }
+  catch (const std::exception& ex)
+  {
+    FAIL() << ex.what();
+  }
+  catch (...) {
+    FAIL() << "incorrect exception";
+  }
+}
+
+TEST(ReadTest, ThrowsIfIndexGroupHasMoreThanThreeIndices)
+{
+  // Arrange.
+  auto iss = istringstream(
+    "v 0 0 0\n"
+    "v 1 1 1\n"
+    "v 2 2 2\n"
+    "f 1/1/1/1 2/2/2/2 3/3/3/3 4/4/4/4\n"
+  );
+
+  // Act.
+  try {
+    const auto mesh = Read<float>(iss);
+    FAIL() << "exception not thrown";
+  }
+  catch (const runtime_error& ex) {
+    EXPECT_STREQ("cannot have more than three indices", ex.what());
+  }
+  catch (const std::exception& ex)
+  {
+    FAIL() << ex.what();
+  }
+  catch (...) {
+    FAIL() << "incorrect exception";
+  }
+}
+
+
+
+TEST(ReadTest, ThrowsIfParseFailed)
+{
+  // Arrange.
+  auto iss = istringstream(
+    "v 0 0 0\n"
+    "v 1 1 1\n"
+    "v X 2 2\n"
+    "f 1 2 3\n"
+  );
+
+  // Act.
+  try {
+    const auto mesh = Read<float>(iss);
+    FAIL() << "exception not thrown";
+  }
+  catch (const runtime_error& ex) {
+    EXPECT_STREQ("failed parsing 'X'", ex.what());
+  }
+  catch (...) {
+    FAIL() << "incorrect exception";
+  }
+}
+
 
 TEST(ReadTest, CorrectMesh)
 {

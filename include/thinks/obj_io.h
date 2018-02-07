@@ -822,6 +822,19 @@ std::ostream& Write(
 
 namespace detail {
 
+inline 
+void ThrowIfParseFailed(std::istringstream* const iss)
+{
+  if (iss->fail()) {
+    iss->clear(); // Clear status bits.
+    auto dummy = std::string();
+    *iss >> dummy;
+    auto oss = std::ostringstream();
+    oss << "failed parsing '" << dummy << "'";
+    throw std::runtime_error(oss.str());
+  }
+}
+
 template<typename CompType>
 void ParseComponents(
   std::istringstream* iss,
@@ -831,17 +844,15 @@ void ParseComponents(
   auto components_size_before = static_cast<uint32_t>(components->size());
   auto component = CompType{};
   while (*iss >> component || !iss->eof()) {
-    // Ignore tokens that cannot be parsed as components.
-    if (iss->fail()) {
-      iss->clear();
-      auto dummy = std::string();
-      *iss >> dummy;
-      continue;
-    }
+    ThrowIfParseFailed(iss);
     components->push_back(component);
   }
+
   const auto component_count = 
     static_cast<uint32_t>(components->size()) - components_size_before;
+  if (component_count == 0) {
+    throw std::runtime_error("empty components");
+  }
 
   if (*components_per_value == 0) {
     // If this is the first component stream to be unpacked 
@@ -855,7 +866,6 @@ void ParseComponents(
     ss << "invalid component count (" << component_count << ")"
       << ", expected " << *components_per_value;
     throw std::runtime_error(ss.str());
-    // throw! all positions must have same number of components per value
   }
 }
 
@@ -873,36 +883,41 @@ void ParseFaceIndices(
   auto tex_size_before = static_cast<uint32_t>(tex_coord_indices->size());
   auto nml_size_before = static_cast<uint32_t>(normal_indices->size());
 
-  auto face_index_group = std::string();
-  while (*iss >> face_index_group) {
-    auto fig_ss = std::istringstream(face_index_group);
+  auto index_group_count = uint32_t{ 0 };
+  auto index_group = std::string();
+  while (*iss >> index_group || !iss->eof()) {
+    auto ig_ss = std::istringstream(index_group);
     auto index_str = std::string();
     auto indices = std::array<uint32_t, 3>{{0, 0, 0}};
-    auto i = uint32_t{ 0 };
-    while (std::getline(fig_ss, index_str, '/')) {
-      // Ignore tokens that cannot be parsed as indices.
+    auto index_count = uint32_t{ 0 };
+    while (std::getline(ig_ss, index_str, '/')) {
       auto index_ss = std::istringstream(index_str);
-      if (!index_ss.eof()) {
-        index_ss >> indices[i];
-        if (index_ss.fail()) {
-          indices[i] = uint32_t{ 0 };
-        }
-      }
-      ++i;
+      index_ss >> indices[index_count++];
+      ThrowIfParseFailed(&index_ss);
+    }
+
+    if (index_count < 1) {
+      throw std::runtime_error("missing position index");
+    }
+    if (index_count > 3) {
+      throw std::runtime_error("cannot have more than three indices");
     }
 
     // Make indices zero-based!
-    if (indices[0] == 0) {
-      throw std::runtime_error("face must have position index");
-    }
     position_indices->push_back(indices[0] - 1);
-    if (indices[1] != 0) {
+    if (index_count >= 2) {
       tex_coord_indices->push_back(indices[1] - 1);
     }
-    if (indices[2] != 0) {
+    if (index_count == 3) {
       normal_indices->push_back(indices[2] - 1);
     }
+    ++index_group_count;
   }
+
+  if (index_group_count == 0) {
+    throw std::runtime_error("empty face");
+  }
+
   const auto pos_count = 
     static_cast<uint32_t>(position_indices->size()) - pos_size_before;
   const auto tex_count = 
@@ -910,14 +925,21 @@ void ParseFaceIndices(
   const auto nml_count = 
     static_cast<uint32_t>(normal_indices->size()) - nml_size_before;
 
+  if (pos_count == 0) {
+    throw std::runtime_error("missing position indices");
+  }
+
   if (*position_indices_per_face == 0) {
     *position_indices_per_face = pos_count;
   }
   else if (*position_indices_per_face != pos_count) {
-    // throw
+    auto ss = std::ostringstream();
+    ss << "invalid position index count (" << pos_count << ")"
+      << ", expected " << *position_indices_per_face;
+    throw std::runtime_error(ss.str());
   }
   
-  if (*tex_coord_indices_per_face == 0) {
+  if (*tex_coord_indices_per_face == 0 && tex_count != 0) {
     *tex_coord_indices_per_face = tex_count;
   }
   else if (*tex_coord_indices_per_face != tex_count) {
