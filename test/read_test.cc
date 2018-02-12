@@ -28,6 +28,7 @@
 #include "../include/thinks/obj_io.h"
 
 using std::distance;
+using std::exception;
 using std::istringstream;
 using std::ostringstream;
 using std::runtime_error;
@@ -148,15 +149,64 @@ namespace {
 
 } // namespace
 
-TEST(ReadTest, ThrowsIfDifferentComponentCountsInPositionChannel)
+TEST(ReadTest, Value_ThrowsIfFailedToParseComponent)
+{
+  // Arrange.
+  auto iss = istringstream(
+    "v 0 0 0\n"
+    "v 1 X 1\n" // Invalid component!
+    "v 2 2 2\n"
+    "f 1 2 3\n");
+
+  // Act.
+  try {
+    const auto mesh = Read<float>(iss);
+    FAIL() << "exception not thrown";
+  }
+  catch (const runtime_error& ex) {
+    EXPECT_STREQ("failed parsing 'X'", ex.what());
+  }
+  catch (const exception& ex) {
+    FAIL() << ex.what();
+  }
+  catch (...) {
+    FAIL() << "incorrect exception";
+  }
+}
+
+TEST(ReadTest, Value_ThrowsIfEmptyComponents)
+{
+  // Arrange.
+  auto iss = istringstream(
+    "v 0 0 0\n"
+    "v \n" // Empty components!
+    "v 2 2 2\n"
+    "f 1 2 3\n");
+
+  // Act.
+  try {
+    const auto mesh = Read<float>(iss);
+    FAIL() << "exception not thrown";
+  }
+  catch (const runtime_error& ex) {
+    EXPECT_STREQ("empty components", ex.what());
+  }
+  catch (const exception& ex) {
+    FAIL() << ex.what();
+  }
+  catch (...) {
+    FAIL() << "incorrect exception";
+  }
+}
+
+TEST(ReadTest, Value_ThrowsIfDifferentComponentCountsInPositionChannel)
 {
   // Arrange.
   auto iss = istringstream(
     "v 0 0 0\n"
     "v 1 1 1 1\n" // Four components!
     "v 2 2 2\n"
-    "f 1 2 3\n"
-  );
+    "f 1 2 3\n");
 
   // Act.
   try {
@@ -169,12 +219,15 @@ TEST(ReadTest, ThrowsIfDifferentComponentCountsInPositionChannel)
       << ", expected " << 3;
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }
+  catch (const exception& ex) {
+    FAIL() << ex.what();
+  }
   catch (...) {
     FAIL() << "incorrect exception";
   }
 }
 
-TEST(ReadTest, ThrowsIfDifferentComponentCountsInTexCoordChannel)
+TEST(ReadTest, Value_ThrowsIfDifferentComponentCountsInTexCoordChannel)
 {
   // Arrange.
   auto iss = istringstream(
@@ -184,8 +237,7 @@ TEST(ReadTest, ThrowsIfDifferentComponentCountsInTexCoordChannel)
     "vt 1 1\n"
     "vt 0.5 0.5\n"
     "vt 0 0 0\n"  // Three components!
-    "f 1/1 2/2 3/3\n"
-  );
+    "f 1/1 2/2 3/3\n");
 
   // Act.
   try {
@@ -198,12 +250,15 @@ TEST(ReadTest, ThrowsIfDifferentComponentCountsInTexCoordChannel)
       << ", expected " << 2;
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }
+  catch (const exception& ex) {
+    FAIL() << ex.what();
+  }
   catch (...) {
     FAIL() << "incorrect exception";
   }
 }
 
-TEST(ReadTest, ThrowsIfDifferentComponentCountsInNormalChannel)
+TEST(ReadTest, Value_ThrowsIfDifferentComponentCountsInNormalChannel)
 {
   // Arrange.
   auto iss = istringstream(
@@ -213,8 +268,7 @@ TEST(ReadTest, ThrowsIfDifferentComponentCountsInNormalChannel)
     "vn 1 1 1\n"
     "vn 0 0 0\n"  
     "vn 1 1\n" // Two components!
-    "f 1//1 2//2 3//3\n"
-  );
+    "f 1//1 2//2 3//3\n");
 
   // Act.
   try {
@@ -227,20 +281,23 @@ TEST(ReadTest, ThrowsIfDifferentComponentCountsInNormalChannel)
       << ", expected " << 3;
     EXPECT_STREQ(ss.str().c_str(), ex.what());
   }
+  catch (const exception& ex) {
+    FAIL() << ex.what();
+  }
   catch (...) {
     FAIL() << "incorrect exception";
   }
 }
 
-TEST(ReadTest, ThrowsIfEmptyComponents)
+
+TEST(ReadTest, Face_ThrowsIfFailedToParseIndex)
 {
   // Arrange.
   auto iss = istringstream(
     "v 0 0 0\n"
-    "v \n" // Empty components!
+    "v 1 1 1\n" 
     "v 2 2 2\n"
-    "f 1 2 3\n"
-  );
+    "f 1 Y 3\n"); // Invalid index!
 
   // Act.
   try {
@@ -248,22 +305,24 @@ TEST(ReadTest, ThrowsIfEmptyComponents)
     FAIL() << "exception not thrown";
   }
   catch (const runtime_error& ex) {
-    EXPECT_STREQ("empty components", ex.what());
+    EXPECT_STREQ("failed parsing 'Y'", ex.what());
+  }
+  catch (const exception& ex) {
+    FAIL() << ex.what();
   }
   catch (...) {
     FAIL() << "incorrect exception";
   }
 }
 
-TEST(ReadTest, ThrowsIfEmptyFace)
+TEST(ReadTest, Face_ThrowsIfEmptyFace)
 {
   // Arrange.
   auto iss = istringstream(
     "v 0 0 0\n"
     "v 1 1 1\n"
     "v 2 2 2\n"
-    "f\n"
-  );
+    "f\n");
 
   // Act.
   try {
@@ -273,8 +332,7 @@ TEST(ReadTest, ThrowsIfEmptyFace)
   catch (const runtime_error& ex) {
     EXPECT_STREQ("empty face", ex.what());
   }
-  catch (const std::exception& ex)
-  {
+  catch (const exception& ex) {
     FAIL() << ex.what();
   }
   catch (...) {
@@ -282,14 +340,41 @@ TEST(ReadTest, ThrowsIfEmptyFace)
   }
 }
 
-TEST(ReadTest, ThrowsIfIndexGroupHasMoreThanThreeIndices)
+TEST(ReadTest, Face_ThrowsIfIndexGroupHasMoreThanThreeIndices)
 {
   // Arrange.
   auto iss = istringstream(
     "v 0 0 0\n"
     "v 1 1 1\n"
     "v 2 2 2\n"
-    "f 1/1/1/1 2/2/2/2 3/3/3/3 4/4/4/4\n"
+    "f 1/1/1/1 2/2/2/2 3/3/3/3 4/4/4/4\n");
+
+  // Act.
+  try {
+    const auto mesh = Read<float>(iss);
+    FAIL() << "exception not thrown";
+  }
+  catch (const runtime_error& ex) {
+    EXPECT_STREQ("index group cannot have more than three indices", ex.what());
+  }
+  catch (const exception& ex) {
+    FAIL() << ex.what();
+  }
+  catch (...) {
+    FAIL() << "incorrect exception";
+  }
+}
+
+TEST(ReadTest, Face_ThrowsIfDifferentIndexGroupCount)
+{
+  // Arrange.
+  auto iss = istringstream(
+    "v 0 0 0\n"
+    "v 1 1 1\n"
+    "v 2 2 2\n"
+    "v 3 3 3\n"
+    "f 1 2 3\n"
+    "f 1 2 3 4\n"
   );
 
   // Act.
@@ -298,10 +383,38 @@ TEST(ReadTest, ThrowsIfIndexGroupHasMoreThanThreeIndices)
     FAIL() << "exception not thrown";
   }
   catch (const runtime_error& ex) {
-    EXPECT_STREQ("cannot have more than three indices", ex.what());
+    auto oss = std::ostringstream();
+    oss << "invalid index group count (" << 4 << ")"
+      << ", expected " << 3;
+    EXPECT_STREQ(oss.str().c_str(), ex.what());
   }
-  catch (const std::exception& ex)
-  {
+  catch (const std::exception& ex) {
+    FAIL() << ex.what();
+  }
+  catch (...) {
+    FAIL() << "incorrect exception";
+  }
+}
+
+TEST(ReadTest, Face_ThrowsIfMissingPositionIndex)
+{
+  // Arrange.
+  auto iss = istringstream(
+    "v 0 0 0\n"
+    "v 1 1 1\n"
+    "v 2 2 2\n"
+    "f 1 /2 3\n" // Middle index group has no position index.
+  );
+
+  // Act.
+  try {
+    const auto mesh = Read<float>(iss);
+    FAIL() << "exception not thrown";
+  }
+  catch (const runtime_error& ex) {
+    EXPECT_STREQ("missing position index ('/2')", ex.what());
+  }
+  catch (const std::exception& ex) {
     FAIL() << ex.what();
   }
   catch (...) {
@@ -310,29 +423,6 @@ TEST(ReadTest, ThrowsIfIndexGroupHasMoreThanThreeIndices)
 }
 
 
-
-TEST(ReadTest, ThrowsIfParseFailed)
-{
-  // Arrange.
-  auto iss = istringstream(
-    "v 0 0 0\n"
-    "v 1 1 1\n"
-    "v X 2 2\n"
-    "f 1 2 3\n"
-  );
-
-  // Act.
-  try {
-    const auto mesh = Read<float>(iss);
-    FAIL() << "exception not thrown";
-  }
-  catch (const runtime_error& ex) {
-    EXPECT_STREQ("failed parsing 'X'", ex.what());
-  }
-  catch (...) {
-    FAIL() << "incorrect exception";
-  }
-}
 
 
 TEST(ReadTest, CorrectMesh)

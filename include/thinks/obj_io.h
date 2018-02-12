@@ -822,34 +822,34 @@ std::ostream& Write(
 
 namespace detail {
 
-inline 
-void ThrowIfParseFailed(std::istringstream* const iss)
+template<typename ComponentType>
+uint32_t ParseComponents(
+  std::istringstream* const iss,
+  std::vector<ComponentType>* const components)
 {
-  if (iss->fail()) {
-    iss->clear(); // Clear status bits.
-    auto dummy = std::string();
-    *iss >> dummy;
-    auto oss = std::ostringstream();
-    oss << "failed parsing '" << dummy << "'";
-    throw std::runtime_error(oss.str());
-  }
-}
-
-template<typename CompType>
-void ParseComponents(
-  std::istringstream* iss,
-  std::vector<CompType>* const components,
-  uint32_t* const components_per_value)
-{
-  auto components_size_before = static_cast<uint32_t>(components->size());
-  auto component = CompType{};
+  auto components_before = components->size();
+  auto component = ComponentType{};
   while (*iss >> component || !iss->eof()) {
-    ThrowIfParseFailed(iss);
+    if (iss->fail()) {
+      iss->clear();
+      auto dummy = std::string{};
+      *iss >> dummy;
+      auto oss = std::ostringstream{};
+      oss << "failed parsing '" << dummy << "'";
+      throw std::runtime_error(oss.str());
+    }
     components->push_back(component);
   }
+  return static_cast<uint32_t>(components->size() - components_before);
+}
 
-  const auto component_count = 
-    static_cast<uint32_t>(components->size()) - components_size_before;
+template<typename ComponentType>
+void AddToChannel(
+  std::istringstream* const iss,
+  std::vector<ComponentType>* const components,
+  uint32_t* const components_per_value)
+{
+  const auto component_count = ParseComponents(iss, components);
   if (component_count == 0) {
     throw std::runtime_error("empty components");
   }
@@ -862,100 +862,150 @@ void ParseComponents(
     *components_per_value = component_count;
   }
   else if (*components_per_value != component_count) {
-    auto ss = std::ostringstream();
-    ss << "invalid component count (" << component_count << ")"
+    auto oss = std::ostringstream();
+    oss << "invalid component count (" << component_count << ")"
       << ", expected " << *components_per_value;
-    throw std::runtime_error(ss.str());
+    throw std::runtime_error(oss.str());
+  }
+}
+
+
+inline
+std::vector<std::string> TokenizeLine(
+  std::istringstream* const iss)
+{
+  // Split stringstream into whitespace separated chunks.
+  auto tokens = std::vector<std::string>{};
+  tokens.reserve(4); // Just an estimate.
+  auto token = std::string{};
+  while (*iss >> token) {
+    tokens.emplace_back(token);
+  }
+  return tokens;
+}
+
+template<typename T>
+T FromToken(const std::string& token)
+{
+  auto iss = std::istringstream(token);
+  auto t = T{};
+  iss >> t;
+  if (iss.fail()) {
+    iss.clear(); // Clear status bits.
+    auto dummy = std::string{};
+    iss >> dummy;
+    auto oss = std::ostringstream{};
+    oss << "failed parsing '" << dummy << "'";
+    throw std::runtime_error(oss.str());
+  }
+  return t;
+}
+
+inline 
+void ParseIndexGroup(
+  const std::string& index_group,
+  std::vector<uint32_t>* const pos_indices,
+  std::vector<uint32_t>* const tex_indices,
+  std::vector<uint32_t>* const nml_indices)
+{
+  const auto pos_before = pos_indices->size();
+
+  auto buffers = std::array<std::vector<uint32_t>*, 3>{{
+    pos_indices,
+    tex_indices,
+    nml_indices
+  }};
+  auto buffer_index = uint32_t{ 0 };
+  auto pos = uint32_t{ 0 };
+  auto sep = std::string::npos;
+  do {
+    if (buffer_index >= 3) {
+      throw std::runtime_error("index group cannot have more than three indices");
+    }
+
+    sep = index_group.find('/', pos);
+    const auto len = sep == std::string::npos ? sep : sep - pos;
+    if (len > 0) {
+      // Convert to zero-based indices.
+      buffers[buffer_index]->push_back(
+        FromToken<uint32_t>(index_group.substr(pos, len)) - 1);
+    }
+    pos = sep + 1; // Skip past separator.
+    ++buffer_index;
+  } while (sep != std::string::npos && pos < index_group.size());
+
+  if (pos_indices->size() - pos_before == 0) {
+    auto oss = std::ostringstream{};
+    oss << "missing position index ('" << index_group << "')";
+    throw std::runtime_error(oss.str());
   }
 }
 
 inline
 void ParseFaceIndices(
   std::istringstream* iss,
-  std::vector<uint32_t>* position_indices,
-  std::vector<uint32_t>* tex_coord_indices,
-  std::vector<uint32_t>* normal_indices,
-  uint32_t* const position_indices_per_face,
-  uint32_t* const tex_coord_indices_per_face,
-  uint32_t* const normal_indices_per_face)
+  std::vector<uint32_t>* const pos_indices,
+  std::vector<uint32_t>* const tex_indices,
+  std::vector<uint32_t>* const nml_indices,
+  uint32_t* const pos_indices_per_face,
+  uint32_t* const tex_indices_per_face,
+  uint32_t* const nml_indices_per_face)
 {  
-  auto pos_size_before = static_cast<uint32_t>(position_indices->size());
-  auto tex_size_before = static_cast<uint32_t>(tex_coord_indices->size());
-  auto nml_size_before = static_cast<uint32_t>(normal_indices->size());
+  const auto pos_before = pos_indices->size();
+  const auto tex_before = tex_indices->size();
+  const auto nml_before = nml_indices->size();
 
-  auto index_group_count = uint32_t{ 0 };
-  auto index_group = std::string();
-  while (*iss >> index_group || !iss->eof()) {
-    auto ig_ss = std::istringstream(index_group);
-    auto index_str = std::string();
-    auto indices = std::array<uint32_t, 3>{{0, 0, 0}};
-    auto index_count = uint32_t{ 0 };
-    while (std::getline(ig_ss, index_str, '/')) {
-      auto index_ss = std::istringstream(index_str);
-      index_ss >> indices[index_count++];
-      ThrowIfParseFailed(&index_ss);
-    }
-
-    if (index_count < 1) {
-      throw std::runtime_error("missing position index");
-    }
-    if (index_count > 3) {
-      throw std::runtime_error("cannot have more than three indices");
-    }
-
-    // Make indices zero-based!
-    position_indices->push_back(indices[0] - 1);
-    if (index_count >= 2) {
-      tex_coord_indices->push_back(indices[1] - 1);
-    }
-    if (index_count == 3) {
-      normal_indices->push_back(indices[2] - 1);
-    }
-    ++index_group_count;
+  auto index_group = std::string{};
+  while (*iss >> index_group) {
+    ParseIndexGroup(index_group, pos_indices, tex_indices, nml_indices);
   }
 
-  if (index_group_count == 0) {
+  const auto pos_count = pos_indices->size() - pos_before;
+  if (pos_count == 0) {
     throw std::runtime_error("empty face");
   }
 
-  const auto pos_count = 
-    static_cast<uint32_t>(position_indices->size()) - pos_size_before;
-  const auto tex_count = 
-    static_cast<uint32_t>(tex_coord_indices->size()) - tex_size_before;
-  const auto nml_count = 
-    static_cast<uint32_t>(normal_indices->size()) - nml_size_before;
-
-  if (pos_count == 0) {
-    throw std::runtime_error("missing position indices");
+  if (*pos_indices_per_face == 0) {
+    *pos_indices_per_face = pos_count;
+  }
+  else if (*pos_indices_per_face != pos_count) {
+    auto oss = std::ostringstream();
+    oss << "invalid index group count (" << pos_count << ")"
+      << ", expected " << *pos_indices_per_face;
+    throw std::runtime_error(oss.str());
   }
 
-  if (*position_indices_per_face == 0) {
-    *position_indices_per_face = pos_count;
-  }
-  else if (*position_indices_per_face != pos_count) {
-    auto ss = std::ostringstream();
-    ss << "invalid position index count (" << pos_count << ")"
-      << ", expected " << *position_indices_per_face;
-    throw std::runtime_error(ss.str());
-  }
-  
-  if (*tex_coord_indices_per_face == 0 && tex_count != 0) {
-    *tex_coord_indices_per_face = tex_count;
-  }
-  else if (*tex_coord_indices_per_face != tex_count) {
-    // throw
+  const auto tex_count = tex_indices->size() - tex_before;
+  const auto nml_count = nml_indices->size() - nml_before;
+
+  if (!(tex_count == pos_count || tex_count == 0)) {
+    // must have tex coord for each index group or none at all.
   }
 
-  if (*normal_indices_per_face == 0) {
-    *normal_indices_per_face = nml_count;
+  if (!(nml_count == pos_count || nml_count == 0)) {
+    // must have tex coord for each index group or none at all.
   }
-  else if (*normal_indices_per_face != nml_count) {
-    // throw
-  }
-
-  // all face must have same number of index groups
-  // all index groups must have same number of indices.
 }
+
+
+#if 0
+template<typename Out>
+void split(const std::string& s, const char delim, Out result)
+{
+  auto ss = std::stringstream ss(s);
+  auto token = std::string();
+  while (std::getline(ss, token, delim)) {
+    *(result++) = token;
+  }
+}
+
+std::vector<std::string> split(const std::string& s, const char delim)
+{
+  auto tokens = std::vector<std::string>{};
+  split(s, delim, std::back_inserter(tokens));
+  return tokens;
+}
+#endif
 
 } // namespace detail
 
@@ -1058,74 +1108,81 @@ Mesh<ComponentType> Read(std::istream& is)
   using std::vector;
 
   // Positions.
-  auto position_components = vector<ComponentType>{};
-  auto position_components_per_value = uint32_t{ 0 };
-  auto position_indices = vector<uint32_t>{};
-  auto position_indices_per_face = uint32_t{ 0 };
+  auto pos_components = vector<ComponentType>{};
+  auto pos_components_per_value = uint32_t{ 0 };
+  auto pos_indices = vector<uint32_t>{};
+  auto pos_indices_per_face = uint32_t{ 0 };
   // Tex coords.
-  auto tex_coord_components = vector<ComponentType>{};
-  auto tex_coord_components_per_value = uint32_t{ 0 };
-  auto tex_coord_indices = vector<uint32_t>{};
-  auto tex_coord_indices_per_face = uint32_t{ 0 };
+  auto tex_components = vector<ComponentType>{};
+  auto tex_components_per_value = uint32_t{ 0 };
+  auto tex_indices = vector<uint32_t>{};
+  auto tex_indices_per_face = uint32_t{ 0 };
   // Normals.
-  auto normal_components = vector<ComponentType>{};
-  auto normal_components_per_value = uint32_t{ 0 };
-  auto normal_indices = vector<uint32_t>{};
-  auto normal_indices_per_face = uint32_t{ 0 };
+  auto nml_components = vector<ComponentType>{};
+  auto nml_components_per_value = uint32_t{ 0 };
+  auto nml_indices = vector<uint32_t>{};
+  auto nml_indices_per_face = uint32_t{ 0 };
 
-  auto line = std::string();
+  auto line = std::string{};
   while (std::getline(is, line)) {
     auto iss = std::istringstream(line);
-    auto prefix = std::string();
-    std::getline(iss, prefix, ' ');
+
+    // Prefix is token before first whitespace.
+    auto prefix = std::string{};
+    iss >> prefix;
 
     if (prefix.empty() || prefix == "#") {
       // Ignore empty lines and comments.
       continue;
     }
     else if (prefix == "v") {
-      detail::ParseComponents(
-        &iss, 
-        &position_components, 
-        &position_components_per_value);
+      detail::AddToChannel(
+        &iss,
+        &pos_components,
+        &pos_components_per_value);
     }
     else if (prefix == "vt") {
-      detail::ParseComponents(
+      detail::AddToChannel(
         &iss,
-        &tex_coord_components,
-        &tex_coord_components_per_value);
+        &tex_components,
+        &tex_components_per_value);
     }
     else if (prefix == "vn") {
-      detail::ParseComponents(
+      detail::AddToChannel(
         &iss,
-        &normal_components,
-        &normal_components_per_value);
+        &nml_components,
+        &nml_components_per_value);
     }
     else if (prefix == "f") {
       detail::ParseFaceIndices(
         &iss,
-        &position_indices,
-        &tex_coord_indices,
-        &normal_indices,
-        &position_indices_per_face,
-        &tex_coord_indices_per_face,
-        &normal_indices_per_face);
+        &pos_indices,
+        &tex_indices,
+        &nml_indices,
+        &pos_indices_per_face,
+        &tex_indices_per_face,
+        &nml_indices_per_face);
     }
   }
 
+
+
+  // all face must have same number of index groups
+  // all index groups in all faces must have same number of indices.
+
   return Mesh<ComponentType>(
-    position_components,
-    position_components_per_value,
-    position_indices,
-    position_indices_per_face,
-    tex_coord_components,
-    tex_coord_components_per_value,
-    tex_coord_indices,
-    tex_coord_indices_per_face,
-    normal_components,
-    normal_components_per_value,
-    normal_indices,
-    normal_indices_per_face);
+    pos_components,
+    pos_components_per_value,
+    pos_indices,
+    pos_indices_per_face,
+    tex_components,
+    tex_components_per_value,
+    tex_indices,
+    tex_indices_per_face,
+    nml_components,
+    nml_components_per_value,
+    nml_indices,
+    nml_indices_per_face);
 }
 
 } // namespace obj_io
