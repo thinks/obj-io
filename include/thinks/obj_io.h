@@ -930,7 +930,7 @@ void ParseIndexGroup(
       buffers[buffer_index]->push_back(
         FromToken<uint32_t>(index_group.substr(pos, len)) - 1);
     }
-    pos = sep + 1; // Skip past separator.
+    pos = static_cast<uint32_t>(sep + 1); // Skip past separator.
     ++buffer_index;
   } while (sep != std::string::npos && pos < index_group.size());
 
@@ -960,7 +960,7 @@ void ParseFaceIndices(
     ParseIndexGroup(index_group, pos_indices, tex_indices, nml_indices);
   }
 
-  const auto pos_count = pos_indices->size() - pos_before;
+  const auto pos_count = static_cast<uint32_t>(pos_indices->size() - pos_before);
   if (pos_count == 0) {
     throw std::runtime_error("empty face");
   }

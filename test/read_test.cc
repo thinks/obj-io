@@ -25,7 +25,7 @@
 
 #include "gtest/gtest.h"
 
-#include "../include/thinks/obj_io.h"
+#include "thinks/obj_io.h"
 
 using std::distance;
 using std::exception;
@@ -33,121 +33,12 @@ using std::istringstream;
 using std::ostringstream;
 using std::runtime_error;
 using std::vector;
-using thinks::obj_io::make_normal_channel;
-using thinks::obj_io::make_position_channel;
-using thinks::obj_io::make_tex_coord_channel;
+//using thinks::obj_io::make_normal_channel;
+//using thinks::obj_io::make_position_channel;
+//using thinks::obj_io::make_tex_coord_channel;
 using thinks::obj_io::Read;
-using thinks::obj_io::Write;
+//using thinks::obj_io::Write;
 
-namespace {
-
-  struct Mesh
-  {
-    vector<float> position_components;
-    vector<uint32_t> position_indices;
-    uint32_t position_components_per_vertex;
-    uint32_t position_indices_per_face;
-
-    vector<float> tex_coord_components;
-    vector<uint32_t> tex_coord_indices;
-    uint32_t tex_coord_components_per_vertex;
-    uint32_t tex_coord_indices_per_face;
-
-    vector<float> normal_components;
-    vector<uint32_t> normal_indices;
-    uint32_t normal_indices_per_face;
-  };
-
-  /// Returns a mesh with:
-  /// -  8 * 3 position elements 
-  /// - 12 * 3 position index elements
-  /// -  4 * 2 tex coord elements
-  /// - 12 * 3 tex coord indices
-  /// -  6 * 3 normal elements
-  /// - 12 * 3 normal indices
-  ///
-  /// Centered at origin, positions in range [-1,1].
-  Mesh CubeMesh()
-  {
-    auto mesh = Mesh{};
-    mesh.position_components = vector<float>{
-      1.f, 1.f, -1.f,
-      1.f, -1.f, 1.f,
-      1.f, -1.f, -1.f,
-      1.f, 1.f, 1.f,
-      -1.f, -1.f, -1.f,
-      -1.f, 1.f, -1.f,
-      -1.f, 1.f, 1.f,
-      -1.f, -1.f, 1.f
-    };
-    mesh.position_indices = vector<uint32_t>{
-      0, 1, 2,  // X+
-      1, 0, 3,
-      6, 4, 7,  // X-
-      4, 6, 5,
-      6, 0, 5,  // Y+
-      0, 6, 3,
-      1, 4, 2,  // Y-
-      4, 1, 7,
-      1, 6, 7,  // Z+
-      6, 1, 3,
-      0, 4, 5,  // Z-
-      4, 0, 2
-    };
-    mesh.position_components_per_vertex = 3;
-    mesh.position_indices_per_face = 3;
-
-    mesh.tex_coord_components = vector<float>{
-      0.f, 0.f,
-      1.f, 0.f,
-      0.f, 1.f,
-      1.f, 1.f
-    };
-    mesh.tex_coord_indices = vector<uint32_t>{
-      0, 1, 2,
-      1, 0, 3,
-      0, 1, 2,
-      1, 0, 3,
-      0, 1, 2,
-      1, 0, 3,
-      0, 1, 2,
-      1, 0, 3,
-      0, 1, 2,
-      1, 0, 3,
-      0, 1, 2,
-      1, 0, 3
-    };
-    mesh.tex_coord_components_per_vertex = 2;
-    mesh.tex_coord_indices_per_face = 3;
-
-    mesh.normal_components = vector<float>{
-      1.f, 0.f, 0.f,
-      -1.f, 0.f, 0.f,
-      0.f, 1.f, 0.f,
-      0.f, -1.f, 0.f,
-      0.f, 0.f, 1.f,
-      0.f, 0.f, -1.f
-    };
-    mesh.normal_indices = vector<uint32_t>{
-      0, 0, 0,
-      0, 0, 0,
-      1, 1, 1,
-      1, 1, 1,
-      2, 2, 2,
-      2, 2, 2,
-      3, 3, 3,
-      3, 3, 3,
-      4, 4, 4,
-      4, 4, 4,
-      5, 5, 5,
-      5, 5, 5
-    };
-    mesh.normal_indices_per_face = 3;
-
-    return mesh;
-  }
-
-} // namespace
 
 TEST(ReadTest, Value_ThrowsIfFailedToParseComponent)
 {
@@ -203,8 +94,8 @@ TEST(ReadTest, Value_ThrowsIfDifferentComponentCountsInPositionChannel)
 {
   // Arrange.
   auto iss = istringstream(
-    "v 0 0 0\n"
-    "v 1 1 1 1\n" // Four components!
+    "v 0 0 0\n"   // First vertex has three components.
+    "v 1 1 1 1\n" // Another vertex has four components.
     "v 2 2 2\n"
     "f 1 2 3\n");
 
@@ -235,8 +126,9 @@ TEST(ReadTest, Value_ThrowsIfDifferentComponentCountsInTexCoordChannel)
     "v 1 1 1\n"
     "v 2 2 2\n"
     "vt 1 1\n"
-    "vt 0.5 0.5\n"
-    "vt 0 0 0\n"  // Three components!
+    "vt 0.1 0.1\n"      // First tex coord has two components.
+    "vt 0.2 0.2 0.2\n"  // Another tex coord has three components.
+    "vt 0.3 0.3\n"
     "f 1/1 2/2 3/3\n");
 
   // Act.
@@ -265,9 +157,9 @@ TEST(ReadTest, Value_ThrowsIfDifferentComponentCountsInNormalChannel)
     "v 0 0 0\n"
     "v 1 1 1\n"
     "v 2 2 2\n"
-    "vn 1 1 1\n"
-    "vn 0 0 0\n"  
-    "vn 1 1\n" // Two components!
+    "vn 1 1 1\n"  // First normal has three components.
+    "vn 0 0\n"    // Another normal has two components.
+    "vn 1 1 1\n" 
     "f 1//1 2//2 3//3\n");
 
   // Act.
@@ -288,7 +180,6 @@ TEST(ReadTest, Value_ThrowsIfDifferentComponentCountsInNormalChannel)
     FAIL() << "incorrect exception";
   }
 }
-
 
 TEST(ReadTest, Face_ThrowsIfFailedToParseIndex)
 {
@@ -373,8 +264,8 @@ TEST(ReadTest, Face_ThrowsIfDifferentIndexGroupCount)
     "v 1 1 1\n"
     "v 2 2 2\n"
     "v 3 3 3\n"
-    "f 1 2 3\n"
-    "f 1 2 3 4\n"
+    "f 1 2 3\n"   // First face has three index groups. 
+    "f 1 2 3 4\n" // Another face has four index groups.
   );
 
   // Act.
@@ -383,12 +274,12 @@ TEST(ReadTest, Face_ThrowsIfDifferentIndexGroupCount)
     FAIL() << "exception not thrown";
   }
   catch (const runtime_error& ex) {
-    auto oss = std::ostringstream();
+    auto oss = ostringstream();
     oss << "invalid index group count (" << 4 << ")"
       << ", expected " << 3;
     EXPECT_STREQ(oss.str().c_str(), ex.what());
   }
-  catch (const std::exception& ex) {
+  catch (const exception& ex) {
     FAIL() << ex.what();
   }
   catch (...) {
@@ -414,7 +305,7 @@ TEST(ReadTest, Face_ThrowsIfMissingPositionIndex)
   catch (const runtime_error& ex) {
     EXPECT_STREQ("missing position index ('/2')", ex.what());
   }
-  catch (const std::exception& ex) {
+  catch (const exception& ex) {
     FAIL() << ex.what();
   }
   catch (...) {
@@ -424,7 +315,7 @@ TEST(ReadTest, Face_ThrowsIfMissingPositionIndex)
 
 
 
-
+/*
 TEST(ReadTest, CorrectMesh)
 {
   // Arrange.
@@ -503,9 +394,9 @@ TEST(ReadTest, CorrectMesh)
   EXPECT_EQ(3, nml_channel.components_per_value());
   EXPECT_EQ(3, nml_channel.indices_per_face());
 }
+*/
 
-
-TEST(ReadTest, RoundTrip)
+TEST(DISABLED_ReadTest, RoundTrip)
 {
   EXPECT_TRUE(false) << "todo";
 }
