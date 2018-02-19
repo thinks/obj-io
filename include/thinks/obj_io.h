@@ -1,4 +1,4 @@
-// Copyright 2017 Tommy Hinks
+// Copyright 2018 Tommy Hinks
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
 // copy of this software and associated documentation files (the "Software"),
@@ -1009,6 +1009,17 @@ std::vector<std::string> split(const std::string& s, const char delim)
 
 } // namespace detail
 
+
+template<typename PosVecType, typename TexVecType, typename NmlVecType, typename PolyVecType>
+struct Mesh2
+{
+  std::vector<PosVecType> positions;
+  std::vector<TexVecType> tex_coords;
+  std::vector<NmlVecType> normals;
+  std::vector<PolyVecType> position_indices;
+  std::vector<PolyVecType> tex_coord_indices;
+  std::vector<PolyVecType> normal_indices;
+};
 
 template<typename ComponentType>
 class Mesh

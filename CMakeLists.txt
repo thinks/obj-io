@@ -32,6 +32,7 @@ add_executable(obj-io-test
   test/common_channel_test.cc
   test/main.cc
   test/normal_channel_test.cc
+  test/mapper_test.cc
   test/position_channel_test.cc
   test/read_test.cc
   test/tex_coord_channel_test.cc
