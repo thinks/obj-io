@@ -54,11 +54,19 @@ TEST(TestTest, MyTest)
 
   auto positions = std::vector<Vec3f>{
     Vec3f{1.f, 1.f, 1.f},
-    Vec3f{2.f, 2.f, 2.f}, 
+    Vec3f{2.f, 2.f, 2.f},
+    Vec3f{3.f, 3.f, 3.f},
   };
   auto vec3f_mapper = [](const auto v) {
     return std::array<float, 3>{{ v.x, v.y, v.z }};
   };
-  thinks::obj_io::Write(std::cout, positions, vec3f_mapper);
+  auto indices = std::vector<uint32_t>{
+    0, 1, 2
+  };
+  thinks::obj_io::Write(
+    std::cout, 
+    positions, vec3f_mapper,
+    indices,
+    3);
 
 }
