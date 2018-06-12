@@ -1,45 +1,21 @@
-#cmake_minimum_required(VERSION 2.8.11)
-cmake_minimum_required(VERSION 3.5)
+# Copyright (C) 2018 Tommy Hinks <tommy.hinks@gmail.com>
+# This file is subject to the license terms in the LICENSE file
+# found in the top-level directory of this distribution.
 
-# Make PROJECT_SOURCE_DIR, PROJECT_BINARY_DIR, and PROJECT_NAME available.
-set(PROJECT_NAME obj-io-test)
-project(${PROJECT_NAME})
+cmake_minimum_required(VERSION 3.1)
+project(obj_io)
 
-#set(CMAKE_CXX_FLAGS "-g -Wall")
+set(header_files
+	${CMAKE_CURRENT_SOURCE_DIR}/include/thinks/obj_io/obj_io.h
+)
+add_library(thinks_obj_io INTERFACE)
+target_sources(thinks_obj_io INTERFACE ${header_files})
+target_include_directories(thinks_obj_io INTERFACE include)
+#if(MSVC)
+#    target_compile_definitions(thinks_obj_io INTERFACE "-D_SCL_SECURE_NO_WARNINGS")
+#endif()
 
-# Prevent overriding the parent project's compiler/linker
-# settings on Windows.
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-
-# Add googletest directly to our build. This defines
-# the gtest and gtest_main targets.
-#add_subdirectory(${CMAKE_BINARY_DIR}/googletest-src
-#                 ${CMAKE_BINARY_DIR}/googletest-build
-#                 EXCLUDE_FROM_ALL)
-
-add_subdirectory(test/googletest)
-
-# The gtest/gtest_main targets carry header search path
-# dependencies automatically when using CMake 2.8.11 or
-# later. Otherwise we have to add them here ourselves.
-if (CMAKE_VERSION VERSION_LESS 2.8.11)
-  include_directories("${gtest_SOURCE_DIR}/include")
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    enable_testing()
+    add_subdirectory(test)
 endif()
-
-enable_testing()
-
-add_executable(obj-io-test
-  test/common_channel_test.cc
-  test/main.cc
-  test/normal_channel_test.cc
-  test/mapper_test.cc
-  test/position_channel_test.cc
-  test/read_test.cc
-  test/tex_coord_channel_test.cc
-  #utils.cc
-  test/write_test.cc)
-target_include_directories(obj-io-test
-	PRIVATE "include")
-target_link_libraries(obj-io-test 
-	gtest_main)
-add_test(NAME obj-io-test COMMAND obj-io-test)
