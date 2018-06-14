@@ -13,7 +13,11 @@
 
 #include <gtest/gtest.h>
 
-using thinks::obj_io::MakeBufferView;
+using thinks::obj_io::Face;
+using thinks::obj_io::Index;
+using thinks::obj_io::Normal;
+using thinks::obj_io::Position;
+using thinks::obj_io::TexCoord;
 using thinks::obj_io::Write;
 
 namespace 
@@ -57,51 +61,61 @@ void WriteMesh(
   const auto vtx_iend = mesh.vertices.end();
 
   auto pos_vtx_iter = mesh.vertices.begin();
-  auto pos_mapper = [&pos_vtx_iter, vtx_iend]() -> pair<array<float, 3>, bool> {
+  auto pos_mapper = [&pos_vtx_iter, vtx_iend]() -> pair<Position<float, 3>, bool> {
     if (pos_vtx_iter != vtx_iend) {
       const auto vtx = *pos_vtx_iter++;
-      return make_pair(array<float, 3>{{ vtx.pos.x, vtx.pos.y, vtx.pos.z }}, true);
+      return make_pair(Position<float, 3>(vtx.pos.x, vtx.pos.y, vtx.pos.z), true);
     }
 
-    return make_pair(array<float, 3>{}, false);
+    return make_pair(Position<float, 3>(0.f, 0.f, 0.f), false);
   };
 
   // tex
   auto tex_vtx_iter = mesh.vertices.begin();
-  auto tex_mapper = [&tex_vtx_iter, vtx_iend]() -> pair<array<float, 2>, bool> {
+  auto tex_mapper = [&tex_vtx_iter, vtx_iend]() -> pair<TexCoord<float, 2>, bool> {
     if (tex_vtx_iter != vtx_iend) {
       const auto vtx = *tex_vtx_iter++;
-      return make_pair(array<float, 2>{{ vtx.tex.x, vtx.tex.y }}, true);
+      return make_pair(TexCoord<float, 2>(vtx.tex.x, vtx.tex.y), true);
     }
 
-    return make_pair(array<float, 2>{}, false);
+    return make_pair(TexCoord<float, 2>(0.f, 0.f), false);
   };
 
   // nml
   auto nml_vtx_iter = mesh.vertices.begin();
-  auto nml_mapper = [&nml_vtx_iter, vtx_iend]() -> pair<array<float, 3>, bool> {
+  auto nml_mapper = [&nml_vtx_iter, vtx_iend]() -> pair<Normal<float>, bool> {
     if (nml_vtx_iter != vtx_iend) {
       const auto vtx = *nml_vtx_iter++;
-      return make_pair(array<float, 3>{{ vtx.normal.x, vtx.normal.y, vtx.normal.z }}, true);
+      return make_pair(Normal<float>(vtx.normal.x, vtx.normal.y, vtx.normal.z), true);
     }
 
-    return make_pair(array<float, 3>{}, false);
+    return make_pair(Normal<float>(0.f, 0.f, 0.f), false);
   };
 
   // faces
   auto idx_iter = mesh.tri_indices.begin();
   const auto idx_iend = mesh.tri_indices.end();
-  auto face_mapper = [&idx_iter, idx_iend]() -> pair<array<uint32_t, 3>, bool> {
+  auto face_mapper = [&idx_iter, idx_iend]() -> pair<Face<Index<uint32_t>, 3>, bool> {
     if (idx_iter != idx_iend) {
       const auto idx0 = *idx_iter++;
       // throw?
       const auto idx1 = *idx_iter++;
       // throw?
       const auto idx2 = *idx_iter++;
-      return make_pair(array<uint32_t, 3>{{ idx0, idx1, idx2 }}, true);
+      return make_pair(
+        Face<Index<uint32_t>, 3>(
+          Index<uint32_t>(idx0), 
+          Index<uint32_t>(idx1),
+          Index<uint32_t>(idx2)), 
+        true);
     }
 
-    return make_pair(array<uint32_t, 3>{}, false);
+    return make_pair(
+      Face<Index<uint32_t>, 3>(
+        Index<uint32_t>(0),
+        Index<uint32_t>(0),
+        Index<uint32_t>(0)),
+      false);
   };
 
   if (!use_tex && !use_nml)
@@ -331,3 +345,26 @@ TEST(WriteInterleavedTest, Test)
 
   std::cout << ss.str() << std::endl;
 }
+
+/*
+// For all types except integral types:
+template<typename ValueType>
+typename std::enable_if<!std::is_integral<typename ValueType::value_type>::value>::type
+WriteFace(const ValueType& v)
+{
+  std::cout << "!int" << std::endl;
+  // ...
+}
+
+// For integral types only:
+template<typename ValueType>
+typename std::enable_if<std::is_integral<typename ValueType::value_type>::value>::type
+WriteFace(const ValueType& v)
+{
+  std::cout << "int" << std::endl;
+  // ...
+}*/
+
+
+
+

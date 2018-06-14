@@ -1,6 +1,6 @@
 // Copyright(C) 2018 Tommy Hinks <tommy.hinks@gmail.com>
 // This file is subject to the license terms in the LICENSE file
-// found in the top - level directory of this distribution.
+// found in the top-level directory of this distribution.
 
 #ifndef THINKS_OBJ_IO_MAPPER_H_INCLUDED
 #define THINKS_OBJ_IO_MAPPER_H_INCLUDED
@@ -14,66 +14,188 @@
 namespace thinks {
 namespace obj_io {
 
-/// Minimalistic generalization of string_view.
-template<typename T>
-class BufferView
+/// Only constructible for N = 3 and N = 4.
+template<typename T, std::size_t N>
+class Position
 {
 public:
-  typedef T ValueType;
-  typedef std::size_t SizeType;
-  typedef const T& ConstReference;
-  typedef const T* ConstIterator;
+  template<typename = typename std::enable_if<N == 3u || N == 4u>::type>
+  Position() = default;
 
-  /// Create empty buffer view.
-  constexpr 
-  BufferView() noexcept
-    : data_(nullptr)
-    , size_(0)
+  template<typename = typename std::enable_if<N == 3u>::type>
+  Position(const T x, const T y, const T z) noexcept
+    : values{ x, y, z }
   {}
 
-  constexpr
-  BufferView(const T* data, const size_t size) noexcept
-    : data_(data)
-    , size_(size)
+  template <typename = typename std::enable_if<N == 4u>::type>
+  Position(const T x, const T y, const T z, const T w) noexcept
+    : values{ x, y, z, w }
   {}
 
-  constexpr ConstIterator begin() const noexcept 
-  { 
-    return data_;
-  }
+  static_assert(
+    std::is_arithmetic<T>::value,
+    "position values must be arithmetic");
 
-  constexpr ConstIterator end() const noexcept 
-  { 
-    return data_ + size_; 
-  }
-
-  constexpr SizeType size() const noexcept 
-  { 
-    return size_; 
-  }
-
-  constexpr bool empty() const noexcept 
-  { 
-    return data_ == nullptr || size_ == 0; 
-  }
-
-  /// No bounds checking, similar to std::string_view.
-  constexpr ConstReference operator[](SizeType pos) const noexcept
-  { 
-    return data_[pos];
-  }
-
-private:
-  const ValueType* data_;
-  SizeType size_;
+  std::array<T, N> values;
 };
 
-/// Named constructor to help with template type deduction.
-template<typename T>
-BufferView<T> MakeBufferView(const T* data, const size_t size)
+
+/// Only constructible for N = 2 and N = 3.
+template<typename T, std::size_t N>
+class TexCoord
 {
-  return BufferView<T>(data, size);
+public:
+  template<typename = typename std::enable_if<N == 2u || N == 3u>::type>
+  TexCoord() = default;
+
+  template<typename = typename std::enable_if<N == 2u>::type>
+  TexCoord(const T u, const T v)
+    : values{ u, v }
+  {
+    ThrowIfInvalidRange_();
+  }
+
+  template <typename = typename std::enable_if<N == 3u>::type>
+  TexCoord(const T u, const T v, const T w)
+    : values{ u, v, w }
+  {
+    ThrowIfInvalidRange_();
+  }
+
+  static_assert(
+    std::is_floating_point<T>::value,
+    "texture coordinate values must be floating point");
+
+  std::array<T, N> values;
+
+private:
+  void ThrowIfInvalidRange_()
+  {
+    for (const auto value : values) {
+      if (!(T(0) <= value && value <= T(1))) {
+        auto oss = std::ostringstream();
+        oss << "texture coordinate values must be in range [0, 1], found "
+          << value;
+        throw std::invalid_argument(oss.str());
+      }
+    }
+  }
+};
+
+
+template<typename T>
+class Normal
+{
+public:
+  Normal() = default;
+
+  Normal(const T x, const T y, const T z) noexcept
+    : values{ x, y, z }
+  {
+  }
+
+  static_assert(
+    std::is_arithmetic<T>::value,
+    "normal values must be arithmetic");
+
+  std::array<T, 3> values;
+};
+
+
+template<typename T>
+class Index
+{
+public:
+  explicit Index(const T i)
+    : value(i)
+  {
+    if (!(value >= ValueType(0))) {
+    auto oss = std::ostringstream();
+    oss << "face indices must be >= 0, found " << value;
+    throw std::invalid_argument(oss.str());
+    }
+  }
+
+  static_assert(std::is_integral<T>::value, "index must be integral");
+
+  T value;
+};
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const Index<T>& index)
+{
+  // OBJ format uses one-based indexing. 
+  // Not checking for overflow here!
+  os << index.value + 1u;
+  return os;
 }
+
+
+template<typename T>
+class IndexGroup
+{
+public:
+  IndexGroup(
+    const Index<T> pos,
+    const std::pair<Index<T>, bool>& tex,
+    const std::pair<Index<T>, bool>& nml) noexcept
+    : position_index(pos)
+    , tex_coord_index(tex)
+    , normal_index(nml)
+  {}
+
+  static_assert(
+    std::is_integral<T>::value,
+    "face indices must be integral");
+
+  // Note: Optional would have been nice here.
+  Index<T> position_index;
+  std::pair<Index<T>, bool> tex_coord_index;
+  std::pair<Index<T>, bool> normal_index;
+};
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const IndexGroup<T>& index_group)
+{
+  os << index_group.position_index;
+  if (index_group.tex_coord_index.second &&
+    index_group.normal_index.second) {
+    os << "/" << index_group.tex_coord_index.first 
+      << "/" << index_group.normal_index.first;
+  }
+  else if (index_group.tex_coord_index.second) {
+    os << "/" << index_group.tex_coord_index.first;
+  }
+  else if (index_group.normal_index.second) {
+    os << "//" << index_group.normal_index.first;
+  }
+  return os;
+}
+
+
+template<typename Index, std::size_t N>
+class Face
+{
+public:
+  template<typename = typename std::enable_if<N >= 3u>::type>
+  Face() = default;
+
+  // Triangle.
+  template<typename = typename std::enable_if<N == 3u>::type>
+  Face(const Index& i0, const Index& i1, const Index& i2) noexcept
+    : values{ i0, i1, i2 }
+  {}
+
+  // Quad.
+  template<typename = typename std::enable_if<N == 4u>::type>
+  Face(const Index& i0, const Index& i1, const Index& i2, const Index& i3) noexcept
+    : values{ i0, i1, i2, i3 }
+  {}
+
+  static_assert(N >= 3, "face index count must be at least 3");
+
+  std::array<Index, N> values;
+};
 
 
 namespace detail {
@@ -85,117 +207,18 @@ void WriteHeader(std::ostream& os, const std::string& newline)
 }
 
 
-template<typename ValueType>
-void WriteValue(
+template<typename Attribute>
+void WriteLine(
   std::ostream& os,
   const std::string& line_start,
-  const ValueType& value,
+  const Attribute& attribute,
   const std::string& newline)
 {
-  typedef typename ValueType::value_type ComponentType;
-  static_assert(
-    std::is_arithmetic<ComponentType>::value,
-    "value components must be arithmetic");
-  static_assert(
-    std::tuple_size<ValueType>::value > 0,
-    "value component count must be greater than zero");
-
   os << line_start;
-  for (const auto component : value) {
-    os << " " << component;
+  for (const auto value : attribute.values) {
+    os << " " << value;
   }
   os << newline;
-}
-
-template<typename ValueType>
-void WritePosition(
-  std::ostream& os,
-  const ValueType& value,
-  const std::string& newline)
-{
-  typedef typename ValueType::value_type ComponentType;
-  static_assert(
-    std::is_arithmetic<ComponentType>::value,
-    "position components must be arithmetic");
-  static_assert(
-    std::tuple_size<ValueType>::value == 3 || 
-    std::tuple_size<ValueType>::value == 4,
-    "position component count must be 3 or 4");
-
-  WriteValue(os, "v", value, newline);
-}
-
-template<typename ValueType>
-void WriteTexCoord(
-  std::ostream& os,
-  const ValueType& value,
-  const std::string& newline)
-{
-  typedef typename ValueType::value_type ComponentType;
-  static_assert(
-    std::is_floating_point<ComponentType>::value,
-    "texture coordinate components must be floating point");
-  static_assert(
-    std::tuple_size<ValueType>::value == 2 ||
-    std::tuple_size<ValueType>::value == 3,
-    "texture coordinate component count must be 2 or 3");
-
-  for (const auto component : value) {
-    if (!(ComponentType(0) <= component && component <= ComponentType(1))) {
-      auto oss = std::ostringstream();
-      oss << "texture coordinate elements must be in range [0, 1], found "
-        << component;
-      throw std::invalid_argument(oss.str());
-    }
-  }
-
-  WriteValue(os, "vt", value, newline);
-}
-
-template<typename ValueType>
-void WriteNormal(
-  std::ostream& os,
-  const ValueType& value,
-  const std::string& newline)
-{
-  typedef typename ValueType::value_type ComponentType;
-  static_assert(
-    std::is_arithmetic<ComponentType>::value,
-    "normal components must be arithmetic");
-  static_assert(
-    std::tuple_size<ValueType>::value == 3,
-    "normal component count must be 3");
-
-  WriteValue(os, "vn", value, newline);
-}
-
-template<typename ValueType>
-void WriteFace(
-  std::ostream& os,
-  const ValueType& value,
-  const std::string& newline)
-{
-  typedef typename ValueType::value_type ComponentType;
-  static_assert(
-    std::is_integral<ComponentType>::value,
-    "face indices must be integral");
-  static_assert(
-    std::tuple_size<ValueType>::value >= 3,
-    "face index count must be at least 3");
-
-  auto incremented_value = value;
-  for (auto& component : incremented_value) {
-    if (!(component >= ComponentType(0))) {
-      auto oss = std::ostringstream();
-      oss << "face indices must be >= 0, found " << component;
-      throw std::invalid_argument(oss.str());
-    }
-
-    // OBJ format uses one-based indexing. 
-    component += 1u;
-  }
-
-  WriteValue(os, "f", incremented_value, newline);
 }
 
 
@@ -207,7 +230,7 @@ void WritePositions(
 {
   auto pos = pos_mapper();
   while (pos.second) {
-    WritePosition(os, pos.first, newline);
+    WriteLine(os, "v", pos.first, newline);
     pos = pos_mapper();
   }
 }
@@ -239,7 +262,7 @@ void WriteTexCoords(
 {
   auto tex = tex_mapper();
   while (tex.second) {
-    WriteTexCoord(os, tex.first, newline);
+    WriteLine(os, "vt", tex.first, newline);
     tex = tex_mapper();
   }
 }
@@ -264,7 +287,7 @@ void WriteNormals(
 {
   auto nml = nml_mapper();
   while (nml.second) {
-    WriteNormal(os, nml.first, newline);
+    WriteLine(os, "vn", nml.first, newline);
     nml = nml_mapper();
   }
 }
@@ -288,7 +311,7 @@ void WriteFaces(
 {
   auto face = face_mapper();
   while (face.second) {
-    WriteFace(os, face.first, newline);
+    WriteLine(os, "f", face.first, newline);
     face = face_mapper();
   }
 }
@@ -312,9 +335,9 @@ void Write(
   detail::WriteHeader(os, newline);
   detail::WritePositions(os, pos_mapper, newline);
   detail::WriteTexCoords(os, tex_mapper, newline,
-    typename detail::mapper_traits<TexMapper>::mapper_category());
+    typename detail::mapper_traits<TexMapper>::mapper_category{});
   detail::WriteNormals(os, nml_mapper, newline,
-    typename detail::mapper_traits<NmlMapper>::mapper_category());
+    typename detail::mapper_traits<NmlMapper>::mapper_category{});
   detail::WriteFaces(os, face_mapper, newline);
 }
 
@@ -322,118 +345,3 @@ void Write(
 } // namespace thinks
 
 #endif // THINKS_OBJ_IO_MAPPER_H_INCLUDED
-
-
-
-
-
-
-
-#if 0
-void WriteIndexGroup(
-  std::ostream& os,
-  const uint32_t pos_index,
-  const uint32_t* const tex_index,
-  const uint32_t* const nml_index)
-{
-  os << " " << pos_index + 1;
-  if (tex_index != nullptr && nml_index != nullptr) {
-    os << "/" << *tex_index + 1 << "/" << *nml_index + 1;
-  }
-  else if (tex_index != nullptr) {
-    os << "/" << *tex_index + 1;
-  }
-  else if (nml_index != nullptr) {
-    os << "//" << *nml_index + 1;
-  }
-}
-
-void WriteFace(
-  std::ostream& os,
-  const std::vector<uint32_t>& pos_indices,
-  const std::vector<uint32_t>& tex_indices,
-  const std::vector<uint32_t>& nml_indices,
-  const std::string& newline)
-{
-  const uint32_t* tex_index = nullptr;
-  const uint32_t* nml_index = nullptr;
-
-  os << "f";
-  for (auto i = uint32_t{ 0 }; i < pos_indices.size(); ++i) {
-    if (!tex_indices.empty()) {
-      tex_index = &tex_indices[i];
-    }
-    if (!nml_indices.empty()) {
-      nml_index = &nml_indices[i];
-    }
-    WriteIndexGroup(os, pos_indices[i], tex_index, nml_index);
-  }
-  os << newline;
-}
-
-template<typename IndexType>
-void WriteFaces(
-  std::ostream& os,
-  const BufferView<IndexType> pos_index_buf,
-  const BufferView<IndexType> tex_index_buf,
-  const BufferView<IndexType> nml_index_buf,
-  const uint32_t indices_per_face,
-  const std::string& newline)
-{
-  static_assert(
-    std::is_integral<IndexType>::value,
-    "indices must be integral");
-
-  if (indices_per_face < 3) {
-    auto oss = std::ostringstream();
-    oss << "indices per face (" << indices_per_face << ") cannot be less than 3";
-    throw std::invalid_argument(oss.str());
-  }
-
-  if (!(!pos_index_buf.empty() && pos_index_buf.size() % indices_per_face == 0)) {
-    auto oss = std::ostringstream();
-    oss << "position index count (" << pos_index_buf.size()
-      << ") must be multiple of indices per face ("
-      << indices_per_face << ")";
-    throw std::invalid_argument(oss.str());
-  }
-
-  if (!(tex_index_buf.empty() || pos_index_buf.size() == tex_index_buf.size())) {
-    auto oss = std::ostringstream();
-    oss << "texture coordinate index count (" << tex_index_buf.size()
-      << ") must be same as position index count ("
-      << pos_index_buf.size() << ")";
-    throw std::invalid_argument(oss.str());
-  }
-
-  if (!(nml_index_buf.empty() || pos_index_buf.size() == nml_index_buf.size())) {
-    auto oss = std::ostringstream();
-    oss << "normal index count (" << nml_index_buf.size()
-      << ") must be same as position index count ("
-      << pos_index_buf.size() << ")";
-    throw std::invalid_argument(oss.str());
-  }
-
-  const auto face_count = pos_index_buf.size() / indices_per_face;
-  auto pos_buf = std::vector<uint32_t>{};
-  auto tex_buf = std::vector<uint32_t>{};
-  auto nml_buf = std::vector<uint32_t>{};
-
-  for (auto i = uint32_t{ 0 }; i < face_count; ++i) {
-    for (auto j = uint32_t{ 0 }; j < indices_per_face; ++j) {
-      const auto k = i * face_count + j;
-      pos_buf.push_back(pos_index_buf[k]);
-      if (!tex_index_buf.empty()) {
-        tex_buf.push_back(tex_index_buf[k]);
-      }
-      if (!nml_index_buf.empty()) {
-        nml_buf.push_back(nml_index_buf[k]);
-      }
-    }
-    WriteFace(os, pos_buf, tex_buf, nml_buf, newline);
-    pos_buf.clear();
-    tex_buf.clear();
-    nml_buf.clear();
-  }
-}
-#endif
