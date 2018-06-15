@@ -58,64 +58,61 @@ void WriteMesh(
 {
   using namespace std;
 
+  typedef Position<float, 3> Position3f;
+  typedef TexCoord<float, 2> TexCoord2f;
+  typedef Normal<float> Normalf;
+  typedef Index<uint32_t> Indexui;
+  typedef Face<Indexui, 3> Face3;
+
   const auto vtx_iend = mesh.vertices.end();
 
+  // Positions.
   auto pos_vtx_iter = mesh.vertices.begin();
-  auto pos_mapper = [&pos_vtx_iter, vtx_iend]() -> pair<Position<float, 3>, bool> {
+  auto pos_mapper = [&pos_vtx_iter, vtx_iend]() -> pair<Position3f, bool> {
     if (pos_vtx_iter != vtx_iend) {
       const auto vtx = *pos_vtx_iter++;
-      return make_pair(Position<float, 3>(vtx.pos.x, vtx.pos.y, vtx.pos.z), true);
+      return make_pair(Position3f(vtx.pos.x, vtx.pos.y, vtx.pos.z), true);
     }
 
-    return make_pair(Position<float, 3>(0.f, 0.f, 0.f), false);
+    return make_pair(Position3f{}, false);
   };
 
-  // tex
+  // Texture coordinates.
   auto tex_vtx_iter = mesh.vertices.begin();
-  auto tex_mapper = [&tex_vtx_iter, vtx_iend]() -> pair<TexCoord<float, 2>, bool> {
+  auto tex_mapper = [&tex_vtx_iter, vtx_iend]() -> pair<TexCoord2f, bool> {
     if (tex_vtx_iter != vtx_iend) {
       const auto vtx = *tex_vtx_iter++;
-      return make_pair(TexCoord<float, 2>(vtx.tex.x, vtx.tex.y), true);
+      return make_pair(TexCoord2f(vtx.tex.x, vtx.tex.y), true);
     }
 
-    return make_pair(TexCoord<float, 2>(0.f, 0.f), false);
+    return make_pair(TexCoord2f{}, false);
   };
 
-  // nml
+  // Normals.
   auto nml_vtx_iter = mesh.vertices.begin();
-  auto nml_mapper = [&nml_vtx_iter, vtx_iend]() -> pair<Normal<float>, bool> {
+  auto nml_mapper = [&nml_vtx_iter, vtx_iend]() -> pair<Normalf, bool> {
     if (nml_vtx_iter != vtx_iend) {
       const auto vtx = *nml_vtx_iter++;
-      return make_pair(Normal<float>(vtx.normal.x, vtx.normal.y, vtx.normal.z), true);
+      return make_pair(Normalf(vtx.normal.x, vtx.normal.y, vtx.normal.z), true);
     }
 
-    return make_pair(Normal<float>(0.f, 0.f, 0.f), false);
+    return make_pair(Normalf{}, false);
   };
 
-  // faces
+  // Faces.
   auto idx_iter = mesh.tri_indices.begin();
   const auto idx_iend = mesh.tri_indices.end();
-  auto face_mapper = [&idx_iter, idx_iend]() -> pair<Face<Index<uint32_t>, 3>, bool> {
+  auto face_mapper = [&idx_iter, idx_iend]() -> pair<Face3, bool> {
     if (idx_iter != idx_iend) {
       const auto idx0 = *idx_iter++;
       // throw?
       const auto idx1 = *idx_iter++;
       // throw?
       const auto idx2 = *idx_iter++;
-      return make_pair(
-        Face<Index<uint32_t>, 3>(
-          Index<uint32_t>(idx0), 
-          Index<uint32_t>(idx1),
-          Index<uint32_t>(idx2)), 
-        true);
+      return make_pair(Face3(Indexui(idx0), Indexui(idx1), Indexui(idx2)), true);
     }
 
-    return make_pair(
-      Face<Index<uint32_t>, 3>(
-        Index<uint32_t>(0),
-        Index<uint32_t>(0),
-        Index<uint32_t>(0)),
-      false);
+    return make_pair(Face3{}, false);
   };
 
   if (!use_tex && !use_nml)
@@ -317,8 +314,23 @@ TEST(WriteInterleavedTest, PositionsAndTexCoordsAndNormals)
   EXPECT_STREQ(expected_string.c_str(), ss.str().c_str());
 }
 
+template<typename T>
+struct is_position : std::false_type
+{
+};
+
+
+template<typename T, std::size_t N>
+struct is_position<Position<T, N>> : std::true_type
+{
+};
+
 TEST(WriteInterleavedTest, Test)
 {
+  std::cout << "is_position: " << is_position<int>::value << std::endl;
+  std::cout << "is_position: " << is_position<Position<float, 3>>::value << std::endl;
+
+
   auto mesh = Mesh{};
   mesh.vertices = std::vector<Vertex>{
     Vertex{
@@ -345,25 +357,6 @@ TEST(WriteInterleavedTest, Test)
 
   std::cout << ss.str() << std::endl;
 }
-
-/*
-// For all types except integral types:
-template<typename ValueType>
-typename std::enable_if<!std::is_integral<typename ValueType::value_type>::value>::type
-WriteFace(const ValueType& v)
-{
-  std::cout << "!int" << std::endl;
-  // ...
-}
-
-// For integral types only:
-template<typename ValueType>
-typename std::enable_if<std::is_integral<typename ValueType::value_type>::value>::type
-WriteFace(const ValueType& v)
-{
-  std::cout << "int" << std::endl;
-  // ...
-}*/
 
 
 

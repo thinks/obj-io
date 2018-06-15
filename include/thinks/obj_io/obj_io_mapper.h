@@ -7,64 +7,77 @@
 
 #include <array>
 #include <cassert>
+#include <functional>
 #include <iostream>
 #include <sstream>
 #include <type_traits>
+#include <utility>
 
 namespace thinks {
 namespace obj_io {
 
-/// Only constructible for N = 3 and N = 4.
 template<typename T, std::size_t N>
 class Position
 {
 public:
-  template<typename = typename std::enable_if<N == 3u || N == 4u>::type>
-  Position() = default;
-
-  template<typename = typename std::enable_if<N == 3u>::type>
-  Position(const T x, const T y, const T z) noexcept
-    : values{ x, y, z }
-  {}
-
-  template <typename = typename std::enable_if<N == 4u>::type>
-  Position(const T x, const T y, const T z, const T w) noexcept
-    : values{ x, y, z, w }
-  {}
-
   static_assert(
     std::is_arithmetic<T>::value,
     "position values must be arithmetic");
+  static_assert(
+    N == 3u || N == 4u,
+    "position value count must be 3 or 4");
+
+  Position() noexcept = default;
+
+  Position(const T x, const T y, const T z) noexcept
+    : values{ x, y, z }
+  {
+    static_assert(N == 3u, "position value count must be 3");
+  }
+
+  Position(const T x, const T y, const T z, const T w) noexcept
+    : values{ x, y, z, w }
+  {
+    static_assert(N == 4u, "position value count must be 4");
+  }
 
   std::array<T, N> values;
 };
 
+template<typename T>
+struct IsPosition : std::false_type {};
 
-/// Only constructible for N = 2 and N = 3.
+// Ignore CV issues.
+template<typename T, std::size_t N>
+struct IsPosition<Position<T, N>> : std::true_type {};
+
+
 template<typename T, std::size_t N>
 class TexCoord
 {
 public:
-  template<typename = typename std::enable_if<N == 2u || N == 3u>::type>
-  TexCoord() = default;
-
-  template<typename = typename std::enable_if<N == 2u>::type>
-  TexCoord(const T u, const T v)
-    : values{ u, v }
-  {
-    ThrowIfInvalidRange_();
-  }
-
-  template <typename = typename std::enable_if<N == 3u>::type>
-  TexCoord(const T u, const T v, const T w)
-    : values{ u, v, w }
-  {
-    ThrowIfInvalidRange_();
-  }
-
   static_assert(
     std::is_floating_point<T>::value,
     "texture coordinate values must be floating point");
+  static_assert(
+    N == 2u || N == 3u,
+    "texture coordinate value count must be 2 or 3");
+
+  TexCoord() noexcept = default;
+
+  TexCoord(const T u, const T v)
+    : values{ u, v }
+  {
+    static_assert(N == 2u, "texture coordinate value count must be 2");
+    ThrowIfInvalidRange_();
+  }
+
+  TexCoord(const T u, const T v, const T w)
+    : values{ u, v, w }
+  {
+    static_assert(N == 3u, "texture coordinate value count must be 3");
+    ThrowIfInvalidRange_();
+  }
 
   std::array<T, N> values;
 
@@ -82,41 +95,57 @@ private:
   }
 };
 
+template<typename T>
+struct IsTexCoord : std::false_type {};
+
+// Ignore CV issues.
+template<typename T, std::size_t N>
+struct IsTexCoord<TexCoord<T, N>> : std::true_type {};
+
 
 template<typename T>
 class Normal
 {
 public:
-  Normal() = default;
+  static_assert(
+    std::is_arithmetic<T>::value,
+    "normal values must be arithmetic");
+
+  Normal() noexcept = default;
 
   Normal(const T x, const T y, const T z) noexcept
     : values{ x, y, z }
   {
   }
 
-  static_assert(
-    std::is_arithmetic<T>::value,
-    "normal values must be arithmetic");
-
   std::array<T, 3> values;
 };
+
+template<typename T>
+struct IsNormal : std::false_type {};
+
+// Ignore CV issues.
+template<typename T>
+struct IsNormal<Normal<T>> : std::true_type {};
 
 
 template<typename T>
 class Index
 {
 public:
-  explicit Index(const T i)
+  static_assert(std::is_integral<T>::value, "index must be integral");
+
+  Index() noexcept = default;
+
+  explicit Index(const T i) 
     : value(i)
   {
-    if (!(value >= ValueType(0))) {
-    auto oss = std::ostringstream();
-    oss << "face indices must be >= 0, found " << value;
-    throw std::invalid_argument(oss.str());
+    if (!(value >= T(0))) {
+      auto oss = std::ostringstream();
+      oss << "index must be >= 0, found " << value;
+      throw std::invalid_argument(oss.str());
     }
   }
-
-  static_assert(std::is_integral<T>::value, "index must be integral");
 
   T value;
 };
@@ -136,17 +165,14 @@ class IndexGroup
 {
 public:
   IndexGroup(
-    const Index<T> pos,
-    const std::pair<Index<T>, bool>& tex,
-    const std::pair<Index<T>, bool>& nml) noexcept
-    : position_index(pos)
-    , tex_coord_index(tex)
-    , normal_index(nml)
-  {}
-
-  static_assert(
-    std::is_integral<T>::value,
-    "face indices must be integral");
+    const Index<T> position_index,
+    const std::pair<Index<T>, bool>& tex_coord_index,
+    const std::pair<Index<T>, bool>& normal_index) noexcept
+    : position_index(position_index)
+    , tex_coord_index(tex_coord_index)
+    , normal_index(normal_index)
+  {
+  }
 
   // Note: Optional would have been nice here.
   Index<T> position_index;
@@ -173,29 +199,37 @@ std::ostream& operator<<(std::ostream& os, const IndexGroup<T>& index_group)
 }
 
 
-template<typename Index, std::size_t N>
+template<typename IndexT, std::size_t N>
 class Face
 {
 public:
-  template<typename = typename std::enable_if<N >= 3u>::type>
-  Face() = default;
+  static_assert(N >= 3u, "face index count must be at least 3");
+
+  Face() noexcept = default;
 
   // Triangle.
-  template<typename = typename std::enable_if<N == 3u>::type>
-  Face(const Index& i0, const Index& i1, const Index& i2) noexcept
+  Face(const IndexT i0, const IndexT i1, const IndexT i2) noexcept
     : values{ i0, i1, i2 }
-  {}
+  {
+    static_assert(N == 3u, "triangle index count must be 3");
+  }
 
   // Quad.
-  template<typename = typename std::enable_if<N == 4u>::type>
-  Face(const Index& i0, const Index& i1, const Index& i2, const Index& i3) noexcept
+  Face(const IndexT i0, const IndexT i1, const IndexT i2, const IndexT i3) noexcept
     : values{ i0, i1, i2, i3 }
-  {}
+  {
+    static_assert(N == 4u, "quad index count must be 4");
+  }
 
-  static_assert(N >= 3, "face index count must be at least 3");
-
-  std::array<Index, N> values;
+  std::array<IndexT, N> values;
 };
+
+template<typename T>
+struct IsFace : std::false_type {};
+
+// Ignore CV issues.
+template<typename IndexT, std::size_t N>
+struct IsFace<Face<IndexT, N>> : std::true_type {};
 
 
 namespace detail {
@@ -228,28 +262,31 @@ void WritePositions(
   PosMapper pos_mapper,
   const std::string& newline)
 {
-  auto pos = pos_mapper();
-  while (pos.second) {
-    WriteLine(os, "v", pos.first, newline);
-    pos = pos_mapper();
+  auto mapped = pos_mapper();
+  while (mapped.second) {
+    static_assert(
+      IsPosition<decltype(mapped.first)>::value, 
+      "incorrect mapped type");
+    WriteLine(os, "v", mapped.first, newline);
+    mapped = pos_mapper();
   }
 }
 
 
 // Tag dispatch for optional vertex attributes, e.g. tex coords and normals.
-struct mapper_tag {};
-struct null_mapper_tag {};
+struct MapperTag {};
+struct NullMapperTag {};
 
 template<typename T>
-struct mapper_traits
+struct MapperTraits
 {
-  typedef mapper_tag mapper_category;
+  typedef MapperTag MapperCategory;
 };
 
 template<>
-struct mapper_traits<std::nullptr_t>
+struct MapperTraits<std::nullptr_t>
 {
-  typedef null_mapper_tag mapper_category;
+  typedef NullMapperTag MapperCategory;
 };
 
 
@@ -258,12 +295,15 @@ void WriteTexCoords(
   std::ostream& os,
   TexMapper tex_mapper,
   const std::string& newline,
-  mapper_tag)
+  MapperTag)
 {
-  auto tex = tex_mapper();
-  while (tex.second) {
-    WriteLine(os, "vt", tex.first, newline);
-    tex = tex_mapper();
+  auto mapped = tex_mapper();
+  while (mapped.second) {
+    static_assert(
+      IsTexCoord<decltype(mapped.first)>::value,
+      "incorrect mapped type");
+    WriteLine(os, "vt", mapped.first, newline);
+    mapped = tex_mapper();
   }
 }
 
@@ -273,7 +313,7 @@ void WriteTexCoords(
   std::ostream&,
   TexMapper,
   const std::string&,
-  null_mapper_tag)
+  NullMapperTag)
 {
 }
 
@@ -283,22 +323,24 @@ void WriteNormals(
   std::ostream& os,
   NmlMapper nml_mapper,
   const std::string& newline,
-  mapper_tag)
+  MapperTag)
 {
-  auto nml = nml_mapper();
-  while (nml.second) {
-    WriteLine(os, "vn", nml.first, newline);
-    nml = nml_mapper();
+  auto mapped = nml_mapper();
+  while (mapped.second) {
+    static_assert(
+      IsNormal<decltype(mapped.first)>::value,
+      "incorrect mapped type");
+    WriteLine(os, "vn", mapped.first, newline);
+    mapped = nml_mapper();
   }
 }
 
-/// Dummy.
 template<typename NmlMapper>
 void WriteNormals(
   std::ostream&,
   NmlMapper,
   const std::string&,
-  null_mapper_tag)
+  NullMapperTag)
 {
 }
 
@@ -309,10 +351,13 @@ void WriteFaces(
   FaceMapper face_mapper,
   const std::string& newline)
 {
-  auto face = face_mapper();
-  while (face.second) {
-    WriteLine(os, "f", face.first, newline);
-    face = face_mapper();
+  auto mapped = face_mapper();
+  while (mapped.second) {
+    static_assert(
+      IsFace<decltype(mapped.first)>::value,
+      "incorrect mapped type");
+    WriteLine(os, "f", mapped.first, newline);
+    mapped = face_mapper();
   }
 }
 
@@ -335,9 +380,9 @@ void Write(
   detail::WriteHeader(os, newline);
   detail::WritePositions(os, pos_mapper, newline);
   detail::WriteTexCoords(os, tex_mapper, newline,
-    typename detail::mapper_traits<TexMapper>::mapper_category{});
+    typename detail::MapperTraits<TexMapper>::MapperCategory{});
   detail::WriteNormals(os, nml_mapper, newline,
-    typename detail::mapper_traits<NmlMapper>::mapper_category{});
+    typename detail::MapperTraits<NmlMapper>::MapperCategory{});
   detail::WriteFaces(os, face_mapper, newline);
 }
 
