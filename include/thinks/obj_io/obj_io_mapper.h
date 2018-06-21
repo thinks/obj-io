@@ -6,12 +6,10 @@
 #define THINKS_OBJ_IO_MAPPER_H_INCLUDED
 
 #include <array>
-#include <cassert>
-#include <functional>
+#include <exception>
 #include <iostream>
 #include <sstream>
 #include <type_traits>
-#include <utility>
 
 namespace thinks {
 namespace obj_io {
@@ -43,13 +41,6 @@ public:
 
   std::array<T, N> values;
 };
-
-template<typename T>
-struct IsPosition : std::false_type {};
-
-// Ignore CV issues.
-template<typename T, std::size_t N>
-struct IsPosition<Position<T, N>> : std::true_type {};
 
 
 template<typename T, std::size_t N>
@@ -95,13 +86,6 @@ private:
   }
 };
 
-template<typename T>
-struct IsTexCoord : std::false_type {};
-
-// Ignore CV issues.
-template<typename T, std::size_t N>
-struct IsTexCoord<TexCoord<T, N>> : std::true_type {};
-
 
 template<typename T>
 class Normal
@@ -120,13 +104,6 @@ public:
 
   std::array<T, 3> values;
 };
-
-template<typename T>
-struct IsNormal : std::false_type {};
-
-// Ignore CV issues.
-template<typename T>
-struct IsNormal<Normal<T>> : std::true_type {};
 
 
 template<typename T>
@@ -224,18 +201,217 @@ public:
   std::array<IndexT, N> values;
 };
 
-template<typename T>
-struct IsFace : std::false_type {};
-
-// Ignore CV issues.
-template<typename IndexT, std::size_t N>
-struct IsFace<Face<IndexT, N>> : std::true_type {};
-
 
 namespace detail {
 
+template<typename T>
+struct IsPosition : std::false_type {};
+
+template<typename T, std::size_t N>
+struct IsPosition<Position<T, N>> : std::true_type {}; // Ignore CV issues.
+
+template<typename T>
+struct IsTexCoord : std::false_type {};
+
+template<typename T, std::size_t N>
+struct IsTexCoord<TexCoord<T, N>> : std::true_type {}; // Ignore CV issues.
+
+template<typename T>
+struct IsNormal : std::false_type {};
+
+template<typename T>
+struct IsNormal<Normal<T>> : std::true_type {}; // Ignore CV issues.
+
+template<typename T>
+struct IsFace : std::false_type {};
+
+template<typename IndexT, std::size_t N>
+struct IsFace<Face<IndexT, N>> : std::true_type {}; // Ignore CV issues.
+
+namespace read {
+
+template<typename T, std::size_t N>
+std::size_t ParseValues(
+  std::istringstream* const iss,
+  std::array<T, N>* const values)
+{
+  typedef typename std::array<T, N>::value_type ValueType;
+
+  auto value_count = std::size_t{0};
+  auto value = ValueType{};
+  while (*iss >> value || !iss->eof()) {
+    if (iss->fail()) {
+      iss->clear();
+      auto dummy = std::string{};
+      *iss >> dummy;
+      auto oss = std::ostringstream{};
+      oss << "failed parsing '" << dummy << "'";
+      throw std::runtime_error(oss.str());
+    }
+
+    if (value_count >= values->size()) {
+      // error
+    }
+
+    (*values)[value_count++] = value;
+  }
+
+  return value_count;
+}
+
+
+template<typename T, typename AddPosition>
+void ParsePosition(
+  std::istringstream* const iss,
+  AddPosition add_position)
+{
+  auto pos = Position<T, 4>{};
+  const auto value_count = ParseValues<T>(iss, &pos.values);
+  if (value_count < 3) {
+    auto oss = std::ostringstream{};
+    oss << "positions must have at least 3 values";
+    throw std::runtime_error(oss.str());
+  }
+  if (value_count == 3) {
+    pos.values[3] = T{1}; // Default w is 1.0.
+  }
+
+  add_position(pos);
+}
+
+
+template<typename T, typename AddFace>
+void ParseFace(
+  std::istringstream* const iss,
+  AddFace add_face)
+{
+
+}
+
+
+struct AddTag {};
+struct NullAddTag {};
+
+template<typename T>
+struct AddTraits
+{
+  typedef AddTag AddCategory;
+};
+
+template<>
+struct AddTraits<std::nullptr_t>
+{
+  typedef NullAddTag AddCategory;
+};
+
+
+template<typename T, typename AddTexCoord>
+void ParseTexCoord(
+  std::istringstream* const iss,
+  AddTexCoord add_tex_coord,
+  AddTag)
+{
+  auto tex = TexCoord<T, 3>{};
+  const auto value_count = ParseValues<T>(iss, &tex.values);
+  if (value_count < 2) {
+    auto oss = std::ostringstream{};
+    oss << "texture coordinates must have at least 2 values";
+    throw std::runtime_error(oss.str());
+  }
+  if (value_count == 2) {
+    tex.values[2] = T{0}; // Default w is 0.0.
+  }
+
+  add_tex_coord(tex);
+}
+
+/// Dummy.
+template<typename T, typename AddTexCoord>
+void ParseTexCoord(
+  std::istringstream* const,
+  AddTexCoord,
+  NullAddTag)
+{
+}
+
+
+template<typename T, typename AddNormal>
+void ParseNormal(
+  std::istringstream* const iss,
+  AddNormal add_normal,
+  AddTag)
+{
+  auto nml = Normal<T>{};
+  const auto value_count = ParseValues<T>(iss, &nml.values);
+  if (value_count != 3) {
+    auto oss = std::ostringstream{};
+    oss << "normals must have 3 values";
+    throw std::runtime_error(oss.str());
+  }
+
+  add_normal(nml);
+}
+
+/// Dummy.
+template<typename T, typename AddNormal>
+void ParseNormal(
+  std::istringstream* const,
+  AddNormal,
+  NullAddTag)
+{
+}
+
+
+template<
+  typename FloatT,
+  typename IndexT,
+  typename AddPosition,
+  typename AddTexCoord,
+  typename AddNormal,
+  typename AddFace>
+void ParseLine(
+  const std::string& line,
+  AddPosition add_position,
+  AddFace add_face,
+  AddTexCoord add_tex_coord,
+  AddNormal add_normal)
+{
+  auto iss = std::istringstream(line);
+
+  // Prefix is token before first whitespace.
+  auto prefix = std::string{};
+  iss >> prefix;
+
+  if (prefix.empty() || prefix == "#") {
+    return; // Ignore empty lines and comments.
+  }
+  else if (prefix == "v") {
+    ParsePosition<FloatT>(&iss, add_position);
+  }
+  else if (prefix == "f") {
+    ParseFace<IndexT>(&iss, add_face);
+  }
+  else if (prefix == "vt") {
+    ParseTexCoord<FloatT>(&iss, add_tex_coord,
+      typename AddTraits<AddTexCoord>::AddCategory{});
+  }
+  else if (prefix == "vn") {
+    ParseNormal<FloatT>(&iss, add_normal,
+      typename AddTraits<AddNormal>::AddCategory{});
+  }
+  else {
+    auto oss = std::ostringstream{};
+    oss << "unrecognized line prefix '" << prefix << "'";
+    throw std::runtime_error(oss.str());
+  }
+}
+
+} // namespace read
+
+namespace write {
+
 inline
-void WriteHeader(std::ostream& os, const std::string& newline)
+  void WriteHeader(std::ostream& os, const std::string& newline)
 {
   os << "# Written by https://github.com/thinks/obj-io" << newline;
 }
@@ -265,7 +441,7 @@ void WritePositions(
   auto mapped = pos_mapper();
   while (mapped.second) {
     static_assert(
-      IsPosition<decltype(mapped.first)>::value, 
+      IsPosition<decltype(mapped.first)>::value,
       "incorrect mapped type");
     WriteLine(os, "v", mapped.first, newline);
     mapped = pos_mapper();
@@ -361,7 +537,31 @@ void WriteFaces(
   }
 }
 
+} // namespace write
+
 } // namespace detail
+
+
+template<
+  typename FloatT,
+  typename IndexT,
+  typename AddPosition,
+  typename AddFace,
+  typename AddTexCoord = std::nullptr_t,
+  typename AddNormal = std::nullptr_t>
+void Read(
+  std::istream& is,
+  AddPosition add_position,
+  AddFace add_face,
+  AddTexCoord add_tex_coord = nullptr,
+  AddNormal add_normal = nullptr)
+{
+  auto line = std::string{};
+  while (std::getline(is, line)) {
+    detail::read::ParseLine<FloatT, IndexT>(
+      line, add_position, add_face, add_tex_coord, add_normal);
+  }
+}
 
 
 template<
@@ -377,13 +577,13 @@ void Write(
   NmlMapper nml_mapper = nullptr,
   const std::string& newline = "\n")
 {
-  detail::WriteHeader(os, newline);
-  detail::WritePositions(os, pos_mapper, newline);
-  detail::WriteTexCoords(os, tex_mapper, newline,
-    typename detail::MapperTraits<TexMapper>::MapperCategory{});
-  detail::WriteNormals(os, nml_mapper, newline,
-    typename detail::MapperTraits<NmlMapper>::MapperCategory{});
-  detail::WriteFaces(os, face_mapper, newline);
+  detail::write::WriteHeader(os, newline);
+  detail::write::WritePositions(os, pos_mapper, newline);
+  detail::write::WriteTexCoords(os, tex_mapper, newline,
+    typename detail::write::MapperTraits<TexMapper>::MapperCategory{});
+  detail::write::WriteNormals(os, nml_mapper, newline,
+    typename detail::write::MapperTraits<NmlMapper>::MapperCategory{});
+  detail::write::WriteFaces(os, face_mapper, newline);
 }
 
 } // namespace obj_io

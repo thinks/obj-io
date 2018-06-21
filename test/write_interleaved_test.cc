@@ -1,6 +1,6 @@
 // Copyright(C) 2018 Tommy Hinks <tommy.hinks@gmail.com>
 // This file is subject to the license terms in the LICENSE file
-// found in the top - level directory of this distribution.
+// found in the top-level directory of this distribution.
 
 #include <thinks/obj_io/obj_io_mapper.h>
 
@@ -18,6 +18,7 @@ using thinks::obj_io::Index;
 using thinks::obj_io::Normal;
 using thinks::obj_io::Position;
 using thinks::obj_io::TexCoord;
+using thinks::obj_io::Read;
 using thinks::obj_io::Write;
 
 namespace 
@@ -314,23 +315,9 @@ TEST(WriteInterleavedTest, PositionsAndTexCoordsAndNormals)
   EXPECT_STREQ(expected_string.c_str(), ss.str().c_str());
 }
 
-template<typename T>
-struct is_position : std::false_type
-{
-};
-
-
-template<typename T, std::size_t N>
-struct is_position<Position<T, N>> : std::true_type
-{
-};
 
 TEST(WriteInterleavedTest, Test)
 {
-  std::cout << "is_position: " << is_position<int>::value << std::endl;
-  std::cout << "is_position: " << is_position<Position<float, 3>>::value << std::endl;
-
-
   auto mesh = Mesh{};
   mesh.vertices = std::vector<Vertex>{
     Vertex{
@@ -358,6 +345,29 @@ TEST(WriteInterleavedTest, Test)
   std::cout << ss.str() << std::endl;
 }
 
+TEST(WriteInterleavedTest, Read)
+{
+  // Arrange.
+  const std::string input =
+    "# Written by https://github.com/thinks/obj-io\n"
+    "v 1 2 3\n"
+    "v 4 5 6\n"
+    "v 7 8 9\n"
+    "vt 0 0\n"
+    "vt 0 1\n"
+    "vt 1 1\n"
+    "vn 1 0 0\n"
+    "vn 0 1 0\n"
+    "vn 0 0 1\n"
+    "f 1 2 3\n"
+    "f 3 2 1\n";
 
+  auto ss = std::stringstream(input);
+
+  Read<float, std::uint32_t>(
+    ss, 
+    [](const auto& pos) { std::cout << "v " << pos.values[0] << " " << pos.values[1] << " " << pos.values[2] << std::endl; },
+    [](const auto& face) { std::cout << "f " << face.values[0] << " " << face.values[1] << " " << face.values[2] << std::endl; });
+}
 
 

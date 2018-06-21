@@ -1,6 +1,6 @@
 // Copyright(C) 2018 Tommy Hinks <tommy.hinks@gmail.com>
 // This file is subject to the license terms in the LICENSE file
-// found in the top - level directory of this distribution.
+// found in the top-level directory of this distribution.
 
 #ifndef THINKS_OBJ_IO_OBJ_IO_H_INCLUDED
 #define THINKS_OBJ_IO_OBJ_IO_H_INCLUDED
