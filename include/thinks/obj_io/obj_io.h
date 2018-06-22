@@ -869,7 +869,7 @@ std::vector<std::string> TokenizeLine(
 }
 
 template<typename T>
-T FromToken(const std::string& token)
+T ParseIndex(const std::string& token)
 {
   auto iss = std::istringstream(token);
   auto t = T{};
@@ -912,7 +912,7 @@ void ParseIndexGroup(
     if (len > 0) {
       // Convert to zero-based indices.
       buffers[buffer_index]->push_back(
-        FromToken<uint32_t>(index_group.substr(pos, len)) - 1);
+        ParseIndex<uint32_t>(index_group.substr(pos, len)) - 1);
     }
     pos = static_cast<uint32_t>(sep + 1); // Skip past separator.
     ++buffer_index;
