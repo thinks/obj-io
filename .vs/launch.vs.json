@@ -1,0 +1,12 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "thinks_obj_io_test.exe (test\\thinks_obj_io_test.exe)",
+      "name": "thinks_obj_io_test.exe (test\\thinks_obj_io_test.exe)"
+    }
+  ]
+}

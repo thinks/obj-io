@@ -1,505 +1,442 @@
-// Copyright 2017 Tommy Hinks
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the "Software"),
-// to deal in the Software without restriction, including without limitation
-// the rights to use, copy, modify, merge, publish, distribute, sublicense,
-// and/or sell copies of the Software, and to permit persons to whom the
-// Software is furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-// DEALINGS IN THE SOFTWARE.
+// Copyright(C) 2018 Tommy Hinks <tommy.hinks@gmail.com>
+// This file is subject to the license terms in the LICENSE file
+// found in the top-level directory of this distribution.
 
-#include <algorithm>
+#include <thinks/obj_io/obj_io.h>
+#include <types.h>
+
+#include <array>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include <catch.hpp>
 
-#include "../include/thinks/obj_io.h"
 
 using std::begin;
 using std::end;
-using std::for_each;
-using std::invalid_argument;
+using std::ostream;
+using std::ostringstream;
 using std::string;
-using std::stringstream;
+using std::uint32_t;
 using std::vector;
-using thinks::obj_io::make_normal_channel;
-using thinks::obj_io::make_position_channel;
-using thinks::obj_io::make_tex_coord_channel;
+
+using thinks::obj_io::End;
+using thinks::obj_io::Index;
+using thinks::obj_io::IndexGroup;
+using thinks::obj_io::Map;
+using thinks::obj_io::Normal;
+using thinks::obj_io::Position;
+using thinks::obj_io::TexCoord;
+using thinks::obj_io::TriangleFace;
 using thinks::obj_io::Write;
+
 
 namespace {
 
-struct Mesh
+template<
+  typename PosMapper,
+  typename FaceMapper,
+  typename TexMapper,
+  typename NmlMapper>
+string WriteHelper(
+  PosMapper pos_mapper,
+  FaceMapper face_mapper,
+  TexMapper tex_mapper,
+  NmlMapper nml_mapper,
+  const bool write_tex_coords,
+  const bool write_normals)
 {
-  vector<float> position_components;
-  vector<uint32_t> position_indices;
-  uint32_t position_components_per_vertex;
-  uint32_t position_indices_per_face;
+  auto oss = ostringstream{};
+  if (!write_tex_coords && !write_normals)
+  {
+    Write(
+      oss,
+      pos_mapper,
+      face_mapper);
+  }
+  else if (write_tex_coords && !write_normals) {
+    Write(
+      oss,
+      pos_mapper,
+      face_mapper,
+      tex_mapper);
+  }
+  else if (!write_tex_coords && write_normals) {
+    Write(
+      oss,
+      pos_mapper,
+      face_mapper,
+      nullptr,
+      nml_mapper);
+  }
+  else {
+    Write(
+      oss,
+      pos_mapper,
+      face_mapper,
+      tex_mapper,
+      nml_mapper);
+  }
 
-  vector<float> tex_coord_components;
-  vector<uint32_t> tex_coord_indices;
-  uint32_t tex_coord_components_per_vertex;
-  uint32_t tex_coord_indices_per_face;
+  return oss.str();
+}
 
-  vector<float> normal_components;
-  vector<uint32_t> normal_indices;
-  uint32_t normal_indices_per_face;
-};
-
-/// Returns a mesh with:
-/// -  8 * 3 position elements 
-/// - 12 * 3 position index elements
-/// -  4 * 2 tex coord elements
-/// - 12 * 3 tex coord indices
-/// -  6 * 3 normal elements
-/// - 12 * 3 normal indices
-///
-/// Centered at origin, positions in range [-1,1].
-Mesh CubeMesh()
+string WriteMesh(
+  const Mesh& mesh,
+  const bool write_tex_coords,
+  const bool write_normals)
 {
-  auto mesh = Mesh{};
-  mesh.position_components = vector<float>{
-    1.f, 1.f, -1.f,
-    1.f, -1.f, 1.f,
-    1.f, -1.f, -1.f,
-    1.f, 1.f, 1.f,
-    -1.f, -1.f, -1.f,
-    -1.f, 1.f, -1.f,
-    -1.f, 1.f, 1.f,
-    -1.f, -1.f, 1.f
-  };
-  mesh.position_indices = vector<uint32_t>{
-    0, 1, 2,  // X+
-    1, 0, 3,
-    6, 4, 7,  // X-
-    4, 6, 5,
-    6, 0, 5,  // Y+
-    0, 6, 3,
-    1, 4, 2,  // Y-
-    4, 1, 7,
-    1, 6, 7,  // Z+
-    6, 1, 3,
-    0, 4, 5,  // Z-
-    4, 0, 2
-  };
-  mesh.position_components_per_vertex = 3;
-  mesh.position_indices_per_face = 3;
+  const auto vtx_iend = end(mesh.vertices);
 
-  mesh.tex_coord_components = vector<float>{
-    0.f, 0.f,
-    1.f, 0.f,
-    0.f, 1.f,
-    1.f, 1.f
-  };
-  mesh.tex_coord_indices = vector<uint32_t>{
-    0, 1, 2,
-    1, 0, 3,
-    0, 1, 2,
-    1, 0, 3,
-    0, 1, 2,
-    1, 0, 3,
-    0, 1, 2,
-    1, 0, 3,
-    0, 1, 2,
-    1, 0, 3,
-    0, 1, 2,
-    1, 0, 3
-  };
-  mesh.tex_coord_components_per_vertex = 2;
-  mesh.tex_coord_indices_per_face = 3;
+  // Positions.
+  auto pos_vtx_iter = begin(mesh.vertices);
+  auto pos_mapper = [&pos_vtx_iter, vtx_iend]() {
+    if (pos_vtx_iter != vtx_iend) {
+      const auto vtx = *pos_vtx_iter++;
+      return Map(Position3f(vtx.pos.x, vtx.pos.y, vtx.pos.z));
+    }
 
-  mesh.normal_components = vector<float>{
-    1.f, 0.f, 0.f,
-    -1.f, 0.f, 0.f,
-    0.f, 1.f, 0.f,
-    0.f, -1.f, 0.f,
-    0.f, 0.f, 1.f,
-    0.f, 0.f, -1.f
+    return End<Position3f>();
   };
-  mesh.normal_indices = vector<uint32_t>{
-    0, 0, 0,
-    0, 0, 0,
-    1, 1, 1,
-    1, 1, 1,
-    2, 2, 2,
-    2, 2, 2,
-    3, 3, 3,
-    3, 3, 3,
-    4, 4, 4,
-    4, 4, 4,
-    5, 5, 5,
-    5, 5, 5
-  };
-  mesh.normal_indices_per_face = 3;
 
-  return mesh;
+  // Texture coordinates.
+  auto tex_vtx_iter = begin(mesh.vertices);
+  auto tex_mapper = [&tex_vtx_iter, vtx_iend]() {
+    if (tex_vtx_iter != vtx_iend) {
+      const auto vtx = *tex_vtx_iter++;
+      return Map(TexCoord2f(vtx.tex.x, vtx.tex.y));
+    }
+
+    return End<TexCoord2f>();
+  };
+
+  // Normals.
+  auto nml_vtx_iter = begin(mesh.vertices);
+  auto nml_mapper = [&nml_vtx_iter, vtx_iend]() {
+    if (nml_vtx_iter != vtx_iend) {
+      const auto vtx = *nml_vtx_iter++;
+      return Map(Normalf(vtx.normal.x, vtx.normal.y, vtx.normal.z));
+    }
+
+    return End<Normalf>();
+  };
+
+  // Faces.
+  auto idx_iter = mesh.tri_indices.begin();
+  const auto idx_iend = mesh.tri_indices.end();
+  auto face_mapper = [&idx_iter, idx_iend]() {
+    if (idx_iter != idx_iend) { // check distance to end??
+      const auto idx0 = *idx_iter++;
+      // Check if idx_iter == end?
+      const auto idx1 = *idx_iter++;
+      // Check if idx_iter == end?
+      const auto idx2 = *idx_iter++;
+      return Map(Face3(Indexui(idx0), Indexui(idx1), Indexui(idx2)));
+    }
+
+    return End<Face3>();
+  };
+
+  return WriteHelper(
+    pos_mapper,
+    face_mapper,
+    tex_mapper,
+    nml_mapper,
+    write_tex_coords,
+    write_normals);
+}
+
+string WriteIndexedMesh(
+  const IndexedMesh& imesh,
+  const bool write_tex_coords,
+  const bool write_normals)
+{
+  // Positions.
+  auto pos_iter = begin(imesh.positions);
+  auto pos_iend = end(imesh.positions);
+  auto pos_mapper = [&pos_iter, pos_iend]() {
+    if (pos_iter != pos_iend) {
+      const auto pos = *pos_iter++;
+      return Map(Position3f(pos.x, pos.y, pos.z));
+    }
+
+    return End<Position3f>();
+  };
+
+  // Texture coordinates.
+  auto tex_iter = begin(imesh.tex_coords);
+  auto tex_iend = end(imesh.tex_coords);
+  auto tex_mapper = [&tex_iter, tex_iend]() {
+    if (tex_iter != tex_iend) {
+      const auto tex = *tex_iter++;
+      return Map(TexCoord2f(tex.x, tex.y));
+    }
+
+    return End<TexCoord2f>();
+  };
+
+  // Normals.
+  auto nml_iter = begin(imesh.normals);
+  auto nml_iend = end(imesh.normals);
+  auto nml_mapper = [&nml_iter, nml_iend]() {
+    if (nml_iter != nml_iend) {
+      const auto nml = *nml_iter++;
+      return Map(Normalf(nml.x, nml.y, nml.z));
+    }
+
+    return End<Normalf>();
+  };
+
+  // Faces.
+  auto pos_idx_iter = begin(imesh.position_indices);
+  auto pos_idx_iend = end(imesh.position_indices);
+  auto tex_idx_iter = begin(imesh.tex_coord_indices);
+  auto tex_idx_iend = end(imesh.tex_coord_indices);
+  auto nml_idx_iter = begin(imesh.normal_indices);
+  auto nml_idx_iend = end(imesh.normal_indices);
+  auto face_mapper = 
+    [&pos_idx_iter, &tex_idx_iter, &nml_idx_iter,
+    pos_idx_iend, tex_idx_iend, nml_idx_iend,
+    write_tex_coords, write_normals]() {
+    if (pos_idx_iter != pos_idx_iend && 
+      tex_idx_iter != tex_idx_iend &&
+      nml_idx_iter != nml_idx_iend) { // check distance to end??
+      auto g0 = IndexGroupui(*pos_idx_iter++, *tex_idx_iter++, *nml_idx_iter++);
+      auto g1 = IndexGroupui(*pos_idx_iter++, *tex_idx_iter++, *nml_idx_iter++);
+      auto g2 = IndexGroupui(*pos_idx_iter++, *tex_idx_iter++, *nml_idx_iter++);
+      g0.tex_coord_index.second = write_tex_coords;
+      g1.tex_coord_index.second = write_tex_coords;
+      g2.tex_coord_index.second = write_tex_coords;
+      g0.normal_index.second = write_normals;
+      g1.normal_index.second = write_normals;
+      g2.normal_index.second = write_normals;
+
+      return Map(FaceGroup3(g0, g1, g2));
+    }
+
+    return End<FaceGroup3>();
+  };
+
+  return WriteHelper(
+    pos_mapper,
+    face_mapper,
+    tex_mapper,
+    nml_mapper,
+    write_tex_coords,
+    write_normals);
 }
 
 } // namespace
 
 
-TEST(WriteTest, PositionsOnly)
+TEST_CASE("write", "[container]")
 {
-  // Arrange.
-  const string expected_string =
-    "# Generated by https://github.com/thinks/obj-io\n"
-    "# Vertex count: 8\n"
-    "# Face count: 12\n"
-    "v 1 1 -1\n"
-    "v 1 -1 1\n"
-    "v 1 -1 -1\n"
-    "v 1 1 1\n"
-    "v -1 -1 -1\n"
-    "v -1 1 -1\n"
-    "v -1 1 1\n"
-    "v -1 -1 1\n"
-    "f 1 2 3\n"
-    "f 2 1 4\n"
-    "f 7 5 8\n"
-    "f 5 7 6\n"
-    "f 7 1 6\n"
-    "f 1 7 4\n"
-    "f 2 5 3\n"
-    "f 5 2 8\n"
-    "f 2 7 8\n"
-    "f 7 2 4\n"
-    "f 1 5 6\n"
-    "f 5 1 3\n";
-  const auto mesh = CubeMesh();
-  auto ss = stringstream();
+  // Setup.
+  auto mesh = Mesh{};
+  mesh.vertices = vector<Vertex>{
+    Vertex{
+      Vec3f{ 1.f, 2.f, 3.f },
+      Vec2f{ 0.f, 0.f },
+      Vec3f{ 1.f, 0.f, 0.f }
+    },
+    Vertex{
+      Vec3f{ 4.f, 5.f, 6.f },
+      Vec2f{ 0.f, 1.f },
+      Vec3f{ 0.f, 1.f, 0.f }
+    },
+    Vertex{
+      Vec3f{ 7.f, 8.f, 9.f },
+      Vec2f{ 1.f, 1.f },
+      Vec3f{ 0.f, 0.f, 1.f }
+    }
+  };
+  mesh.tri_indices = vector<uint32_t>{ 0, 1, 2, 2, 1, 0 };
 
-  // Act.
-  Write(
-    ss, 
-    make_position_channel(
-      mesh.position_components, mesh.position_components_per_vertex,
-      mesh.position_indices, mesh.position_indices_per_face));
+  SECTION("positions")
+  {
+    // Arrange.
+    const string expected_string =
+      "# Written by https://github.com/thinks/obj-io\n"
+      "v 1 2 3\n"
+      "v 4 5 6\n"
+      "v 7 8 9\n"
+      "f 1 2 3\n"
+      "f 3 2 1\n";
 
-  // Assert.
-  EXPECT_STREQ(expected_string.c_str(), ss.str().c_str());
-}
-
-TEST(WriteTest, PositionsAndTexCoords)
-{
-  // Arrange.
-  const string expected_string =
-    "# Generated by https://github.com/thinks/obj-io\n"
-    "# Vertex count: 8\n"
-    "# Face count: 12\n"
-    "v 1 1 -1\n"
-    "v 1 -1 1\n"
-    "v 1 -1 -1\n"
-    "v 1 1 1\n"
-    "v -1 -1 -1\n"
-    "v -1 1 -1\n"
-    "v -1 1 1\n"
-    "v -1 -1 1\n"
-    "vt 0 0\n"
-    "vt 1 0\n"
-    "vt 0 1\n"
-    "vt 1 1\n"
-    "f 1/1 2/2 3/3\n"
-    "f 2/2 1/1 4/4\n"
-    "f 7/1 5/2 8/3\n"
-    "f 5/2 7/1 6/4\n"
-    "f 7/1 1/2 6/3\n"
-    "f 1/2 7/1 4/4\n"
-    "f 2/1 5/2 3/3\n"
-    "f 5/2 2/1 8/4\n"
-    "f 2/1 7/2 8/3\n"
-    "f 7/2 2/1 4/4\n"
-    "f 1/1 5/2 6/3\n"
-    "f 5/2 1/1 3/4\n";
-  const auto mesh = CubeMesh();
-  auto ss = stringstream();
-
-  // Act.
-  Write(
-    ss,
-    make_position_channel(
-      mesh.position_components, mesh.position_components_per_vertex,
-      mesh.position_indices, mesh.position_indices_per_face),
-    make_tex_coord_channel(
-      mesh.tex_coord_components, mesh.tex_coord_components_per_vertex,
-      mesh.tex_coord_indices, mesh.position_indices_per_face));
-
-  // Assert.
-  EXPECT_STREQ(expected_string.c_str(), ss.str().c_str());
-}
-
-TEST(WriteTest, PositionsAndNormals)
-{
-  // Arrange.
-  const string expected_string =
-    "# Generated by https://github.com/thinks/obj-io\n"
-    "# Vertex count: 8\n"
-    "# Face count: 12\n"
-    "v 1 1 -1\n"
-    "v 1 -1 1\n"
-    "v 1 -1 -1\n"
-    "v 1 1 1\n"
-    "v -1 -1 -1\n"
-    "v -1 1 -1\n"
-    "v -1 1 1\n"
-    "v -1 -1 1\n"
-    "vn 1 0 0\n"
-    "vn -1 0 0\n"
-    "vn 0 1 0\n"
-    "vn 0 -1 0\n"
-    "vn 0 0 1\n"
-    "vn 0 0 -1\n"
-    "f 1//1 2//1 3//1\n"
-    "f 2//1 1//1 4//1\n"
-    "f 7//2 5//2 8//2\n"
-    "f 5//2 7//2 6//2\n"
-    "f 7//3 1//3 6//3\n"
-    "f 1//3 7//3 4//3\n"
-    "f 2//4 5//4 3//4\n"
-    "f 5//4 2//4 8//4\n"
-    "f 2//5 7//5 8//5\n"
-    "f 7//5 2//5 4//5\n"
-    "f 1//6 5//6 6//6\n"
-    "f 5//6 1//6 3//6\n";
-  const auto mesh = CubeMesh();
-  auto ss = stringstream();
-
-  // Act.
-  Write(
-    ss,
-    make_position_channel(
-      mesh.position_components, mesh.position_components_per_vertex,
-      mesh.position_indices, mesh.position_indices_per_face),
-    make_normal_channel(
-      mesh.normal_components, 3,
-      mesh.normal_indices, mesh.normal_indices_per_face));
-
-  // Assert.
-  EXPECT_STREQ(expected_string.c_str(), ss.str().c_str());
-}
-
-TEST(WriteTest, PositionsAndTexCoordsAndNormals)
-{
-  // Arrange.
-  const string expected_string =
-    "# Generated by https://github.com/thinks/obj-io\n"
-    "# Vertex count: 8\n"
-    "# Face count: 12\n"
-    "v 1 1 -1\n"
-    "v 1 -1 1\n"
-    "v 1 -1 -1\n"
-    "v 1 1 1\n"
-    "v -1 -1 -1\n"
-    "v -1 1 -1\n"
-    "v -1 1 1\n"
-    "v -1 -1 1\n"
-    "vt 0 0\n"
-    "vt 1 0\n"
-    "vt 0 1\n"
-    "vt 1 1\n"
-    "vn 1 0 0\n"
-    "vn -1 0 0\n"
-    "vn 0 1 0\n"
-    "vn 0 -1 0\n"
-    "vn 0 0 1\n"
-    "vn 0 0 -1\n"
-    "f 1/1/1 2/2/1 3/3/1\n"
-    "f 2/2/1 1/1/1 4/4/1\n"
-    "f 7/1/2 5/2/2 8/3/2\n"
-    "f 5/2/2 7/1/2 6/4/2\n"
-    "f 7/1/3 1/2/3 6/3/3\n"
-    "f 1/2/3 7/1/3 4/4/3\n"
-    "f 2/1/4 5/2/4 3/3/4\n"
-    "f 5/2/4 2/1/4 8/4/4\n"
-    "f 2/1/5 7/2/5 8/3/5\n"
-    "f 7/2/5 2/1/5 4/4/5\n"
-    "f 1/1/6 5/2/6 6/3/6\n"
-    "f 5/2/6 1/1/6 3/4/6\n";
-  const auto mesh = CubeMesh();
-  auto ss = stringstream();
-
-  // Act.
-  Write(
-    ss,
-    make_position_channel(
-      mesh.position_components, mesh.position_components_per_vertex,
-      mesh.position_indices, mesh.position_indices_per_face),
-    make_tex_coord_channel(
-      mesh.tex_coord_components, mesh.tex_coord_components_per_vertex,
-      mesh.tex_coord_indices, mesh.position_indices_per_face),
-    make_normal_channel(
-      mesh.normal_components, 3,
-      mesh.normal_indices, mesh.normal_indices_per_face));
-
-  // Assert.
-  EXPECT_STREQ(expected_string.c_str(), ss.str().c_str());
-}
-
-TEST(WriteTest, ThrowIfIndicesPerFaceNotEqualForAllChannels_TexCoords)
-{
-  try {
-    auto ss = stringstream();
-    Write(
-      ss,
-      make_position_channel(
-        vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
-        vector<uint32_t>{ 0, 0, 0}, 3),
-      make_tex_coord_channel(
-        vector<float>{ 1.0f, 1.0f }, 2,
-        vector<uint32_t>{ 0, 0, 0, 0}, 4));
-    FAIL() << "exception not thrown";
+    // Act & Assert.
+    const auto write_tex = false;
+    const auto write_nml = false;
+    REQUIRE(expected_string == WriteMesh(mesh, write_tex, write_nml));
   }
-  catch (invalid_argument& ex) {
-    auto ss = stringstream();
-    ss << "indices per face must be equal for all channels: "
-      << "positions (" << 3 << "), tex_coords (" << 4 << ")";
-    EXPECT_STREQ(ss.str().c_str(), ex.what());
+
+  SECTION("positions and tex coords")
+  {
+    // Arrange.
+    const string expected_string =
+      "# Written by https://github.com/thinks/obj-io\n"
+      "v 1 2 3\n"
+      "v 4 5 6\n"
+      "v 7 8 9\n"
+      "vt 0 0\n"
+      "vt 0 1\n"
+      "vt 1 1\n"
+      "f 1 2 3\n"
+      "f 3 2 1\n";
+
+    // Act & Assert.
+    const auto write_tex = true;
+    const auto write_nml = false;
+    REQUIRE(expected_string == WriteMesh(mesh, write_tex, write_nml));
   }
-  catch (...) {
-    FAIL() << "incorrect exception";
+
+  SECTION("positions and normals")
+  {
+    // Arrange.
+    const string expected_string =
+      "# Written by https://github.com/thinks/obj-io\n"
+      "v 1 2 3\n"
+      "v 4 5 6\n"
+      "v 7 8 9\n"
+      "vn 1 0 0\n"
+      "vn 0 1 0\n"
+      "vn 0 0 1\n"
+      "f 1 2 3\n"
+      "f 3 2 1\n";
+
+    // Act & Assert.
+    const auto write_tex = false;
+    const auto write_nml = true;
+    REQUIRE(expected_string == WriteMesh(mesh, write_tex, write_nml));
+  }
+
+  SECTION("positions and tex coords and normals") 
+  {
+    // Arrange.
+    const string expected_string =
+      "# Written by https://github.com/thinks/obj-io\n"
+      "v 1 2 3\n"
+      "v 4 5 6\n"
+      "v 7 8 9\n"
+      "vt 0 0\n"
+      "vt 0 1\n"
+      "vt 1 1\n"
+      "vn 1 0 0\n"
+      "vn 0 1 0\n"
+      "vn 0 0 1\n"
+      "f 1 2 3\n"
+      "f 3 2 1\n";
+
+    // Act & Assert.
+    const auto write_tex = true;
+    const auto write_nml = true;
+    REQUIRE(expected_string == WriteMesh(mesh, write_tex, write_nml));
   }
 }
 
-TEST(WriteTest, ThrowIfIndicesPerFaceNotEqualForAllChannels_Normals)
+TEST_CASE("write indexed", "[container]")
 {
-  try {
-    auto ss = stringstream();
-    Write(
-      ss,
-      make_position_channel(
-        vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
-        vector<uint32_t>{ 0, 0, 0}, 3),
-      make_normal_channel(
-        vector<float>{ 1.0f, 1.0f, 1.0f }, 3,
-        vector<uint32_t>{ 0, 0, 0, 0}, 4));
-    FAIL() << "exception not thrown";
-  }
-  catch (invalid_argument& ex) {
-    auto ss = stringstream();
-    ss << "indices per face must be equal for all channels: "
-      << "positions (" << 3 << "), normals (" << 4 << ")";
-    EXPECT_STREQ(ss.str().c_str(), ex.what());
-  }
-  catch (...) {
-    FAIL() << "incorrect exception";
-  }
-}
+  auto imesh = IndexedMesh{};
+  imesh.positions = vector<Vec3f>{
+    Vec3f{1.f, 2.f, 3.f},
+    Vec3f{4.f, 5.f, 6.f},
+    Vec3f{7.f, 8.f, 9.f}
+  };
+  imesh.position_indices = vector<uint32_t>{ 
+    0, 1, 2, 
+    2, 1, 0 
+  };
+  imesh.tex_coords = vector<Vec2f>{ 
+    Vec2f{0.f, 0.f}, 
+    Vec2f{1.f, 1.f} 
+  };
+  imesh.tex_coord_indices = vector<uint32_t>{ 
+    0, 0, 0, 
+    1, 1, 1 
+  };
+  imesh.normals = vector<Vec3f>{ 
+    Vec3f{0.f, 0.f, -1.f}, 
+    Vec3f{0.f, 0.f, 1.f} 
+  };
+  imesh.normal_indices = vector<uint32_t>{ 
+    1, 1, 1, 
+    0, 0, 0 
+  };
 
-TEST(WriteTest, ThrowIfIndicesPerFaceNotEqualForAllChannels_TexCoordsAndNormals)
-{
-  try {
-    auto ss = stringstream();
-    Write(
-      ss,
-      make_position_channel(
-        vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
-        vector<uint32_t>{ 0, 0, 0}, 3),
-      make_tex_coord_channel(
-        vector<float>{ 1.0f, 1.0f }, 2,
-        vector<uint32_t>{ 0, 0, 0, 0, 0}, 5),
-      make_normal_channel(
-        vector<float>{ 1.0f, 1.0f, 1.0f }, 3,
-        vector<uint32_t>{ 0, 0, 0, 0}, 4));
-    FAIL() << "exception not thrown";
-  }
-  catch (invalid_argument& ex) {
-    auto ss = stringstream();
-    ss << "indices per face must be equal for all channels: "
-      << "positions (" << 3 << "), tex_coords (" << 5 
-      << "), normals (" << 4 << ")";
-    EXPECT_STREQ(ss.str().c_str(), ex.what());
-  }
-  catch (...) {
-    FAIL() << "incorrect exception";
-  }
-}
+  SECTION("positions")
+  {
+    // Arrange.
+    const string expected_string =
+      "# Written by https://github.com/thinks/obj-io\n"
+      "v 1 2 3\n"
+      "v 4 5 6\n"
+      "v 7 8 9\n"
+      "f 1 2 3\n"
+      "f 3 2 1\n";
 
-TEST(WriteTest, ThrowIfIndexCountNotEqualForAllChannels_TexCoords)
-{
-  try {
-    auto ss = stringstream();
-    Write(
-      ss,
-      make_position_channel(
-        vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
-        vector<uint32_t>{ 0, 0, 0}, 3),
-      make_tex_coord_channel(
-        vector<float>{ 1.0f, 1.0f }, 2,
-        vector<uint32_t>{ 0, 0, 0, 0, 0, 0 }, 3));
-    FAIL() << "exception not thrown";
+    // Act & Assert.
+    const auto write_tex = false;
+    const auto write_nml = false;
+    REQUIRE(expected_string == WriteIndexedMesh(imesh, write_tex, write_nml));
   }
-  catch (invalid_argument& ex) {
-    auto ss = stringstream();
-    ss << "index count must be equal for all channels: "
-      << "positions (" << 3 << "), tex_coords (" << 6 << ")";
-    EXPECT_STREQ(ss.str().c_str(), ex.what());
-  }
-  catch (...) {
-    FAIL() << "incorrect exception";
-  }
-}
 
-TEST(WriteTest, ThrowIfIndexCountNotEqualForAllChannels_Normals)
-{
-  try {
-    auto ss = stringstream();
-    Write(
-      ss,
-      make_position_channel(
-        vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
-        vector<uint32_t>{ 0, 0, 0}, 3),
-      make_normal_channel(
-        vector<float>{ 1.0f, 1.0f, 1.0f }, 3,
-        vector<uint32_t>{ 0, 0, 0, 0, 0, 0 }, 3));
-    FAIL() << "exception not thrown";
-  }
-  catch (invalid_argument& ex) {
-    auto ss = stringstream();
-    ss << "index count must be equal for all channels: "
-      << "positions (" << 3 << "), normals (" << 6 << ")";
-    EXPECT_STREQ(ss.str().c_str(), ex.what());
-  }
-  catch (...) {
-    FAIL() << "incorrect exception";
-  }
-}
+  SECTION("positions and indexed tex coords")
+  {
+    // Arrange.
+    const string expected_string =
+      "# Written by https://github.com/thinks/obj-io\n"
+      "v 1 2 3\n"
+      "v 4 5 6\n"
+      "v 7 8 9\n"
+      "vt 0 0\n"
+      "vt 1 1\n"
+      "f 1/1 2/1 3/1\n"
+      "f 3/2 2/2 1/2\n";
 
-TEST(WriteTest, ThrowIfIndexCountNotEqualForAllChannels_TexCoordsAndNormals)
-{
-  try {
-    auto ss = stringstream();
-    Write(
-      ss,
-      make_position_channel(
-        vector<float>{ 1.0f, 2.0f, 3.0f }, 3,
-        vector<uint32_t>{ 0, 0, 0}, 3),
-      make_tex_coord_channel(
-        vector<float>{ 1.0f, 1.0f }, 2,
-        vector<uint32_t>{ 0, 0, 0, 0, 0, 0 }, 3),
-      make_normal_channel(
-        vector<float>{ 1.0f, 1.0f, 1.0f }, 3,
-        vector<uint32_t>{ 0, 0, 0, 0, 0, 0 }, 3));
-    FAIL() << "exception not thrown";
+    // Act & Assert.
+    const auto write_tex = true;
+    const auto write_nml = false;
+    REQUIRE(expected_string == WriteIndexedMesh(imesh, write_tex, write_nml));
   }
-  catch (invalid_argument& ex) {
-    auto ss = stringstream();
-    ss << "index count must be equal for all channels: "
-      << "positions (" << 3 << "), tex_coords (" << 6
-      << "), normals (" << 6 << ")";
-    EXPECT_STREQ(ss.str().c_str(), ex.what());
+
+  SECTION("positions and indexed normals")
+  {
+    // Arrange.
+    const string expected_string =
+      "# Written by https://github.com/thinks/obj-io\n"
+      "v 1 2 3\n"
+      "v 4 5 6\n"
+      "v 7 8 9\n"
+      "vn 0 0 -1\n"
+      "vn 0 0 1\n"
+      "f 1//2 2//2 3//2\n"
+      "f 3//1 2//1 1//1\n";
+
+    // Act & Assert.
+    const auto write_tex = false;
+    const auto write_nml = true;
+    REQUIRE(expected_string == WriteIndexedMesh(imesh, write_tex, write_nml));
   }
-  catch (...) {
-    FAIL() << "incorrect exception";
+
+  SECTION("positions and indexed tex coords and indexed normals")
+  {
+    // Arrange.
+    const string expected_string =
+      "# Written by https://github.com/thinks/obj-io\n"
+      "v 1 2 3\n"
+      "v 4 5 6\n"
+      "v 7 8 9\n"
+      "vt 0 0\n"
+      "vt 1 1\n"
+      "vn 0 0 -1\n"
+      "vn 0 0 1\n"
+      "f 1/1/2 2/1/2 3/1/2\n"
+      "f 3/2/1 2/2/1 1/2/1\n";
+
+    // Act & Assert.
+    const auto write_tex = true;
+    const auto write_nml = true;
+    REQUIRE(expected_string == WriteIndexedMesh(imesh, write_tex, write_nml));
   }
 }

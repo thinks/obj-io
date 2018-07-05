@@ -18,38 +18,18 @@
 #    endif()
 #endif()
 
-# Prevent overriding the parent project's compiler/linker
-# settings on Windows.
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-
-# Add googletest directly to our build. This defines
-# the gtest and gtest_main targets.
-#add_subdirectory(${CMAKE_BINARY_DIR}/googletest-src
-#                 ${CMAKE_BINARY_DIR}/googletest-build
-#                 EXCLUDE_FROM_ALL)
-
-add_subdirectory(googletest)
-
 set(tests
-	#common_channel_test.cc
-	#normal_channel_test.cc
-	write_interleaved_test.cc
-	#position_channel_test.cc
-	#read_test.cc
-	#tex_coord_channel_test.cc
-	#utils.cc
-	#write_test.cc
+	write_test.cc
+	read_test.cc
+	round_trip_test.cc
 )
 
 add_executable(thinks_obj_io_test
 	main.cc
 	${tests})
+target_include_directories(thinks_obj_io_test SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 #target_include_directories(thinks_obj_io_test SYSTEM PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-#target_include_directories(thinks_obj_io_test
-#	PRIVATE "include")
-target_link_libraries(thinks_obj_io_test PUBLIC 
-	thinks_obj_io
-	gtest_main)
+target_link_libraries(thinks_obj_io_test PUBLIC thinks_obj_io)
 set_target_properties(thinks_obj_io_test PROPERTIES CXX_STANDARD 11)
 
 add_test(NAME test COMMAND thinks_obj_io_test)

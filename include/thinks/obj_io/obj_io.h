@@ -5,1179 +5,881 @@
 #ifndef THINKS_OBJ_IO_OBJ_IO_H_INCLUDED
 #define THINKS_OBJ_IO_OBJ_IO_H_INCLUDED
 
-#include <algorithm>
 #include <array>
-#include <cassert>
-#include <cstring>
 #include <exception>
-#include <memory>
-#include <iterator>
+#include <functional>
 #include <iostream>
-#include <string>
+#include <limits>
+#include <sstream>
 #include <type_traits>
+#include <utility>
 #include <vector>
+
 
 namespace thinks {
 namespace obj_io {
-namespace detail {
 
-template<typename Iter>
-uint32_t Count(const Iter iter_begin, const Iter iter_end)
-{
-  return static_cast<uint32_t>(std::distance(iter_begin, iter_end));
-}
-
-template<typename Iter>
-bool IsEmpty(const Iter iter_begin, const Iter iter_end)
-{
-  return iter_begin == iter_end;
-}
-
-inline
-uint32_t IsMultipleOf(const uint32_t count, const uint32_t denominator)
-{
-  if (denominator == 0) {
-    throw std::invalid_argument("denominator cannot be zero");
-  }
-  return count != 0 && count % denominator == 0;
-}
-
-
-template<typename IterType>
-typename std::iterator_traits<IterType>::value_type MinElement(
-  const IterType iter_begin,
-  const IterType iter_end)
-{
-  if (IsEmpty(iter_begin, iter_end)) {
-    throw std::invalid_argument("cannot find min element of empty range");
-  }
-  return *std::min_element(iter_begin, iter_end);
-}
-
-template<typename IterType>
-typename std::iterator_traits<IterType>::value_type MaxElement(
-  const IterType iter_begin,
-  const IterType iter_end)
-{
-  if (IsEmpty(iter_begin, iter_end)) {
-    throw std::invalid_argument("cannot find max element of empty range");
-  }
-  return *std::max_element(iter_begin, iter_end);
-}
-
-
-template<typename ElementIter>
-class Channel
+template<typename ArithT, std::size_t N>
+class Position
 {
 public:
-  Channel(
-    const ElementIter elements_begin,
-    const ElementIter elements_end,
-    const uint32_t elements_per_object)
-    : elements_begin(elements_begin)
-    , elements_end(elements_end)
-    , elements_per_object(elements_per_object)
+  static_assert(
+    std::is_arithmetic<ArithT>::value,
+    "position values must be arithmetic");
+  static_assert(
+    N == 3 || N == 4,
+    "position value count must be 3 or 4");
+
+  constexpr Position() noexcept = default;
+
+  constexpr Position(const ArithT x, const ArithT y, const ArithT z) noexcept
+    : values{ x, y, z }
   {
-    ThrowIfElementsPerObjectIsZero_();
-    ThrowIfElementCountNotMultipleOfElementsPerObject_();
-    // Note that this implies that element count cannot be zero.
+    static_assert(N == 3, "position value count must be 3");
   }
 
-  const ElementIter elements_begin;
-  const ElementIter elements_end;
-  const uint32_t elements_per_object;
-
-private:
-  void ThrowIfElementsPerObjectIsZero_()
+  constexpr Position(
+    const ArithT x, const ArithT y, const ArithT z, const ArithT w) noexcept
+    : values{ x, y, z, w }
   {
-    if (elements_per_object == 0) {
-      throw std::invalid_argument("elements per object cannot be zero");
-    }
+    static_assert(N == 4, "position value count must be 4");
   }
 
-  void ThrowIfElementCountNotMultipleOfElementsPerObject_()
-  {
-    const auto element_count = Count(elements_begin, elements_end);
-    if (!IsMultipleOf(element_count, elements_per_object)) {
-      auto ss = std::ostringstream();
-      ss << "element count (" << element_count
-        << ") must be a multiple of elements per object (" 
-        << elements_per_object << ")";
-      throw std::invalid_argument(ss.str());
-    }
-  }
+  std::array<ArithT, N> values;
 };
 
 
-template<typename ComponentIter>
-class ValueChannel
+template<typename FloatT, std::size_t N>
+class TexCoord
 {
 public:
-  ValueChannel(
-    const ComponentIter components_begin,
-    const ComponentIter components_end,
-    const uint32_t components_per_value)
-    : channel_(components_begin, components_end, components_per_value)
+  static_assert(
+    std::is_floating_point<FloatT>::value,
+    "texture coordinate values must be floating point");
+  static_assert(
+    N == 2 || N == 3,
+    "texture coordinate value count must be 2 or 3");
+
+  constexpr TexCoord() noexcept = default;
+
+  constexpr TexCoord(const FloatT u, const FloatT v) noexcept
+    : values{ u, v }
   {
-    typedef typename std::iterator_traits<ComponentIter>::value_type ComponentType;
-    static_assert(std::is_arithmetic<ComponentType>::value,
-      "components must be arithmetic");
+    static_assert(N == 2, "texture coordinate value count must be 2");
   }
 
-  ComponentIter components_begin() const { return channel_.elements_begin; }
-  ComponentIter components_end() const { return channel_.elements_end; }
-  uint32_t components_per_value() const { return channel_.elements_per_object; }
+  constexpr TexCoord(const FloatT u, const FloatT v, const FloatT w) noexcept
+    : values{ u, v, w }
+  {
+    static_assert(N == 3, "texture coordinate value count must be 3");
+  }
 
-private:
-  const detail::Channel<ComponentIter> channel_;
+  std::array<FloatT, N> values;
 };
 
 
-template<typename IndexIter>
-struct FaceChannel
+template<typename ArithT>
+class Normal
 {
 public:
-  FaceChannel(
-    const IndexIter indices_begin,
-    const IndexIter indices_end,
-    const uint32_t indices_per_face)
-    : channel_(indices_begin, indices_end, indices_per_face)
-  {
-    typedef typename std::iterator_traits<IndexIter>::value_type IndexType;
-    static_assert(std::is_integral<IndexType>::value,
-      "indices must be integral");
+  static_assert(
+    std::is_arithmetic<ArithT>::value,
+    "normal values must be arithmetic");
 
-    ThrowIfIndicesPerFaceLessThanThree_();
+  constexpr Normal() noexcept = default;
+
+  constexpr Normal(const ArithT x, const ArithT y, const ArithT z) noexcept
+    : values{ x, y, z }
+  {
   }
 
-  IndexIter indices_begin() const { return channel_.elements_begin; }
-  IndexIter indices_end() const { return channel_.elements_end; }
-  uint32_t indices_per_face() const { return channel_.elements_per_object; }
-
-private:
-  const detail::Channel<IndexIter> channel_;
-
-  void ThrowIfIndicesPerFaceLessThanThree_()
-  {
-    if (!(indices_per_face() >= 3)) {
-      auto ss = std::ostringstream();
-      ss << "indices per face (" << indices_per_face()
-        << ") cannot be less than 3";
-      throw std::invalid_argument(ss.str());
-    }
-  }
+  std::array<ArithT, 3> values;
 };
 
 
-template<typename ComponentIter>
-uint32_t ValueCount(const ValueChannel<ComponentIter>& value_channel)
-{
-  const auto component_count = Count(
-    value_channel.components_begin(),
-    value_channel.components_end());
-  return component_count / value_channel.components_per_value();
-}
-
-template<typename IndexIter>
-uint32_t FaceCount(const FaceChannel<IndexIter>& face_channel)
-{
-  const auto index_count = Count(
-    face_channel.indices_begin,
-    face_channel.indices_end);
-  return index_count / face_channel.indices_per_face;
-}
-
-
-template<typename ComponentIter, typename IndexIter>
-class IndexedValueChannel
+template<typename IntT>
+class Index
 {
 public:
-  IndexedValueChannel(
-    const ComponentIter components_begin,
-    const ComponentIter components_end,
-    const uint32_t components_per_value,
-    const IndexIter indices_begin,
-    const IndexIter indices_end,
-    const uint32_t indices_per_face)
-    : value_channel_(components_begin, components_end, components_per_value)
-    , face_channel_(indices_begin, indices_end, indices_per_face)
+  static_assert(std::is_integral<IntT>::value, "index must be integral");
+
+  constexpr Index() noexcept = default;
+
+  constexpr explicit Index(const IntT idx) noexcept
+    : value(idx)
   {
-    ThrowIfInvalidIndexRange_();
   }
 
-  ComponentIter components_begin() const { return value_channel_.components_begin(); }
-  ComponentIter components_end() const { return value_channel_.components_end(); }
-  uint32_t components_per_value() const { return value_channel_.components_per_value(); }
-
-  IndexIter indices_begin() const { return face_channel_.indices_begin(); }
-  IndexIter indices_end() const { return face_channel_.indices_end(); }
-  uint32_t indices_per_face() const { return face_channel_.indices_per_face(); }
-
-private:
-  const ValueChannel<ComponentIter> value_channel_;
-  const FaceChannel<IndexIter> face_channel_;
-
-  void ThrowIfInvalidIndexRange_()
-  {
-    // TODO: Could check that all indices in range exist?!
-    //       If they don't it means that there are unreferences values.
-    const auto min_index = detail::MinElement(
-      face_channel_.indices_begin(), face_channel_.indices_end());
-    if (min_index != 0) {
-      auto ss = std::ostringstream();
-      ss << "min index (" << min_index << ") must be zero";
-      throw std::invalid_argument(ss.str());
-    }
-
-    const auto value_count = detail::ValueCount(value_channel_);
-    const auto max_index = detail::MaxElement(
-      face_channel_.indices_begin(), face_channel_.indices_end());
-    if (!(max_index < value_count)) {
-      auto ss = std::ostringstream();
-      ss << "max index (" << max_index
-        << ") must be less than value count ("
-        << value_count << ")";
-      throw std::invalid_argument(ss.str());
-    }
-  }
+  IntT value;
 };
 
-} // namespace detail
 
-
-template<typename ComponentIter, typename IndexIter>
-class PositionChannel
+template<typename IntT>
+class IndexGroup
 {
 public:
-  PositionChannel(
-    const ComponentIter components_begin,
-    const ComponentIter components_end,
-    const uint32_t components_per_value,
-    const IndexIter indices_begin,
-    const IndexIter indices_end,
-    const uint32_t indices_per_face)
-    : indexed_value_channel_(
-        components_begin, components_end, components_per_value,
-        indices_begin, indices_end, indices_per_face)
+  constexpr IndexGroup() noexcept
+    : position_index{}
+    , tex_coord_index(Index<IntT>{}, false)
+    , normal_index(Index<IntT>{}, false)
   {
-    ThrowIfComponentsPerValueIsNotThreeOrFour_();
   }
 
-  ComponentIter components_begin() const { return indexed_value_channel_.components_begin(); }
-  ComponentIter components_end() const { return indexed_value_channel_.components_end(); }
-  uint32_t components_per_value() const { return indexed_value_channel_.components_per_value(); }
-
-  IndexIter indices_begin() const { return indexed_value_channel_.indices_begin(); }
-  IndexIter indices_end() const { return indexed_value_channel_.indices_end(); }
-  uint32_t indices_per_face() const { return indexed_value_channel_.indices_per_face(); }
-
-private:
-  const detail::IndexedValueChannel<ComponentIter, IndexIter> 
-    indexed_value_channel_;
-
-  void ThrowIfComponentsPerValueIsNotThreeOrFour_()
+  constexpr IndexGroup(const IntT pos_idx) noexcept
+    : position_index(pos_idx)
+    , tex_coord_index(Index<IntT>{}, false)
+    , normal_index(Index<IntT>{}, false)
   {
-    if (!(components_per_value() == 3 || components_per_value() == 4)) {
-      auto ss = std::ostringstream();
-      ss << "position components per value ("
-        << components_per_value() << ") must be 3 or 4";
-      throw std::invalid_argument(ss.str());
-    }
   }
+
+  constexpr IndexGroup(
+    const IntT pos_idx,
+    const IntT tex_idx,
+    const IntT nml_idx) noexcept
+    : position_index(pos_idx)
+    , tex_coord_index(tex_idx, true)
+    , normal_index(nml_idx, true)
+  {
+  }
+
+  constexpr IndexGroup(
+    const Index<IntT> position_index,
+    const std::pair<Index<IntT>, bool>& tex_coord_index,
+    const std::pair<Index<IntT>, bool>& normal_index) noexcept
+    : position_index(position_index)
+    , tex_coord_index(tex_coord_index)
+    , normal_index(normal_index)
+  {
+  }
+
+  // Note: Optional would have been nice instead of bool-pairs here.
+  Index<IntT> position_index;
+  std::pair<Index<IntT>, bool> tex_coord_index;
+  std::pair<Index<IntT>, bool> normal_index;
 };
 
-/// Named constructor to help with template type deduction.
-template<typename ComponentIter, typename IndexIter>
-PositionChannel<ComponentIter, IndexIter> make_position_channel(
-  const ComponentIter components_begin,
-  const ComponentIter components_end,
-  const uint32_t components_per_value,
-  const IndexIter indices_begin,
-  const IndexIter indices_end,
-  const uint32_t indices_per_face)
-{
-  return PositionChannel<ComponentIter, IndexIter>(
-    components_begin, components_end, components_per_value,
-    indices_begin, indices_end, indices_per_face);
-}
 
-template<typename ComponentType, typename IndexType>
-PositionChannel<
-  typename std::vector<ComponentType>::const_iterator, 
-  typename std::vector<IndexType>::const_iterator> 
-make_position_channel(
-  const std::vector<ComponentType>& components,
-  const uint32_t components_per_value,
-  const std::vector<IndexType>& indices,
-  const uint32_t indices_per_face)
-{
-  return make_position_channel(
-    std::begin(components), std::end(components), components_per_value,
-    std::begin(indices), std::end(indices), indices_per_face);
-}
-
-
-template<typename ComponentIter, typename IndexIter>
-class TexCoordChannel
+template<typename IndexT>
+class TriangleFace
 {
 public:
-  TexCoordChannel(
-    const ComponentIter components_begin,
-    const ComponentIter components_end,
-    const uint32_t components_per_value,
-    const IndexIter indices_begin,
-    const IndexIter indices_end,
-    const uint32_t indices_per_face)
-    : indexed_value_channel_(
-        components_begin, components_end, components_per_value,
-        indices_begin, indices_end, indices_per_face)
-  {
-    typedef typename std::iterator_traits<ComponentIter>::value_type ComponentType;
-    static_assert(std::is_floating_point<ComponentType>::value,
-      "tex coord components must be floating point");
+  constexpr TriangleFace() noexcept = default;
 
-    ThrowIfComponentsPerValueIsNotTwoOrThree_();
-    ThrowIfComponentsNotNormalized_();
+  constexpr TriangleFace(const IndexT i0, const IndexT i1, const IndexT i2) noexcept
+    : values{ i0, i1, i2 }
+  {
   }
 
-  ComponentIter components_begin() const { return indexed_value_channel_.components_begin(); }
-  ComponentIter components_end() const { return indexed_value_channel_.components_end(); }
-  uint32_t components_per_value() const { return indexed_value_channel_.components_per_value(); }
-
-  IndexIter indices_begin() const { return indexed_value_channel_.indices_begin(); }
-  IndexIter indices_end() const { return indexed_value_channel_.indices_end(); }
-  uint32_t indices_per_face() const { return indexed_value_channel_.indices_per_face(); }
-
-private:
-  const detail::IndexedValueChannel<ComponentIter, IndexIter>
-    indexed_value_channel_;
-
-  void ThrowIfComponentsPerValueIsNotTwoOrThree_()
-  {
-    if (!(components_per_value() == 2 || components_per_value() == 3)) {
-      auto ss = std::ostringstream();
-      ss << "tex coord components per value (" 
-        << components_per_value() << ") must be 2 or 3";
-      throw std::invalid_argument(ss.str());
-    }
-  }
-
-  void ThrowIfComponentsNotNormalized_()
-  {
-    typedef typename std::iterator_traits<ComponentIter>::value_type ComponentType;
-    std::for_each(components_begin(), components_end(),
-      [](const auto e) {
-        if (!(ComponentType(0) <= e && e <= ComponentType(1))) {
-          auto ss = std::ostringstream();
-          ss << "tex coord elements must be in range [0, 1], found " << e;
-          throw std::invalid_argument(ss.str());
-        }
-      });
-  }
+  std::array<IndexT, 3> values;
 };
 
-/// Named constructor to help with template type deduction.
-template<typename ComponentIter, typename IndexIter>
-TexCoordChannel<ComponentIter, IndexIter> make_tex_coord_channel(
-  const ComponentIter components_begin,
-  const ComponentIter components_end,
-  const uint32_t components_per_value,
-  const IndexIter indices_begin,
-  const IndexIter indices_end,
-  const uint32_t indices_per_face)
-{
-  return TexCoordChannel<ComponentIter, IndexIter>(
-    components_begin, components_end, components_per_value,
-    indices_begin, indices_end, indices_per_face);
-}
-
-/// Named constructor to help with template type deduction.
-template<typename ComponentType, typename IndexType>
-TexCoordChannel<
-  typename std::vector<ComponentType>::const_iterator,
-  typename std::vector<IndexType>::const_iterator>
-make_tex_coord_channel(
-    const std::vector<ComponentType>& components,
-    const uint32_t components_per_value,
-    const std::vector<IndexType>& indices,
-    const uint32_t indices_per_face)
-{
-  return make_tex_coord_channel(
-    std::begin(components), std::end(components), components_per_value,
-    std::begin(indices), std::end(indices), indices_per_face);
-}
-
-
-template<typename ComponentIter, typename IndexIter>
-class NormalChannel
+template<typename IndexT>
+class QuadFace
 {
 public:
-  NormalChannel(
-    const ComponentIter components_begin,
-    const ComponentIter components_end,
-    const uint32_t components_per_value,
-    const IndexIter indices_begin,
-    const IndexIter indices_end,
-    const uint32_t indices_per_face)
-    : indexed_value_channel_(
-        components_begin, components_end, components_per_value,
-        indices_begin, indices_end, indices_per_face)
-  {
-    typedef typename std::iterator_traits<ComponentIter>::value_type ComponentType;
-    static_assert(std::is_floating_point<ComponentType>::value,
-      "normal components must be floating point");
+  constexpr QuadFace() noexcept = default;
 
-    ThrowIfComponentsPerValueIsNotThree_();
+  constexpr QuadFace(const IndexT i0, const IndexT i1, const IndexT i2, const IndexT i3) noexcept
+    : values{ i0, i1, i2, i3 }
+  {
   }
 
-  ComponentIter components_begin() const { return indexed_value_channel_.components_begin(); }
-  ComponentIter components_end() const { return indexed_value_channel_.components_end(); }
-  uint32_t components_per_value() const { return indexed_value_channel_.components_per_value(); }
-
-  IndexIter indices_begin() const { return indexed_value_channel_.indices_begin(); }
-  IndexIter indices_end() const { return indexed_value_channel_.indices_end(); }
-  uint32_t indices_per_face() const { return indexed_value_channel_.indices_per_face(); }
-
-private:
-  const detail::IndexedValueChannel<ComponentIter, IndexIter>
-    indexed_value_channel_;
-
-  void ThrowIfComponentsPerValueIsNotThree_()
-  {
-    if (components_per_value() != 3) {
-      auto ss = std::ostringstream();
-      ss << "normal components per value ("
-        << components_per_value() << ") must be 3";
-      throw std::invalid_argument(ss.str());
-    }
-  }
+  std::array<IndexT, 4> values;
 };
 
-/// Named constructor to help with template type deduction.
-template<typename ComponentIter, typename IndexIter>
-NormalChannel<ComponentIter, IndexIter> make_normal_channel(
-  const ComponentIter components_begin,
-  const ComponentIter components_end,
-  const uint32_t components_per_value,
-  const IndexIter indices_begin,
-  const IndexIter indices_end,
-  const uint32_t indices_per_face)
+template<typename IndexT>
+class PolygonFace
 {
-  return NormalChannel<ComponentIter, IndexIter>(
-    components_begin, components_end, components_per_value,
-    indices_begin, indices_end, indices_per_face);
+public:
+  constexpr PolygonFace() noexcept = default;
+
+  std::vector<IndexT> values;
+};
+
+
+template <typename T>
+class MapResult
+{
+public:
+  constexpr MapResult(const T& value, const bool is_end) noexcept
+    : value(value)
+    , is_end(is_end)
+  {
+  }
+
+  T value;
+  bool is_end;
+};
+
+
+template <typename T>
+MapResult<T> Map(const T& value) noexcept
+{
+  return MapResult<T>(value, false);
 }
 
-/// Named constructor to help with template type deduction.
-template<typename ComponentType, typename IndexType>
-NormalChannel<
-  typename std::vector<ComponentType>::const_iterator,
-  typename std::vector<IndexType>::const_iterator>
-make_normal_channel(
-  const std::vector<ComponentType>& components,
-  const uint32_t components_per_value,
-  const std::vector<IndexType>& indices,
-  const uint32_t indices_per_face)
+template <typename T>
+MapResult<T> End() noexcept
 {
-  return make_normal_channel(
-    std::begin(components), std::end(components), components_per_value,
-    std::begin(indices), std::end(indices), indices_per_face);
+  return MapResult<T>(T{}, true);
 }
 
 
 namespace detail {
 
-template<
-  typename PosIndexType, 
-  typename TexIndexType, 
-  typename NmlIndexType>
-void ThrowIfIndicesPerFaceNotEqualForAllChannels(
-  const PosIndexType pos_indices_per_face,
-  const TexIndexType tex_indices_per_face,
-  const NmlIndexType nml_indices_per_face)
+template<typename T>
+struct IsPositionImpl : std::false_type {};
+
+template<typename T, std::size_t N>
+struct IsPositionImpl<Position<T, N>> : std::true_type {};
+
+template<typename T>
+using IsPosition = IsPositionImpl<typename std::decay<T>::type>;
+
+
+template<typename T>
+struct IsTexCoordImpl : std::false_type {};
+
+template<typename T, std::size_t N>
+struct IsTexCoordImpl<TexCoord<T, N>> : std::true_type {};
+
+template<typename T>
+using IsTexCoord = IsTexCoordImpl<typename std::decay<T>::type>;
+
+
+template<typename T>
+struct IsNormalImpl : std::false_type {};
+
+template<typename T>
+struct IsNormalImpl<Normal<T>> : std::true_type {};
+
+template<typename T>
+using IsNormal = IsNormalImpl<typename std::decay<T>::type>;
+
+
+template<typename T>
+struct IsFaceImpl : std::false_type {};
+
+template<typename IndexT>
+struct IsFaceImpl<TriangleFace<IndexT>> : std::true_type {};
+
+template<typename IndexT>
+struct IsFaceImpl<QuadFace<IndexT>> : std::true_type {}; 
+
+template<typename IndexT>
+struct IsFaceImpl<PolygonFace<IndexT>> : std::true_type {};
+
+template<typename T>
+using IsFace = IsFaceImpl<typename std::decay<T>::type>;
+
+
+// Face traits.
+struct StaticFaceTag {};
+struct DynamicFaceTag {};
+
+template<typename T>
+struct FaceTraitsImpl; // Not implemented!
+
+template<typename IndexT>
+struct FaceTraitsImpl<TriangleFace<IndexT>>
 {
-  const auto invalid_tex =
-    tex_indices_per_face != TexIndexType{ 0 } &&
-    tex_indices_per_face != pos_indices_per_face;
-  const auto invalid_nml =
-    nml_indices_per_face != NmlIndexType{ 0 } &&
-    nml_indices_per_face != pos_indices_per_face;
-  if (invalid_tex || invalid_nml) {
-    auto ss = std::ostringstream();
-    ss << "indices per face must be equal for all channels: "
-      << "positions (" << pos_indices_per_face << ")";
-    if (tex_indices_per_face != TexIndexType{ 0 }) {
-      ss << ", tex_coords (" << tex_indices_per_face << ")";
+  typedef StaticFaceTag FaceCategory;
+};
+
+template<typename IndexT>
+struct FaceTraitsImpl<QuadFace<IndexT>>
+{
+  typedef StaticFaceTag FaceCategory;
+};
+
+template<typename IndexT>
+struct FaceTraitsImpl<PolygonFace<IndexT>>
+{
+  typedef DynamicFaceTag FaceCategory;
+};
+
+template<typename T>
+using FaceTraits = FaceTraitsImpl<typename std::decay<T>::type>;
+
+
+// Tag dispatch for optional vertex attributes, e.g. tex coords and normals.
+struct FuncTag {};
+struct NullFuncTag {};
+
+template<typename T>
+struct FuncTraits
+{
+  typedef FuncTag FuncCategory;
+};
+
+template<>
+struct FuncTraits<std::nullptr_t>
+{
+  typedef NullFuncTag FuncCategory;
+};
+
+
+template<typename FloatT, std::size_t N>
+void ValidateTexCoord(const TexCoord<FloatT, N>& tex_coord)
+{
+  for (const auto v : tex_coord.values) {
+    if (!(FloatT{0} <= v && v <= FloatT{1})) {
+      throw std::runtime_error(
+        "texture coordinate values must be in range [0, 1]");
     }
-    if (nml_indices_per_face != NmlIndexType{ 0 }) {
-      ss << ", normals (" << nml_indices_per_face << ")";
-    }
-    throw std::invalid_argument(ss.str());
   }
 }
 
-inline
-void ThrowIfIndexCountNotEqualForAllChannels(
-  const uint32_t pos_index_count,
-  const uint32_t tex_index_count,
-  const uint32_t nml_index_count)
-{
-  assert(pos_index_count > 0 && 
-    "position index count must be greater than zero");
 
-  // Allow count to be zero for tex coord and normal indices.
-  const auto invalid_tex =
-    tex_index_count != 0 &&
-    tex_index_count != pos_index_count;
-  const auto invalid_nml =
-    nml_index_count != 0 &&
-    nml_index_count != pos_index_count;
-  if (invalid_tex || invalid_nml) {
-    auto ss = std::ostringstream();
-    ss << "index count must be equal for all channels: "
-      << "positions (" << pos_index_count << ")";
-    if (tex_index_count != 0) {
-      ss << ", tex_coords (" << tex_index_count << ")";
-    }
-    if (nml_index_count != 0) {
-      ss << ", normals (" << nml_index_count << ")";
-    }
-    throw std::invalid_argument(ss.str());
+template <typename FaceT>
+void ValidateFace(const FaceT& face, DynamicFaceTag)
+{
+  if (!(face.values.size() >= 3)) {
+    throw std::runtime_error(
+      "face must have at least three indices");
   }
 }
 
-template<typename ChannelType>
-uint32_t ValueCount(const ChannelType& channel)
+template <typename FaceT>
+void ValidateFace(const FaceT& face, StaticFaceTag)
 {
-  assert(channel.components_per_value() != 0 &&
-    "components per value cannot be zero");
-  return Count(channel.components_begin(), channel.components_end()) /
-    channel.components_per_value();
-}
-
-template<typename ChannelType>
-uint32_t FaceCount(const ChannelType& channel)
-{
-  assert(channel.indices_per_face() != 0 && 
-    "indices per face cannot be zero");
-  return Count(channel.indices_begin(), channel.indices_end()) /
-    channel.indices_per_face();
-}
-
-template<typename ComponentIter, typename IndexIter>
-void WriteHeader(
-  std::ostream& os,
-  const PositionChannel<ComponentIter, IndexIter>& position_channel,
-  const std::string& newline)
-{
-  os << "# Generated by https://github.com/thinks/obj-io" << newline
-    << "# Vertex count: " << ValueCount(position_channel) << newline
-    << "# Face count: " << FaceCount(position_channel) << newline;
-}
-
-template<typename ComponentIter>
-void WriteValues(
-  std::ostream& os,
-  const std::string& line_start,
-  const ComponentIter components_begin,
-  const ComponentIter components_end,
-  const uint32_t components_per_value,
-  const std::string& newline)
-{
-  // TODO: no checks?
-
-  // One line per value.
-  auto component_iter = components_begin;
-  while (component_iter != components_end) {
-    os << line_start;
-    for (auto i = uint32_t{ 0 }; i < components_per_value; ++i) {
-      os << *component_iter++ << (i != components_per_value - 1 ? " " : "");
-    }
-    os << newline;
-  }
-}
-
-template<typename PosIndexType, typename TexIndexType, typename NmlIndexType>
-void WriteFaceIndex(
-  std::ostream& os,
-  const PosIndexType pos_index,
-  const TexIndexType* const tex_index,
-  const NmlIndexType* const nml_index)
-{
-  // One-based indices!
-  os << pos_index + 1;
-  if (tex_index != nullptr && nml_index != nullptr) {
-    os << "/" << *tex_index + 1 << "/" << *nml_index + 1;
-  }
-  else if (tex_index != nullptr) {
-    os << "/" << *tex_index + 1;
-  }
-  else if (nml_index != nullptr) {
-    os << "//" << *nml_index + 1;
-  }
-}
-
-template<typename PosIndexIter, typename TexIndexIter, typename NmlIndexIter>
-void WriteFaces(
-  std::ostream& os,
-  const std::string& line_start,
-  const PosIndexIter pos_indices_begin, 
-  const PosIndexIter pos_indices_end,
-  const uint32_t pos_indices_per_face,
-  const TexIndexIter tex_indices_begin, 
-  const TexIndexIter tex_indices_end,
-  const uint32_t tex_indices_per_face,
-  const NmlIndexIter nml_indices_begin,
-  const NmlIndexIter nml_indices_end,
-  const uint32_t nml_indices_per_face,
-  const std::string& newline)
-{
-  ThrowIfIndicesPerFaceNotEqualForAllChannels(
-    pos_indices_per_face,
-    tex_indices_per_face,
-    nml_indices_per_face);
-  ThrowIfIndexCountNotEqualForAllChannels(
-    Count(pos_indices_begin, pos_indices_end),
-    Count(tex_indices_begin, tex_indices_end),
-    Count(nml_indices_begin, nml_indices_end));
-  // If these two tests hold then the face count is also equal.
-
-  auto pos_index_iter = pos_indices_begin;
-  auto tex_index_iter = tex_indices_begin;
-  auto nml_index_iter = nml_indices_begin;
-  while (pos_index_iter != pos_indices_end) {
-    // One line per face.
-    os << line_start;
-    for (auto i = uint32_t{ 0 }; i < pos_indices_per_face; ++i) {
-      WriteFaceIndex(os,
-        *pos_index_iter,
-        tex_index_iter != TexIndexIter{} ? &(*tex_index_iter) : nullptr,
-        nml_index_iter != NmlIndexIter{} ? &(*nml_index_iter) : nullptr);
-      ++pos_index_iter;
-      if (tex_index_iter != TexIndexIter{}) {
-        ++tex_index_iter;
-      }
-      if (nml_index_iter != NmlIndexIter{}) {
-        ++nml_index_iter;
-      }
-      os << (i != pos_indices_per_face - 1 ? " " : "");
-    }
-    os << newline;
-  }
-}
-
-template<
-  typename PosCompIter, typename PosIndexIter,
-  typename TexCompIter, typename TexIndexIter,
-  typename NmlCompIter, typename NmlIndexIter>
-std::ostream& Write(
-  std::ostream& os,
-  const PositionChannel<PosCompIter, PosIndexIter>& position_channel,
-  const TexCoordChannel<TexCompIter, TexIndexIter>* const tex_coord_channel,
-  const NormalChannel<NmlCompIter, NmlIndexIter>* const normal_channel,
-  const std::string& newline)
-{
-  WriteHeader(os, position_channel, newline);
-  WriteValues(os, "v ", 
-    position_channel.components_begin(), 
-    position_channel.components_end(),
-    position_channel.components_per_value(),
-    newline);
-  
-  if (tex_coord_channel != nullptr) {
-    WriteValues(os, "vt ", 
-      tex_coord_channel->components_begin(), 
-      tex_coord_channel->components_end(),
-      tex_coord_channel->components_per_value(),
-      newline);
-  }
-
-  if (normal_channel != nullptr) {
-    WriteValues(os, "vn ", 
-      normal_channel->components_begin(),
-      normal_channel->components_end(),
-      normal_channel->components_per_value(),
-      newline);
-  }
-
-  WriteFaces(os, "f ",
-    position_channel.indices_begin(),
-    position_channel.indices_end(),
-    position_channel.indices_per_face(),
-    tex_coord_channel != nullptr ? 
-      tex_coord_channel->indices_begin() : TexIndexIter{} /* dummy */,
-    tex_coord_channel != nullptr ? 
-      tex_coord_channel->indices_end() : TexIndexIter{} /* dummy */,
-    tex_coord_channel != nullptr ? 
-      tex_coord_channel->indices_per_face() : 0,
-    normal_channel != nullptr ? 
-      normal_channel->indices_begin() : NmlIndexIter{} /* dummy */,
-    normal_channel != nullptr ? 
-      normal_channel->indices_end() : NmlIndexIter{} /* dummy */,
-    normal_channel != nullptr ? 
-      normal_channel->indices_per_face() : 0,
-    newline);
-
-  return os;
-}
-
-} // namespace detail
-
-
-template<typename PosCompIter, typename PosIdxIter>
-std::ostream& Write(
-  std::ostream& os,
-  const PositionChannel<PosCompIter, PosIdxIter>& position_channel,
-  const std::string& newline = "\n")
-{
-  return detail::Write<
-    PosCompIter, PosIdxIter,
-    PosCompIter, PosIdxIter,  // Dummy!
-    PosCompIter, PosIdxIter>( // Dummy!
-      os,
-      position_channel,
-      nullptr, // No tex coords.
-      nullptr, // No normals.
-      newline);
-}
-
-template<
-  typename PosCompIter, typename PosIdxIter,
-  typename TexCompIter, typename TexIdxIter>
-std::ostream& Write(
-  std::ostream& os,
-  const PositionChannel<PosCompIter, PosIdxIter>& position_channel,
-  const TexCoordChannel<TexCompIter, TexIdxIter>& tex_coord_channel,
-  const std::string& newline = "\n")
-{
-  return detail::Write<
-    PosCompIter, PosIdxIter,
-    TexCompIter, TexIdxIter,
-    PosCompIter, PosIdxIter>( // Dummy!
-      os,
-      position_channel,
-      &tex_coord_channel,
-      nullptr, // No normals.
-      newline);
-}
-
-template<
-  typename PosCompIter, typename PosIndexIter,
-  typename NmlCompIter, typename NmlIndexIter>
-std::ostream& Write(
-  std::ostream& os,
-  const PositionChannel<PosCompIter, PosIndexIter>& position_channel,
-  const NormalChannel<NmlCompIter, NmlIndexIter>& normal_channel,
-  const std::string& newline = "\n")
-{
-  return detail::Write<
-    PosCompIter, PosIndexIter,
-    PosCompIter, PosIndexIter, // Dummy!
-    NmlCompIter, NmlIndexIter>(
-      os,
-      position_channel,
-      nullptr, // No tex coords.
-      &normal_channel,
-      newline);
-}
-
-template<
-  typename PosCompIter, typename PosIndexIter,
-  typename TexCompIter, typename TexIndexIter,
-  typename NmlCompIter, typename NmlIndexIter>
-std::ostream& Write(
-  std::ostream& os,
-  const PositionChannel<PosCompIter, PosIndexIter>& position_channel,
-  const TexCoordChannel<TexCompIter, TexIndexIter>& tex_coord_channel,
-  const NormalChannel<NmlCompIter, NmlIndexIter>& normal_channel,
-  const std::string& newline = "\n")
-{
-  return detail::Write<
-    PosCompIter, PosIndexIter,
-    TexCompIter, TexIndexIter,
-    NmlCompIter, NmlIndexIter>(
-      os,
-      position_channel,
-      &tex_coord_channel,
-      &normal_channel,
-      newline);
 }
 
 
-namespace detail {
+constexpr inline const char* CommentPrefix() { return "#"; }
+constexpr inline const char* PositionPrefix() { return "v"; }
+constexpr inline const char* FacePrefix() { return "f"; }
+constexpr inline const char* TexCoordPrefix() { return "vt"; }
+constexpr inline const char* NormalPrefix() { return "vn"; }
+constexpr inline const char* IndexGroupSeparator() { return "/"; }
 
-template<typename ComponentType>
-uint32_t ParseComponents(
-  std::istringstream* const iss,
-  std::vector<ComponentType>* const components)
+
+namespace read {
+
+template<typename ArithT, std::size_t N>
+struct ParsedValues
 {
-  auto components_before = components->size();
-  auto component = ComponentType{};
-  while (*iss >> component || !iss->eof()) {
+  typedef typename std::array<ArithT, N> ValueType;
+
+  std::array<ArithT, N> values;
+  std::size_t value_count = 0;
+};
+
+
+template<typename T>
+bool ParseValue(std::istringstream* const iss, T* const t)
+{
+  if (*iss >> *t || !iss->eof()) {
     if (iss->fail()) {
-      iss->clear();
+      iss->clear(); // Clear status bits.
       auto dummy = std::string{};
       *iss >> dummy;
       auto oss = std::ostringstream{};
       oss << "failed parsing '" << dummy << "'";
       throw std::runtime_error(oss.str());
     }
-    components->push_back(component);
+    return true;
   }
-  return static_cast<uint32_t>(components->size() - components_before);
+  return false;
 }
 
-template<typename ComponentType>
-void AddToChannel(
-  std::istringstream* const iss,
-  std::vector<ComponentType>* const components,
-  uint32_t* const components_per_value)
+
+template<typename ArithT, std::size_t N>
+ParsedValues<ArithT, N> ParseValues(std::istringstream* const iss)
 {
-  const auto component_count = ParseComponents(iss, components);
-  if (component_count == 0) {
-    throw std::runtime_error("empty components");
+  typedef typename ParsedValues<ArithT, N>::ValueType::value_type ValueType;
+
+  auto parsed_values = ParsedValues<ArithT, N>{};
+  auto value = ValueType{};
+  while (ParseValue(iss, &value)) {
+    if (parsed_values.value_count >= parsed_values.values.size()) {
+      auto oss = std::ostringstream{};
+      oss << "expected to parse at most " 
+        << parsed_values.values.size() << " values";
+      throw std::runtime_error(oss.str());
+    }
+
+    parsed_values.values[parsed_values.value_count++] = value;
   }
 
-  if (*components_per_value == 0) {
-    // If this is the first component stream to be unpacked 
-    // (for some channel) store its component count. 
-    // All subsequent components streams (for this channel) 
-    // must have the same count.
-    *components_per_value = component_count;
+  return parsed_values;
+}
+
+
+template<typename ArithT, typename AddPosition>
+void ParsePosition(
+  std::istringstream* const iss,
+  AddPosition add_position)
+{
+  const auto parsed = ParseValues<ArithT, 4>(iss);
+  if (parsed.value_count == 3 || parsed.value_count == 4) {
+    // Position fourth value defaults to 1.
+    add_position(Position<ArithT, 4>(
+      parsed.values[0], 
+      parsed.values[1], 
+      parsed.values[2],
+      parsed.value_count == 4 ? parsed.values[3] : ArithT{ 1 }));
   }
-  else if (*components_per_value != component_count) {
-    auto oss = std::ostringstream();
-    oss << "invalid component count (" << component_count << ")"
-      << ", expected " << *components_per_value;
+  else {
+    auto oss = std::ostringstream{};
+    oss << "positions must have 3 or 4 values";
     throw std::runtime_error(oss.str());
   }
 }
 
 
-inline
-std::vector<std::string> TokenizeLine(
-  std::istringstream* const iss)
+template<typename IntT>
+Index<IntT> ParseIndex(const std::string& token)
 {
-  // Split stringstream into whitespace separated chunks.
-  auto tokens = std::vector<std::string>{};
-  tokens.reserve(4); // Just an estimate.
-  auto token = std::string{};
-  while (*iss >> token) {
-    tokens.emplace_back(token);
+  auto iss = std::istringstream(token);
+  auto value = IntT{0};
+  ParseValue(&iss, &value);
+
+  if (!(value > 0)) {
+    throw std::runtime_error("parsed index must be greater than zero");
   }
-  return tokens;
+
+  // Convert to zero-based index.
+  return Index<IntT>(value - 1u);
+}
+
+
+template<typename IntT>
+IndexGroup<IntT> ParseIndexGroup(const std::string& index_group_str)
+{
+  if (index_group_str.empty()) {
+    throw std::runtime_error("empty index group");
+  }
+
+  auto index_group = IndexGroup<IntT>{};
+  auto pos = std::size_t{0};
+  auto sep = std::string::npos;
+
+  // Position index.
+  sep = index_group_str.find('/', pos);
+  if (sep == std::string::npos) {
+    // No delimiter found, try to convert entire string into position index.
+    index_group.position_index = ParseIndex<IntT>(index_group_str);
+
+    // Not possible to have other indices without delimiter.
+    return index_group;
+  }
+  else {
+    // Found delimiter.
+    if (sep == 0) {
+      // Index group cannot start with delimiter.
+      throw std::runtime_error("missing position index");
+    }
+    index_group.position_index = 
+      ParseIndex<IntT>(index_group_str.substr(pos, sep));
+    pos = sep + 1u; // Skip past delimiter.
+  }
+
+  // Texture coordinate index.
+  sep = index_group_str.find('/', pos);
+  if (sep == std::string::npos) {
+    index_group.tex_coord_index.first =
+      ParseIndex<IntT>(index_group_str.substr(pos));
+    index_group.tex_coord_index.second = true;
+
+    // Not possible to have other indices without delimiter.
+    return index_group;
+  }
+  else if (sep - pos > 0) {
+    index_group.tex_coord_index.first =
+      ParseIndex<IntT>(index_group_str.substr(pos, sep - pos));
+    index_group.tex_coord_index.second = true;
+    pos = sep + 1u; // Skip past separator.
+  }
+
+  // Normal index.
+  if (pos < index_group_str.size()) {
+    // Convert to zero-based index.
+    index_group.normal_index.first =
+      ParseIndex<IntT>(index_group_str.substr(pos));
+    index_group.normal_index.second = true;
+  }
+
+  return index_group;
+}
+
+
+template<typename IntT>
+std::vector<IndexGroup<IntT>> ParseIndexGroups(std::istringstream* const iss)
+{
+  auto index_groups = std::vector<IndexGroup<IntT>>{};
+  auto index_group_str = std::string{};
+  while (*iss >> index_group_str) {
+    const auto index_group = ParseIndexGroup<IntT>(index_group_str);
+    index_groups.push_back(index_group);
+  }
+
+  return index_groups;
+}
+
+
+template<typename IntT, typename AddFace>
+void ParseFace(
+  std::istringstream* const iss,
+  AddFace add_face)
+{
+  const auto index_groups = ParseIndexGroups<IntT>(iss);
+
+  if (index_groups.size() < 3) {
+    // error
+  }
+  else if (index_groups.size() == 3) {
+    add_face(TriangleFace<IndexGroup<IntT>>(
+      index_groups[0],
+      index_groups[1],
+      index_groups[2]));
+  }
+  else if (index_groups.size() == 4) {
+    add_face(QuadFace<IndexGroup<IntT>>(
+      index_groups[0],
+      index_groups[1],
+      index_groups[2],
+      index_groups[3]));
+  }
+  else {
+    // polygon
+    // ValidatePolygonFace(...)
+  }
+}
+
+
+template<typename FloatT, typename AddTexCoord>
+void ParseTexCoord(
+  std::istringstream* const iss,
+  AddTexCoord add_tex_coord,
+  FuncTag)
+{
+  const auto parsed = ParseValues<FloatT, 3>(iss);
+  if (parsed.value_count == 2 || parsed.value_count == 3) {
+    // Texture coordinate third value defaults to 1.
+    const auto tex = TexCoord<FloatT, 3>(
+      parsed.values[0], 
+      parsed.values[1],
+      parsed.value_count == 3 ? parsed.values[2] : FloatT{ 1 });
+    ValidateTexCoord(tex);
+    add_tex_coord(tex);
+  }
+  else {
+    auto oss = std::ostringstream{};
+    oss << "texture coordinates must have 2 or 3 values";
+    throw std::runtime_error(oss.str());
+  }
+}
+
+/// Dummy.
+template<typename FloatT, typename AddTexCoord>
+void ParseTexCoord(
+  std::istringstream* const,
+  AddTexCoord,
+  NullFuncTag)
+{
+}
+
+
+template<typename ArithT, typename AddNormal>
+void ParseNormal(
+  std::istringstream* const iss,
+  AddNormal add_normal,
+  FuncTag)
+{
+  const auto parsed = ParseValues<ArithT, 3>(iss);
+  if (parsed.value_count == 3) {
+    add_normal(Normal<ArithT>(
+      parsed.values[0], 
+      parsed.values[1],
+      parsed.values[2]));
+  }
+  else {
+    auto oss = std::ostringstream{};
+    oss << "normals must have 3 values";
+    throw std::runtime_error(oss.str());
+  }
+}
+
+/// Dummy.
+template<typename ArithT, typename AddNormal>
+void ParseNormal(
+  std::istringstream* const,
+  AddNormal,
+  NullFuncTag)
+{
+}
+
+
+template<
+  typename FloatT,
+  typename IntT,
+  typename AddPosition,
+  typename AddTexCoord,
+  typename AddNormal,
+  typename AddFace>
+void ParseLine(
+  const std::string& line,
+  AddPosition add_position,
+  AddFace add_face,
+  AddTexCoord add_tex_coord,
+  AddNormal add_normal)
+{
+  auto iss = std::istringstream(line);
+
+  // Prefix is first non-whitespace token.
+  auto prefix = std::string{};
+  iss >> prefix;
+
+  // Parse the rest of the line depending on prefix.
+  if (prefix.empty() || prefix == CommentPrefix()) {
+    return; // Ignore empty lines and comments.
+  }
+  else if (prefix == PositionPrefix()) {
+    ParsePosition<FloatT>(&iss, add_position);
+  }
+  else if (prefix == FacePrefix()) {
+    ParseFace<IntT>(&iss, add_face);
+  }
+  else if (prefix == TexCoordPrefix()) {
+    ParseTexCoord<FloatT>(&iss, add_tex_coord,
+      typename FuncTraits<AddTexCoord>::FuncCategory{});
+  }
+  else if (prefix == NormalPrefix()) {
+    ParseNormal<FloatT>(&iss, add_normal,
+      typename FuncTraits<AddNormal>::FuncCategory{});
+  }
+  else {
+    auto oss = std::ostringstream{};
+    oss << "unrecognized line prefix '" << prefix << "'";
+    throw std::runtime_error(oss.str());
+  }
+}
+
+
+template<
+  typename FloatT,
+  typename IndexT,
+  typename AddPosition,
+  typename AddTexCoord,
+  typename AddNormal,
+  typename AddFace>
+void ParseLines(
+  std::istream& is, 
+  AddPosition add_position,
+  AddFace add_face,
+  AddTexCoord add_tex_coord,
+  AddNormal add_normal)
+{
+  auto line = std::string{};
+  while (std::getline(is, line)) {
+    detail::read::ParseLine<FloatT, IndexT>(
+      line, add_position, add_face, add_tex_coord, add_normal);
+  }
+}
+
+} // namespace read
+
+namespace write {
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const Index<T>& index)
+{
+  // Note that the valid range allows increment of one.
+  if (!(T{0} <= index.value && index.value < std::numeric_limits<T>::max())) {
+    throw std::runtime_error("invalid index");
+  }
+
+  // OBJ format uses one-based indexing. 
+  os << index.value + 1u;
+  return os;
 }
 
 template<typename T>
-T ParseIndex(const std::string& token)
+std::ostream& operator<<(std::ostream& os, const IndexGroup<T>& index_group)
 {
-  auto iss = std::istringstream(token);
-  auto t = T{};
-  iss >> t;
-  if (iss.fail()) {
-    iss.clear(); // Clear status bits.
-    auto dummy = std::string{};
-    iss >> dummy;
-    auto oss = std::ostringstream{};
-    oss << "failed parsing '" << dummy << "'";
-    throw std::runtime_error(oss.str());
+  os << index_group.position_index;
+  if (index_group.tex_coord_index.second &&
+    index_group.normal_index.second) {
+    os << IndexGroupSeparator() << index_group.tex_coord_index.first
+      << IndexGroupSeparator() << index_group.normal_index.first;
   }
-  return t;
+  else if (index_group.tex_coord_index.second) {
+    os << IndexGroupSeparator() << index_group.tex_coord_index.first;
+  }
+  else if (index_group.normal_index.second) {
+    os << IndexGroupSeparator() << IndexGroupSeparator() 
+      << index_group.normal_index.first;
+  }
+  return os;
 }
 
-inline 
-void ParseIndexGroup(
-  const std::string& index_group,
-  std::vector<uint32_t>* const pos_indices,
-  std::vector<uint32_t>* const tex_indices,
-  std::vector<uint32_t>* const nml_indices)
-{
-  const auto pos_before = pos_indices->size();
-
-  auto buffers = std::array<std::vector<uint32_t>*, 3>{{
-    pos_indices,
-    tex_indices,
-    nml_indices
-  }};
-  auto buffer_index = uint32_t{ 0 };
-  auto pos = uint32_t{ 0 };
-  auto sep = std::string::npos;
-  do {
-    if (buffer_index >= 3) {
-      throw std::runtime_error("index group cannot have more than three indices");
-    }
-
-    sep = index_group.find('/', pos);
-    const auto len = sep == std::string::npos ? sep : sep - pos;
-    if (len > 0) {
-      // Convert to zero-based indices.
-      buffers[buffer_index]->push_back(
-        ParseIndex<uint32_t>(index_group.substr(pos, len)) - 1);
-    }
-    pos = static_cast<uint32_t>(sep + 1); // Skip past separator.
-    ++buffer_index;
-  } while (sep != std::string::npos && pos < index_group.size());
-
-  if (pos_indices->size() - pos_before == 0) {
-    auto oss = std::ostringstream{};
-    oss << "missing position index ('" << index_group << "')";
-    throw std::runtime_error(oss.str());
-  }
-}
 
 inline
-void ParseFaceIndices(
-  std::istringstream* iss,
-  std::vector<uint32_t>* const pos_indices,
-  std::vector<uint32_t>* const tex_indices,
-  std::vector<uint32_t>* const nml_indices,
-  uint32_t* const pos_indices_per_face,
-  uint32_t* const /*tex_indices_per_face*/,
-  uint32_t* const /*nml_indices_per_face*/)
-{  
-  const auto pos_before = pos_indices->size();
-  const auto tex_before = tex_indices->size();
-  const auto nml_before = nml_indices->size();
-
-  auto index_group = std::string{};
-  while (*iss >> index_group) {
-    ParseIndexGroup(index_group, pos_indices, tex_indices, nml_indices);
-  }
-
-  const auto pos_count = static_cast<uint32_t>(pos_indices->size() - pos_before);
-  if (pos_count == 0) {
-    throw std::runtime_error("empty face");
-  }
-
-  if (*pos_indices_per_face == 0) {
-    *pos_indices_per_face = pos_count;
-  }
-  else if (*pos_indices_per_face != pos_count) {
-    auto oss = std::ostringstream();
-    oss << "invalid index group count (" << pos_count << ")"
-      << ", expected " << *pos_indices_per_face;
-    throw std::runtime_error(oss.str());
-  }
-
-  const auto tex_count = tex_indices->size() - tex_before;
-  const auto nml_count = nml_indices->size() - nml_before;
-
-  if (!(tex_count == pos_count || tex_count == 0)) {
-    // must have tex coord for each index group or none at all.
-  }
-
-  if (!(nml_count == pos_count || nml_count == 0)) {
-    // must have tex coord for each index group or none at all.
-  }
-}
-
-
-#if 0
-template<typename Out>
-void split(const std::string& s, const char delim, Out result)
+void WriteHeader(std::ostream& os, const std::string& newline)
 {
-  auto ss = std::stringstream ss(s);
-  auto token = std::string();
-  while (std::getline(ss, token, delim)) {
-    *(result++) = token;
+  os << CommentPrefix() 
+    << " Written by https://github.com/thinks/obj-io" << newline;
+}
+
+
+template<
+  template<typename> class MappedTypeChecker, 
+  typename Mapper, 
+  typename Validator>
+void WriteMappedLines(
+  std::ostream& os,
+  const std::string& line_prefix,
+  Mapper mapper,
+  Validator validator,
+  const std::string& newline)
+{
+  auto map_result = mapper();
+  while (!map_result.is_end) {
+    static_assert(
+      MappedTypeChecker<decltype(map_result.value)>::value,
+      "incorrect mapped type");
+    validator(map_result.value);
+
+    // Write line.
+    os << line_prefix;
+    for (const auto value : map_result.value.values) {
+      os << " " << value;
+    }
+    os << newline;
+
+    map_result = mapper();
   }
 }
 
-std::vector<std::string> split(const std::string& s, const char delim)
+
+template<typename PosMapper>
+void WritePositions(
+  std::ostream& os,
+  PosMapper pos_mapper,
+  const std::string& newline)
 {
-  auto tokens = std::vector<std::string>{};
-  split(s, delim, std::back_inserter(tokens));
-  return tokens;
+  WriteMappedLines<IsPosition>(
+    os, 
+    PositionPrefix(), 
+    pos_mapper, 
+    [](const auto&) {}, // No validation.  
+    newline);
 }
-#endif
+
+
+template<typename TexMapper>
+void WriteTexCoords(
+  std::ostream& os,
+  TexMapper tex_mapper,
+  const std::string& newline,
+  FuncTag)
+{
+  WriteMappedLines<IsTexCoord>(
+    os,
+    TexCoordPrefix(),
+    tex_mapper,
+    [](const auto& tex) { ValidateTexCoord(tex); },  
+    newline);
+}
+
+/// Dummy.
+template<typename TexMapper>
+void WriteTexCoords(
+  std::ostream&,
+  TexMapper,
+  const std::string&,
+  NullFuncTag)
+{
+}
+
+
+template<typename NmlMapper>
+void WriteNormals(
+  std::ostream& os,
+  NmlMapper nml_mapper,
+  const std::string& newline,
+  FuncTag)
+{
+  WriteMappedLines<IsNormal>(
+    os,
+    NormalPrefix(),
+    nml_mapper,
+    [](const auto&) {}, // No validation.
+    newline);
+}
+
+/// Dummy.
+template<typename NmlMapper>
+void WriteNormals(
+  std::ostream&,
+  NmlMapper,
+  const std::string&,
+  NullFuncTag)
+{
+}
+
+
+template<typename FaceMapper>
+void WriteFaces(
+  std::ostream& os,
+  FaceMapper face_mapper,
+  const std::string& newline)
+{
+  WriteMappedLines<IsFace>(
+    os, 
+    FacePrefix(), 
+    face_mapper, 
+    [](const auto& face) { 
+      ValidateFace(face, typename FaceTraits<decltype(face)>::FaceCategory{});
+    }, 
+    newline);
+}
+
+} // namespace write
 
 } // namespace detail
 
 
-template<typename PosVecType, typename TexVecType, typename NmlVecType, typename PolyVecType>
-struct Mesh2
+template<
+  typename FloatT,
+  typename IntT,
+  typename AddPosition,
+  typename AddFace,
+  typename AddTexCoord = std::nullptr_t,
+  typename AddNormal = std::nullptr_t>
+void Read(
+  std::istream& is,
+  AddPosition add_position,
+  AddFace add_face,
+  AddTexCoord add_tex_coord = nullptr,
+  AddNormal add_normal = nullptr)
 {
-  std::vector<PosVecType> positions;
-  std::vector<TexVecType> tex_coords;
-  std::vector<NmlVecType> normals;
-  std::vector<PolyVecType> position_indices;
-  std::vector<PolyVecType> tex_coord_indices;
-  std::vector<PolyVecType> normal_indices;
-};
+  detail::read::ParseLines<FloatT, IntT>(
+    is, add_position, add_face, add_tex_coord, add_normal);
+}
 
-template<typename ComponentType>
-class Mesh
+
+template<
+  typename PositionMapper,
+  typename FaceMapper,
+  typename TexCoordMapper = std::nullptr_t,
+  typename NormalMapper = std::nullptr_t>
+void Write(
+  std::ostream& os,
+  PositionMapper pos_mapper,
+  FaceMapper face_mapper,
+  TexCoordMapper tex_coord_mapper = nullptr,
+  NormalMapper normal_mapper = nullptr,
+  const std::string& newline = "\n")
 {
-public:
-  typedef typename std::vector<ComponentType>::const_iterator ComponentIter;
-  typedef typename std::vector<uint32_t>::const_iterator IndexIter;
-
-  Mesh(
-    const std::vector<ComponentType>& position_components, // Positions.
-    const uint32_t position_components_per_value,
-    const std::vector<uint32_t>& position_indices,
-    const uint32_t position_indices_per_face,
-    const std::vector<ComponentType>& tex_coord_components, // Tex coords.
-    const uint32_t tex_coord_components_per_value,
-    const std::vector<uint32_t>& tex_coord_indices,
-    const uint32_t tex_coord_indices_per_face, 
-    const std::vector<ComponentType>& normal_components, // Normals.
-    const uint32_t normal_components_per_value,
-    const std::vector<uint32_t>& normal_indices,
-    const uint32_t normal_indices_per_face)
-    : position_components_(position_components)
-    , position_indices_(position_indices)
-    , tex_coord_components_(tex_coord_components)
-    , tex_coord_indices_(tex_coord_indices)
-    , normal_components_(normal_components)
-    , normal_indices_(normal_indices)
-    , position_channel_(make_position_channel(
-        position_components_,
-        position_components_per_value,
-        position_indices_,
-        position_indices_per_face))
-    , tex_coord_channel_(nullptr)
-    , normal_channel_(nullptr)
-  {
-    if (tex_coord_indices.size() == position_indices.size() &&
-        tex_coord_indices_per_face == position_indices_per_face) {
-      tex_coord_channel_ = 
-        std::make_unique<TexCoordChannel<ComponentIter, IndexIter>>(
-          std::begin(tex_coord_components_),
-          std::end(tex_coord_components_),
-          tex_coord_components_per_value,
-          std::begin(tex_coord_indices_),
-          std::end(tex_coord_indices_),
-          tex_coord_indices_per_face);
-    }
-
-    if (normal_indices.size() == position_indices.size() &&
-        normal_indices_per_face == position_indices_per_face) {
-      normal_channel_ = 
-        std::make_unique<NormalChannel<ComponentIter, IndexIter>>(
-          std::begin(normal_components_),
-          std::end(normal_components_),
-          normal_components_per_value,
-          std::begin(normal_indices_),
-          std::end(normal_indices_),
-          normal_indices_per_face);
-    }
-
-    // TODO: check that channels are compatible!?
-  }
-
-  const PositionChannel<ComponentIter, IndexIter>& position_channel() const
-  {
-    return position_channel_;
-  }
-
-  const TexCoordChannel<ComponentIter, IndexIter>* tex_coord_channel() const
-  {
-    return tex_coord_channel_.get();
-  }
-
-  const NormalChannel<ComponentIter, IndexIter>* normal_channel() const
-  {
-    return normal_channel_.get();
-  }
-
-private:
-  std::vector<ComponentType> position_components_;
-  std::vector<uint32_t> position_indices_;
-
-  std::vector<ComponentType> tex_coord_components_;
-  std::vector<uint32_t> tex_coord_indices_;
-
-  std::vector<ComponentType> normal_components_;
-  std::vector<uint32_t> normal_indices_;
-
-  PositionChannel<ComponentIter, IndexIter> position_channel_;
-  std::unique_ptr<TexCoordChannel<ComponentIter, IndexIter>> tex_coord_channel_;
-  std::unique_ptr<NormalChannel<ComponentIter, IndexIter>> normal_channel_;
-};
-
-
-template<typename ComponentType>
-Mesh<ComponentType> Read(std::istream& is)
-{
-  using std::vector;
-
-  // Positions.
-  auto pos_components = vector<ComponentType>{};
-  auto pos_components_per_value = uint32_t{ 0 };
-  auto pos_indices = vector<uint32_t>{};
-  auto pos_indices_per_face = uint32_t{ 0 };
-  // Tex coords.
-  auto tex_components = vector<ComponentType>{};
-  auto tex_components_per_value = uint32_t{ 0 };
-  auto tex_indices = vector<uint32_t>{};
-  auto tex_indices_per_face = uint32_t{ 0 };
-  // Normals.
-  auto nml_components = vector<ComponentType>{};
-  auto nml_components_per_value = uint32_t{ 0 };
-  auto nml_indices = vector<uint32_t>{};
-  auto nml_indices_per_face = uint32_t{ 0 };
-
-  auto line = std::string{};
-  while (std::getline(is, line)) {
-    auto iss = std::istringstream(line);
-
-    // Prefix is token before first whitespace.
-    auto prefix = std::string{};
-    iss >> prefix;
-
-    if (prefix.empty() || prefix == "#") {
-      // Ignore empty lines and comments.
-      continue;
-    }
-    else if (prefix == "v") {
-      detail::AddToChannel(
-        &iss,
-        &pos_components,
-        &pos_components_per_value);
-    }
-    else if (prefix == "vt") {
-      detail::AddToChannel(
-        &iss,
-        &tex_components,
-        &tex_components_per_value);
-    }
-    else if (prefix == "vn") {
-      detail::AddToChannel(
-        &iss,
-        &nml_components,
-        &nml_components_per_value);
-    }
-    else if (prefix == "f") {
-      detail::ParseFaceIndices(
-        &iss,
-        &pos_indices,
-        &tex_indices,
-        &nml_indices,
-        &pos_indices_per_face,
-        &tex_indices_per_face,
-        &nml_indices_per_face);
-    }
-  }
-
-
-
-  // all face must have same number of index groups
-  // all index groups in all faces must have same number of indices.
-
-  return Mesh<ComponentType>(
-    pos_components,
-    pos_components_per_value,
-    pos_indices,
-    pos_indices_per_face,
-    tex_components,
-    tex_components_per_value,
-    tex_indices,
-    tex_indices_per_face,
-    nml_components,
-    nml_components_per_value,
-    nml_indices,
-    nml_indices_per_face);
+  detail::write::WriteHeader(os, newline);
+  detail::write::WritePositions(os, pos_mapper, newline);
+  detail::write::WriteTexCoords(os, tex_coord_mapper, newline,
+    typename detail::FuncTraits<TexCoordMapper>::FuncCategory{});
+  detail::write::WriteNormals(os, normal_mapper, newline,
+    typename detail::FuncTraits<NormalMapper>::FuncCategory{});
+  detail::write::WriteFaces(os, face_mapper, newline);
 }
 
 } // namespace obj_io
