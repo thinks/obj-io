@@ -6,6 +6,7 @@
 #include <types.h>
 
 #include <array>
+#include <cassert>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -15,6 +16,7 @@
 
 
 using std::begin;
+using std::distance;
 using std::end;
 using std::ostream;
 using std::ostringstream;
@@ -93,50 +95,49 @@ string WriteMesh(
   // Positions.
   auto pos_vtx_iter = begin(mesh.vertices);
   auto pos_mapper = [&pos_vtx_iter, vtx_iend]() {
-    if (pos_vtx_iter != vtx_iend) {
-      const auto vtx = *pos_vtx_iter++;
-      return Map(Position3f(vtx.pos.x, vtx.pos.y, vtx.pos.z));
+    if (pos_vtx_iter == vtx_iend) {
+      return End<Position3_f>();
     }
 
-    return End<Position3f>();
+    const auto vtx = *pos_vtx_iter++;
+    return Map(Position3_f(vtx.pos.x, vtx.pos.y, vtx.pos.z));
   };
 
   // Texture coordinates.
   auto tex_vtx_iter = begin(mesh.vertices);
   auto tex_mapper = [&tex_vtx_iter, vtx_iend]() {
-    if (tex_vtx_iter != vtx_iend) {
-      const auto vtx = *tex_vtx_iter++;
-      return Map(TexCoord2f(vtx.tex.x, vtx.tex.y));
+    if (tex_vtx_iter == vtx_iend) {
+      return End<TexCoord2_f>();
     }
 
-    return End<TexCoord2f>();
+    const auto vtx = *tex_vtx_iter++;
+    return Map(TexCoord2_f(vtx.tex.x, vtx.tex.y));
   };
 
   // Normals.
   auto nml_vtx_iter = begin(mesh.vertices);
   auto nml_mapper = [&nml_vtx_iter, vtx_iend]() {
-    if (nml_vtx_iter != vtx_iend) {
-      const auto vtx = *nml_vtx_iter++;
-      return Map(Normalf(vtx.normal.x, vtx.normal.y, vtx.normal.z));
+    if (nml_vtx_iter == vtx_iend) {
+      return End<Normal_f>();
     }
 
-    return End<Normalf>();
+    const auto vtx = *nml_vtx_iter++;
+    return Map(Normal_f(vtx.normal.x, vtx.normal.y, vtx.normal.z));
   };
 
   // Faces.
   auto idx_iter = mesh.tri_indices.begin();
   const auto idx_iend = mesh.tri_indices.end();
   auto face_mapper = [&idx_iter, idx_iend]() {
-    if (idx_iter != idx_iend) { // check distance to end??
-      const auto idx0 = *idx_iter++;
-      // Check if idx_iter == end?
-      const auto idx1 = *idx_iter++;
-      // Check if idx_iter == end?
-      const auto idx2 = *idx_iter++;
-      return Map(Face3(Indexui(idx0), Indexui(idx1), Indexui(idx2)));
+    if (distance(idx_iter, idx_iend) < 3) {
+      assert(idx_iter == idx_iend && "trailing indices");
+      return End<TriFace_ui32>();
     }
 
-    return End<Face3>();
+    const auto idx0 = *idx_iter++;
+    const auto idx1 = *idx_iter++;
+    const auto idx2 = *idx_iter++;
+    return Map(TriFace_ui32(Index_ui32(idx0), Index_ui32(idx1), Index_ui32(idx2)));
   };
 
   return WriteHelper(
@@ -157,36 +158,36 @@ string WriteIndexedMesh(
   auto pos_iter = begin(imesh.positions);
   auto pos_iend = end(imesh.positions);
   auto pos_mapper = [&pos_iter, pos_iend]() {
-    if (pos_iter != pos_iend) {
-      const auto pos = *pos_iter++;
-      return Map(Position3f(pos.x, pos.y, pos.z));
+    if (pos_iter == pos_iend) {
+      return End<Position3_f>();
     }
 
-    return End<Position3f>();
+    const auto pos = *pos_iter++;
+    return Map(Position3_f(pos.x, pos.y, pos.z));
   };
 
   // Texture coordinates.
   auto tex_iter = begin(imesh.tex_coords);
   auto tex_iend = end(imesh.tex_coords);
   auto tex_mapper = [&tex_iter, tex_iend]() {
-    if (tex_iter != tex_iend) {
-      const auto tex = *tex_iter++;
-      return Map(TexCoord2f(tex.x, tex.y));
+    if (tex_iter == tex_iend) {
+      return End<TexCoord2_f>();
     }
 
-    return End<TexCoord2f>();
+    const auto tex = *tex_iter++;
+    return Map(TexCoord2_f(tex.x, tex.y));
   };
 
   // Normals.
   auto nml_iter = begin(imesh.normals);
   auto nml_iend = end(imesh.normals);
   auto nml_mapper = [&nml_iter, nml_iend]() {
-    if (nml_iter != nml_iend) {
-      const auto nml = *nml_iter++;
-      return Map(Normalf(nml.x, nml.y, nml.z));
+    if (nml_iter == nml_iend) {
+      return End<Normal_f>();
     }
 
-    return End<Normalf>();
+    const auto nml = *nml_iter++;
+    return Map(Normal_f(nml.x, nml.y, nml.z));
   };
 
   // Faces.
@@ -200,23 +201,25 @@ string WriteIndexedMesh(
     [&pos_idx_iter, &tex_idx_iter, &nml_idx_iter,
     pos_idx_iend, tex_idx_iend, nml_idx_iend,
     write_tex_coords, write_normals]() {
-    if (pos_idx_iter != pos_idx_iend && 
-      tex_idx_iter != tex_idx_iend &&
-      nml_idx_iter != nml_idx_iend) { // check distance to end??
-      auto g0 = IndexGroupui(*pos_idx_iter++, *tex_idx_iter++, *nml_idx_iter++);
-      auto g1 = IndexGroupui(*pos_idx_iter++, *tex_idx_iter++, *nml_idx_iter++);
-      auto g2 = IndexGroupui(*pos_idx_iter++, *tex_idx_iter++, *nml_idx_iter++);
-      g0.tex_coord_index.second = write_tex_coords;
-      g1.tex_coord_index.second = write_tex_coords;
-      g2.tex_coord_index.second = write_tex_coords;
-      g0.normal_index.second = write_normals;
-      g1.normal_index.second = write_normals;
-      g2.normal_index.second = write_normals;
-
-      return Map(FaceGroup3(g0, g1, g2));
+    if (distance(pos_idx_iter, pos_idx_iend) < 3 ||
+        distance(tex_idx_iter, tex_idx_iend) < 3 ||
+        distance(nml_idx_iter, nml_idx_iend) < 3) {
+      assert(pos_idx_iter == pos_idx_iend && "trailing position indices");
+      assert(tex_idx_iter == tex_idx_iend && "trailing tex coord indices");
+      assert(nml_idx_iter == nml_idx_iend && "trailing normal indices");
+      return End<TriFaceGroup_ui32>();
     }
 
-    return End<FaceGroup3>();
+    auto g0 = IndexGroup_ui32(*pos_idx_iter++, *tex_idx_iter++, *nml_idx_iter++);
+    auto g1 = IndexGroup_ui32(*pos_idx_iter++, *tex_idx_iter++, *nml_idx_iter++);
+    auto g2 = IndexGroup_ui32(*pos_idx_iter++, *tex_idx_iter++, *nml_idx_iter++);
+    g0.tex_coord_index.second = write_tex_coords;
+    g1.tex_coord_index.second = write_tex_coords;
+    g2.tex_coord_index.second = write_tex_coords;
+    g0.normal_index.second = write_normals;
+    g1.normal_index.second = write_normals;
+    g2.normal_index.second = write_normals;
+    return Map(TriFaceGroup_ui32(g0, g1, g2));
   };
 
   return WriteHelper(

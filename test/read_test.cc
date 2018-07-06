@@ -131,8 +131,8 @@ Mesh ReadMesh(
     read_tex_coords, 
     read_normals);
 
-  assert(pos_count == tex_count);
-  assert(pos_count == nml_count);
+  assert(!read_tex_coords || pos_count == tex_count);
+  assert(!read_normals || pos_count == nml_count);
 
   return mesh;
 }
@@ -183,6 +183,5 @@ TEST_CASE("read", "[container]")
       mesh.tri_indices[3] == 2 &&
       mesh.tri_indices[4] == 1 &&
       mesh.tri_indices[5] == 0));
-
   }
 }

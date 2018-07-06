@@ -7,9 +7,7 @@
 
 #include <array>
 #include <exception>
-#include <functional>
 #include <iostream>
-#include <limits>
 #include <sstream>
 #include <type_traits>
 #include <utility>
@@ -101,7 +99,7 @@ template<typename IntT>
 class Index
 {
 public:
-  static_assert(std::is_integral<IntT>::value, "index must be integral");
+  static_assert(std::is_integral<IntT>::value, "index value must be integral");
 
   constexpr Index() noexcept = default;
 
@@ -158,11 +156,26 @@ public:
   std::pair<Index<IntT>, bool> normal_index;
 };
 
+namespace detail {
+
+template<typename T>
+struct IsIndex : std::false_type {};
+
+// Note: Not decaying the type here.
+template<typename IntT>
+struct IsIndex<Index<IntT>> : std::true_type {};
+
+template<typename IntT>
+struct IsIndex<IndexGroup<IntT>> : std::true_type {};
+
+} // namespace detail
 
 template<typename IndexT>
 class TriangleFace
 {
 public:
+  static_assert(detail::IsIndex<IndexT>::value, "face values must be of index type");
+
   constexpr TriangleFace() noexcept = default;
 
   constexpr TriangleFace(const IndexT i0, const IndexT i1, const IndexT i2) noexcept
@@ -177,6 +190,8 @@ template<typename IndexT>
 class QuadFace
 {
 public:
+  static_assert(detail::IsIndex<IndexT>::value, "face values must be of index type");
+
   constexpr QuadFace() noexcept = default;
 
   constexpr QuadFace(const IndexT i0, const IndexT i1, const IndexT i2, const IndexT i3) noexcept
@@ -191,7 +206,15 @@ template<typename IndexT>
 class PolygonFace
 {
 public:
+  static_assert(detail::IsIndex<IndexT>::value, "face values must be of index type");
+
   constexpr PolygonFace() noexcept = default;
+
+  template<typename... Args>
+  constexpr PolygonFace(Args&&... args) noexcept
+    : values(std::forward<Args>(args)...)
+  {
+  }
 
   std::vector<IndexT> values;
 };
@@ -304,7 +327,7 @@ using FaceTraits = FaceTraitsImpl<typename std::decay<T>::type>;
 
 // Tag dispatch for optional vertex attributes, e.g. tex coords and normals.
 struct FuncTag {};
-struct NullFuncTag {};
+struct NoOpFuncTag {};
 
 template<typename T>
 struct FuncTraits
@@ -315,7 +338,7 @@ struct FuncTraits
 template<>
 struct FuncTraits<std::nullptr_t>
 {
-  typedef NullFuncTag FuncCategory;
+  typedef NoOpFuncTag FuncCategory;
 };
 
 
@@ -343,6 +366,8 @@ void ValidateFace(const FaceT& face, DynamicFaceTag)
 template <typename FaceT>
 void ValidateFace(const FaceT& face, StaticFaceTag)
 {
+  // No need to validate non-polygon faces, the number 
+  // of indices for these are enforced in the class templates.
 }
 
 
@@ -359,8 +384,6 @@ namespace read {
 template<typename ArithT, std::size_t N>
 struct ParsedValues
 {
-  typedef typename std::array<ArithT, N> ValueType;
-
   std::array<ArithT, N> values;
   std::size_t value_count = 0;
 };
@@ -387,10 +410,8 @@ bool ParseValue(std::istringstream* const iss, T* const t)
 template<typename ArithT, std::size_t N>
 ParsedValues<ArithT, N> ParseValues(std::istringstream* const iss)
 {
-  typedef typename ParsedValues<ArithT, N>::ValueType::value_type ValueType;
-
   auto parsed_values = ParsedValues<ArithT, N>{};
-  auto value = ValueType{};
+  auto value = typename decltype(parsed_values.values)::value_type{};
   while (ParseValue(iss, &value)) {
     if (parsed_values.value_count >= parsed_values.values.size()) {
       auto oss = std::ostringstream{};
@@ -456,7 +477,7 @@ IndexGroup<IntT> ParseIndexGroup(const std::string& index_group_str)
   auto sep = std::string::npos;
 
   // Position index.
-  sep = index_group_str.find('/', pos);
+  sep = index_group_str.find(IndexGroupSeparator(), pos);
   if (sep == std::string::npos) {
     // No delimiter found, try to convert entire string into position index.
     index_group.position_index = ParseIndex<IntT>(index_group_str);
@@ -476,7 +497,7 @@ IndexGroup<IntT> ParseIndexGroup(const std::string& index_group_str)
   }
 
   // Texture coordinate index.
-  sep = index_group_str.find('/', pos);
+  sep = index_group_str.find(IndexGroupSeparator(), pos);
   if (sep == std::string::npos) {
     index_group.tex_coord_index.first =
       ParseIndex<IntT>(index_group_str.substr(pos));
@@ -494,7 +515,6 @@ IndexGroup<IntT> ParseIndexGroup(const std::string& index_group_str)
 
   // Normal index.
   if (pos < index_group_str.size()) {
-    // Convert to zero-based index.
     index_group.normal_index.first =
       ParseIndex<IntT>(index_group_str.substr(pos));
     index_group.normal_index.second = true;
@@ -523,26 +543,28 @@ void ParseFace(
   std::istringstream* const iss,
   AddFace add_face)
 {
+  typedef IndexGroup<IntT> IndexGroupType;
+
   const auto index_groups = ParseIndexGroups<IntT>(iss);
 
   if (index_groups.size() < 3) {
-    // error
+    throw std::runtime_error("face must have at least three indices");
   }
   else if (index_groups.size() == 3) {
-    add_face(TriangleFace<IndexGroup<IntT>>(
+    add_face(TriangleFace<IndexGroupType>(
       index_groups[0],
       index_groups[1],
       index_groups[2]));
   }
   else if (index_groups.size() == 4) {
-    add_face(QuadFace<IndexGroup<IntT>>(
+    add_face(QuadFace<IndexGroupType>(
       index_groups[0],
       index_groups[1],
       index_groups[2],
       index_groups[3]));
   }
   else {
-    // polygon
+    add_face(PolygonFace<IndexGroupType>(index_groups));
     // ValidatePolygonFace(...)
   }
 }
@@ -576,7 +598,7 @@ template<typename FloatT, typename AddTexCoord>
 void ParseTexCoord(
   std::istringstream* const,
   AddTexCoord,
-  NullFuncTag)
+  NoOpFuncTag)
 {
 }
 
@@ -606,7 +628,7 @@ template<typename ArithT, typename AddNormal>
 void ParseNormal(
   std::istringstream* const,
   AddNormal,
-  NullFuncTag)
+  NoOpFuncTag)
 {
 }
 
@@ -682,21 +704,25 @@ void ParseLines(
 
 namespace write {
 
-template<typename T>
-std::ostream& operator<<(std::ostream& os, const Index<T>& index)
+template<typename IntT>
+std::ostream& operator<<(std::ostream& os, const Index<IntT>& index)
 {
+  typedef decltype(index.value) ValueType;
+
   // Note that the valid range allows increment of one.
-  if (!(T{0} <= index.value && index.value < std::numeric_limits<T>::max())) {
+  if (!(ValueType{0} <= index.value && 
+    index.value < std::numeric_limits<ValueType>::max())) {
     throw std::runtime_error("invalid index");
   }
 
+  // Input indices are assumed to be zero-based.
   // OBJ format uses one-based indexing. 
   os << index.value + 1u;
   return os;
 }
 
-template<typename T>
-std::ostream& operator<<(std::ostream& os, const IndexGroup<T>& index_group)
+template<typename IntT>
+std::ostream& operator<<(std::ostream& os, const IndexGroup<IntT>& index_group)
 {
   os << index_group.position_index;
   if (index_group.tex_coord_index.second &&
@@ -724,27 +750,28 @@ void WriteHeader(std::ostream& os, const std::string& newline)
 
 
 template<
-  template<typename> class MappedTypeChecker, 
-  typename Mapper, 
-  typename Validator>
+  template<typename> class MappedTypeCheckerT, 
+  typename MapperT, 
+  typename ValidatorT>
 void WriteMappedLines(
   std::ostream& os,
   const std::string& line_prefix,
-  Mapper mapper,
-  Validator validator,
+  MapperT mapper,
+  ValidatorT validator,
   const std::string& newline)
 {
   auto map_result = mapper();
   while (!map_result.is_end) {
     static_assert(
-      MappedTypeChecker<decltype(map_result.value)>::value,
+      MappedTypeCheckerT<decltype(map_result.value)>::value,
       "incorrect mapped type");
+
     validator(map_result.value);
 
     // Write line.
     os << line_prefix;
-    for (const auto value : map_result.value.values) {
-      os << " " << value;
+    for (const auto& element : map_result.value.values) {
+      os << " " << element;
     }
     os << newline;
 
@@ -753,83 +780,83 @@ void WriteMappedLines(
 }
 
 
-template<typename PosMapper>
+template<typename MapperT>
 void WritePositions(
   std::ostream& os,
-  PosMapper pos_mapper,
+  MapperT mapper,
   const std::string& newline)
 {
   WriteMappedLines<IsPosition>(
     os, 
     PositionPrefix(), 
-    pos_mapper, 
+    mapper, 
     [](const auto&) {}, // No validation.  
     newline);
 }
 
 
-template<typename TexMapper>
+template<typename MapperT>
 void WriteTexCoords(
   std::ostream& os,
-  TexMapper tex_mapper,
+  MapperT mapper,
   const std::string& newline,
   FuncTag)
 {
   WriteMappedLines<IsTexCoord>(
     os,
     TexCoordPrefix(),
-    tex_mapper,
+    mapper,
     [](const auto& tex) { ValidateTexCoord(tex); },  
     newline);
 }
 
 /// Dummy.
-template<typename TexMapper>
+template<typename MapperT>
 void WriteTexCoords(
   std::ostream&,
-  TexMapper,
+  MapperT,
   const std::string&,
-  NullFuncTag)
+  NoOpFuncTag)
 {
 }
 
 
-template<typename NmlMapper>
+template<typename MapperT>
 void WriteNormals(
   std::ostream& os,
-  NmlMapper nml_mapper,
+  MapperT mapper,
   const std::string& newline,
   FuncTag)
 {
   WriteMappedLines<IsNormal>(
     os,
     NormalPrefix(),
-    nml_mapper,
+    mapper,
     [](const auto&) {}, // No validation.
     newline);
 }
 
 /// Dummy.
-template<typename NmlMapper>
+template<typename MapperT>
 void WriteNormals(
   std::ostream&,
-  NmlMapper,
+  MapperT,
   const std::string&,
-  NullFuncTag)
+  NoOpFuncTag)
 {
 }
 
 
-template<typename FaceMapper>
+template<typename MapperT>
 void WriteFaces(
   std::ostream& os,
-  FaceMapper face_mapper,
+  MapperT mapper,
   const std::string& newline)
 {
   WriteMappedLines<IsFace>(
     os, 
     FacePrefix(), 
-    face_mapper, 
+    mapper, 
     [](const auto& face) { 
       ValidateFace(face, typename FaceTraits<decltype(face)>::FaceCategory{});
     }, 
@@ -861,24 +888,24 @@ void Read(
 
 
 template<
-  typename PositionMapper,
-  typename FaceMapper,
-  typename TexCoordMapper = std::nullptr_t,
-  typename NormalMapper = std::nullptr_t>
+  typename PositionMapperT,
+  typename FaceMapperT,
+  typename TexCoordMapperT = std::nullptr_t,
+  typename NormalMapperT = std::nullptr_t>
 void Write(
   std::ostream& os,
-  PositionMapper pos_mapper,
-  FaceMapper face_mapper,
-  TexCoordMapper tex_coord_mapper = nullptr,
-  NormalMapper normal_mapper = nullptr,
+  PositionMapperT position_mapper,
+  FaceMapperT face_mapper,
+  TexCoordMapperT tex_coord_mapper = nullptr,
+  NormalMapperT normal_mapper = nullptr,
   const std::string& newline = "\n")
 {
   detail::write::WriteHeader(os, newline);
-  detail::write::WritePositions(os, pos_mapper, newline);
+  detail::write::WritePositions(os, position_mapper, newline);
   detail::write::WriteTexCoords(os, tex_coord_mapper, newline,
-    typename detail::FuncTraits<TexCoordMapper>::FuncCategory{});
+    typename detail::FuncTraits<TexCoordMapperT>::FuncCategory{});
   detail::write::WriteNormals(os, normal_mapper, newline,
-    typename detail::FuncTraits<NormalMapper>::FuncCategory{});
+    typename detail::FuncTraits<NormalMapperT>::FuncCategory{});
   detail::write::WriteFaces(os, face_mapper, newline);
 }
 
