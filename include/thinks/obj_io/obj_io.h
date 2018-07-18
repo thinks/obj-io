@@ -434,7 +434,7 @@ void ParsePosition(
 {
   const auto parsed = ParseValues<ArithT, 4>(iss);
   if (parsed.value_count == 3 || parsed.value_count == 4) {
-    // Position fourth value defaults to 1.
+    // Position fourth value (w) defaults to 1.
     add_position(Position<ArithT, 4>(
       parsed.values[0], 
       parsed.values[1], 
@@ -712,7 +712,9 @@ std::ostream& operator<<(std::ostream& os, const Index<IntT>& index)
   // Note that the valid range allows increment of one.
   if (!(ValueType{0} <= index.value && 
     index.value < std::numeric_limits<ValueType>::max())) {
-    throw std::runtime_error("invalid index");
+    auto oss = std::ostringstream{};
+    oss << "invalid index: " << static_cast<std::int64_t>(index.value);
+    throw std::runtime_error(oss.str());
   }
 
   // Input indices are assumed to be zero-based.
@@ -812,13 +814,7 @@ void WriteTexCoords(
 
 /// Dummy.
 template<typename MapperT>
-void WriteTexCoords(
-  std::ostream&,
-  MapperT,
-  const std::string&,
-  NoOpFuncTag)
-{
-}
+void WriteTexCoords(std::ostream&, MapperT, const std::string&, NoOpFuncTag) {}
 
 
 template<typename MapperT>
@@ -838,13 +834,7 @@ void WriteNormals(
 
 /// Dummy.
 template<typename MapperT>
-void WriteNormals(
-  std::ostream&,
-  MapperT,
-  const std::string&,
-  NoOpFuncTag)
-{
-}
+void WriteNormals(std::ostream&, MapperT, const std::string&, NoOpFuncTag) {}
 
 
 template<typename MapperT>
