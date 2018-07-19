@@ -2,14 +2,14 @@
 // This file is subject to the license terms in the LICENSE file
 // found in the top-level directory of this distribution.
 
-#include <utils/read_write_utils.h>
-#include <utils/type_utils.h>
-
-#include <cstdint>
 #include <sstream>
 #include <string>
 
 #include <catch.hpp>
+
+#include <utils/catch_utils.h>
+#include <utils/read_write_utils.h>
+#include <utils/type_utils.h>
 
 
 TEST_CASE("read", "[container]")
@@ -38,19 +38,17 @@ TEST_CASE("read", "[container]")
 
     typedef decltype(mesh) MeshType;
     typedef typename MeshType::VertexType VertexType;
+    typedef typename MeshType::IndexType IndexType;
     typedef typename VertexType::PositionType PositionType;
 
-    using utils::Equals;
-    REQUIRE(Equals(mesh.vertices[0].pos, PositionType{ 1.f, 2.f, 3.f }));
-    REQUIRE(Equals(mesh.vertices[1].pos, PositionType{ 4.f, 5.f, 6.f }));
-    REQUIRE(Equals(mesh.vertices[2].pos, PositionType{ 7.f, 8.f, 9.f }));
-    REQUIRE((
-      mesh.indices[0] == 0 &&
-      mesh.indices[1] == 1 &&
-      mesh.indices[2] == 2));
-    REQUIRE((
-      mesh.indices[3] == 2 &&
-      mesh.indices[4] == 1 &&
-      mesh.indices[5] == 0));
+    auto expected_mesh = MeshType{};
+    expected_mesh.vertices = std::vector<VertexType>{
+      VertexType{ PositionType{ 1.f, 2.f, 3.f } },
+      VertexType{ PositionType{ 4.f, 5.f, 6.f } },
+      VertexType{ PositionType{ 7.f, 8.f, 9.f } }
+    };
+    expected_mesh.indices = std::vector<IndexType>{ 0, 1, 2, 2, 1, 0};
+
+    REQUIRE_THAT(mesh, utils::MeshMatcher<MeshType>(expected_mesh));
   }
 }

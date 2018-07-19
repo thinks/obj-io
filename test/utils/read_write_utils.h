@@ -246,11 +246,7 @@ MeshT ReadMesh(
   const bool read_normals)
 {
   typedef MeshT MeshType;
-  typedef typename MeshType::IndexType IndexType;
   typedef typename MeshType::VertexType VertexType;
-  typedef typename VertexType::PositionType PositionType;
-  typedef typename VertexType::TexCoordType TexCoordType;
-  typedef typename VertexType::NormalType NormalType;
 
   auto mesh = MeshType{};
   auto pos_count = uint32_t{ 0 };
@@ -258,6 +254,8 @@ MeshT ReadMesh(
   auto nml_count = uint32_t{ 0 };
 
   // Positions.
+  typedef typename VertexType::PositionType PositionType;
+
   auto add_position = [&mesh, &pos_count](const auto& pos) {
     if (mesh.vertices.size() <= pos_count) {
       mesh.vertices.push_back(VertexType{});
@@ -266,6 +264,8 @@ MeshT ReadMesh(
   };
 
   // Texture coordinates.
+  typedef typename VertexType::TexCoordType TexCoordType;
+
   auto add_tex_coord = [&mesh, &tex_count](const auto& tex) {
     if (mesh.vertices.size() <= tex_count) {
       mesh.vertices.push_back(VertexType{});
@@ -274,6 +274,8 @@ MeshT ReadMesh(
   };
 
   // Normals.
+  typedef typename VertexType::NormalType NormalType;
+
   auto add_normal = [&mesh, &nml_count](const auto& nml) {
     if (mesh.vertices.size() <= nml_count) {
       mesh.vertices.push_back(VertexType{});
@@ -292,6 +294,7 @@ MeshT ReadMesh(
   };
 
   // float type???
+  typedef typename MeshType::IndexType IndexType;
   detail::ReadHelper<float, IndexType>(
     is,
     add_position,
@@ -316,7 +319,60 @@ IndexedMeshT ReadIndexedMesh(
   const bool read_tex_coords,
   const bool read_normals)
 {
-  return IndexedMeshT{};
+  typedef IndexedMeshT MeshType;
+
+  auto mesh = MeshType{};
+
+  // Positions.
+  typedef typename MeshType::PositionType PositionType;
+
+  auto add_position = [&mesh](const auto& pos) {
+    mesh.positions.push_back(VecMaker<PositionType>::Make(pos.values));
+  };
+
+  // Texture coordinates.
+  typedef typename MeshType::TexCoordType TexCoordType;
+
+  auto add_tex_coord = [&mesh](const auto& tex) {
+    mesh.tex_coords.push_back(VecMaker<TexCoordType>::Make(tex.values));
+  };
+
+  // Normals.
+  typedef typename MeshType::NormalType NormalType;
+
+  auto add_normal = [&mesh](const auto& nml) {
+    mesh.normals.push_back(VecMaker<TexCoordType>::Make(nml.values));
+  };
+
+  // Faces.
+  auto add_face = [&mesh, read_tex_coords, read_normals](const auto& face) {
+    if (face.values.size() != MeshType::IndicesPerFace) {
+      throw std::runtime_error("unexpected face index count");
+    }
+    for (const auto idx : face.values) {
+      mesh.position_indices.push_back(idx.position_index.value);
+      
+      if (read_tex_coords && idx.tex_coord_index.second) {
+        mesh.tex_coord_indices.push_back(idx.tex_coord_index.first.value);
+      }
+      if (read_normals && idx.normal_index.second) {
+        mesh.normal_indices.push_back(idx.normal_index.first.value);
+      }
+    }
+  };
+
+  // float type???
+  typedef typename MeshType::IndexType IndexType;
+  detail::ReadHelper<float, IndexType>(
+    is,
+    add_position,
+    add_face,
+    add_tex_coord,
+    add_normal,
+    read_tex_coords,
+    read_normals);
+
+  return mesh;
 }
 
 
