@@ -30,11 +30,11 @@ TEST_CASE("read", "[container]")
 
   SECTION("positions")
   {
-    const auto read_tex_coords = false;
-    const auto read_normals = false;
+    constexpr auto use_tex_coords = false;
+    constexpr auto use_normals = false;
     auto iss = std::istringstream(input);
     const auto mesh = utils::ReadMesh<utils::Mesh<>>(
-      iss, read_tex_coords, read_normals);
+      iss, use_tex_coords, use_normals);
 
     typedef decltype(mesh) MeshType;
     typedef typename MeshType::VertexType VertexType;
@@ -49,6 +49,120 @@ TEST_CASE("read", "[container]")
     };
     expected_mesh.indices = std::vector<IndexType>{ 0, 1, 2, 2, 1, 0};
 
-    REQUIRE_THAT(mesh, utils::MeshMatcher<MeshType>(expected_mesh));
+    REQUIRE_THAT(mesh, utils::MeshMatcher<MeshType>(
+      expected_mesh, use_tex_coords, use_normals));
+  }
+
+  SECTION("positions and tex coords")
+  {
+    constexpr auto use_tex_coords = true;
+    constexpr auto use_normals = false;
+    auto iss = std::istringstream(input);
+    const auto mesh = utils::ReadMesh<utils::Mesh<>>(
+      iss, use_tex_coords, use_normals);
+
+    typedef decltype(mesh) MeshType;
+    typedef typename MeshType::VertexType VertexType;
+    typedef typename MeshType::IndexType IndexType;
+    typedef typename VertexType::PositionType PositionType;
+    typedef typename VertexType::TexCoordType TexCoordType;
+
+    auto expected_mesh = MeshType{};
+    expected_mesh.vertices = std::vector<VertexType>{
+      VertexType{ 
+        PositionType{ 1.f, 2.f, 3.f },
+        TexCoordType{ 0.f, 0.f }
+      },
+      VertexType{ 
+        PositionType{ 4.f, 5.f, 6.f },
+        TexCoordType{ 0.f, 1.f }
+      },
+      VertexType{ 
+        PositionType{ 7.f, 8.f, 9.f },
+        TexCoordType{ 1.f, 1.f }
+      }
+    };
+    expected_mesh.indices = std::vector<IndexType>{ 0, 1, 2, 2, 1, 0 };
+
+    REQUIRE_THAT(mesh, utils::MeshMatcher<MeshType>(
+      expected_mesh, use_tex_coords, use_normals));
+  }
+
+  SECTION("positions and normals")
+  {
+    constexpr auto use_tex_coords = false;
+    constexpr auto use_normals = true;
+    auto iss = std::istringstream(input);
+    const auto mesh = utils::ReadMesh<utils::Mesh<>>(
+      iss, use_tex_coords, use_normals);
+
+    typedef decltype(mesh) MeshType;
+    typedef typename MeshType::VertexType VertexType;
+    typedef typename MeshType::IndexType IndexType;
+    typedef typename VertexType::PositionType PositionType;
+    typedef typename VertexType::TexCoordType TexCoordType;
+    typedef typename VertexType::NormalType NormalType;
+
+    auto expected_mesh = MeshType{};
+    expected_mesh.vertices = std::vector<VertexType>{
+      VertexType{
+      PositionType{ 1.f, 2.f, 3.f },
+      TexCoordType{},
+      NormalType{ 1.f, 0.f, 0.f }
+    },
+      VertexType{
+      PositionType{ 4.f, 5.f, 6.f },
+      TexCoordType{},
+      NormalType{ 0.f, 1.f, 0.f }
+    },
+      VertexType{
+      PositionType{ 7.f, 8.f, 9.f },
+      TexCoordType{},
+      NormalType{ 0.f, 0.f, 1.f }
+    }
+    };
+    expected_mesh.indices = std::vector<IndexType>{ 0, 1, 2, 2, 1, 0 };
+
+    REQUIRE_THAT(mesh, utils::MeshMatcher<MeshType>(
+      expected_mesh, use_tex_coords, use_normals));
+  }
+
+  SECTION("positions and tex coords and normals")
+  {
+    constexpr auto use_tex_coords = true;
+    constexpr auto use_normals = true;
+    auto iss = std::istringstream(input);
+    const auto mesh = utils::ReadMesh<utils::Mesh<>>(
+      iss, use_tex_coords, use_normals);
+
+    typedef decltype(mesh) MeshType;
+    typedef typename MeshType::VertexType VertexType;
+    typedef typename MeshType::IndexType IndexType;
+    typedef typename VertexType::PositionType PositionType;
+    typedef typename VertexType::TexCoordType TexCoordType;
+    typedef typename VertexType::NormalType NormalType;
+
+    auto expected_mesh = MeshType{};
+    expected_mesh.vertices = std::vector<VertexType>{
+      VertexType{
+      PositionType{ 1.f, 2.f, 3.f },
+      TexCoordType{ 0.f, 0.f},
+      NormalType{ 1.f, 0.f, 0.f }
+    },
+      VertexType{
+      PositionType{ 4.f, 5.f, 6.f },
+      TexCoordType{ 0.f, 1.f },
+      NormalType{ 0.f, 1.f, 0.f }
+    },
+      VertexType{
+      PositionType{ 7.f, 8.f, 9.f },
+      TexCoordType{ 1.f, 1.f},
+      NormalType{ 0.f, 0.f, 1.f }
+    }
+    };
+    expected_mesh.indices = std::vector<IndexType>{ 0, 1, 2, 2, 1, 0 };
+
+    REQUIRE_THAT(mesh, utils::MeshMatcher<MeshType>(
+      expected_mesh, use_tex_coords, use_normals));
   }
 }

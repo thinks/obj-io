@@ -48,18 +48,18 @@ TEST_CASE("round trip", "[container]")
   };
   mesh.indices = std::vector<IndexType>{ 0, 1, 2, 2, 1, 0 };
 
+  constexpr auto use_tex_coords = true;
+  constexpr auto use_normals = true;
+
   // Write.
-  constexpr auto write_tex_coords = true;
-  constexpr auto write_normals = true;
-  const auto mesh_str = utils::WriteMesh(mesh, write_tex_coords, write_normals);
+  const auto mesh_str = utils::WriteMesh(mesh, use_tex_coords, use_normals);
 
   // Read.
   auto iss = std::istringstream(mesh_str);
-  constexpr auto read_tex_coords = true;
-  constexpr auto read_normals = true;
-  const auto read_mesh = utils::ReadMesh<MeshType>(iss, read_tex_coords, read_normals);
+  const auto read_mesh = utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
 
-  REQUIRE_THAT(read_mesh, utils::MeshMatcher<MeshType>(mesh));
+  REQUIRE_THAT(read_mesh, utils::MeshMatcher<MeshType>(
+    mesh, use_tex_coords, use_normals));
 }
 
 
@@ -103,16 +103,16 @@ TEST_CASE("round trip indexed", "[container]")
     0, 0, 0
   };
 
+  constexpr auto use_tex_coords = true;
+  constexpr auto use_normals = true;
+
   // Write.
-  constexpr auto write_tex_coords = true;
-  constexpr auto write_normals = true;
-  const auto mesh_str = utils::WriteIndexedMesh(imesh, write_tex_coords, write_normals);
+  const auto mesh_str = utils::WriteIndexedMesh(imesh, use_tex_coords, use_normals);
 
   // Read.
   auto iss = std::istringstream(mesh_str);
-  constexpr auto read_tex_coords = true;
-  constexpr auto read_normals = true;
-  const auto read_mesh = utils::ReadIndexedMesh<MeshType>(iss, read_tex_coords, read_normals);
+  const auto read_mesh = utils::ReadIndexedMesh<MeshType>(iss, use_tex_coords, use_normals);
 
-  REQUIRE_THAT(read_mesh, utils::IndexedMeshMatcher<MeshType>(imesh));
+  REQUIRE_THAT(read_mesh, utils::IndexedMeshMatcher<MeshType>(
+    imesh, use_tex_coords, use_normals));
 }

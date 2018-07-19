@@ -6,6 +6,7 @@
 #define THINKS_OBJ_IO_UTILS_CATCH_UTILS_H_INCLUDED
 
 #include <exception>
+#include <sstream>
 #include <string>
 
 #include <catch.hpp>
@@ -40,8 +41,13 @@ struct MeshMatcher : Catch::MatcherBase<MeshT>
 {
   typedef MeshT MeshType;
 
-  MeshMatcher(const MeshType& target)
+  MeshMatcher(
+    const MeshType& target, 
+    const bool match_tex_coords, 
+    const bool match_normals)
     : target_(target)
+    , match_tex_coords_(match_tex_coords)
+    , match_normals_(match_normals)
   {
   }
 
@@ -53,8 +59,17 @@ struct MeshMatcher : Catch::MatcherBase<MeshT>
     }
 
     for (auto i = std::size_t{ 0 }; i < matchee.vertices.size(); ++i) {
-      if (!Equals(matchee.vertices[i].pos, target_.vertices[i].pos) ||
-          !Equals(matchee.vertices[i].tex, target_.vertices[i].tex) ||
+      if (!Equals(matchee.vertices[i].pos, target_.vertices[i].pos)) {
+        return false;
+      } 
+
+      if (match_tex_coords_ &&
+          !Equals(matchee.vertices[i].tex, target_.vertices[i].tex))
+      {
+        return false;
+      }
+
+      if (match_normals_ && 
           !Equals(matchee.vertices[i].normal, target_.vertices[i].normal)) {
         return false;
       }
@@ -71,11 +86,18 @@ struct MeshMatcher : Catch::MatcherBase<MeshT>
 
   std::string describe() const override
   {
-    return "mesh mismatch";
+    auto oss = std::ostringstream{};
+    oss << "mesh mismatch ("
+      << "match_tex_coords: " << (match_tex_coords_ ? "true" : "false")
+      << "match_normals: " << (match_normals_ ? "true" : "false")
+      << ")";
+    return oss.str();
   }
 
 private:
   MeshType target_;
+  bool match_tex_coords_;
+  bool match_normals_;
 };
 
 template<typename MeshT>
@@ -83,36 +105,26 @@ struct IndexedMeshMatcher : Catch::MatcherBase<MeshT>
 {
   typedef MeshT MeshType;
 
-  IndexedMeshMatcher(const MeshType& target)
+  IndexedMeshMatcher(
+    const MeshType& target,
+    const bool match_tex_coords,
+    const bool match_normals)
     : target_(target)
+    , match_tex_coords_(match_tex_coords)
+    , match_normals_(match_normals)
   {
   }
 
   bool match(const MeshType& matchee) const override
   {
     if (matchee.positions.size() != target_.positions.size() ||
-        matchee.tex_coords.size() != target_.tex_coords.size() ||
-        matchee.normals.size() != target_.normals.size() ||
-        matchee.position_indices.size() != target_.position_indices.size() ||
-        matchee.tex_coord_indices.size() != target_.tex_coord_indices.size() ||
-        matchee.normal_indices.size() != target_.normal_indices.size()) {
+        matchee.position_indices.size() != target_.position_indices.size()) {
       return false;
     }
 
+    // Positions.
     for (auto i = std::size_t{ 0 }; i < matchee.positions.size(); ++i) {
       if (!Equals(matchee.positions[i], target_.positions[i])) {
-        return false;
-      }
-    }
-
-    for (auto i = std::size_t{ 0 }; i < matchee.tex_coords.size(); ++i) {
-      if (!Equals(matchee.tex_coords[i], target_.tex_coords[i])) {
-        return false;
-      }
-    }
-
-    for (auto i = std::size_t{ 0 }; i < matchee.normals.size(); ++i) {
-      if (!Equals(matchee.normals[i], target_.normals[i])) {
         return false;
       }
     }
@@ -123,15 +135,43 @@ struct IndexedMeshMatcher : Catch::MatcherBase<MeshT>
       }
     }
 
-    for (auto i = std::size_t{ 0 }; i < matchee.tex_coord_indices.size(); ++i) {
-      if (matchee.tex_coord_indices[i] != target_.tex_coord_indices[i]) {
+    // Texture coordinates.
+    if (match_tex_coords_) {
+      if (matchee.tex_coords.size() != target_.tex_coords.size() ||
+          matchee.tex_coord_indices.size() != target_.tex_coord_indices.size()) {
         return false;
+      }
+
+      for (auto i = std::size_t{ 0 }; i < matchee.tex_coords.size(); ++i) {
+        if (!Equals(matchee.tex_coords[i], target_.tex_coords[i])) {
+          return false;
+        }
+      }
+
+      for (auto i = std::size_t{ 0 }; i < matchee.tex_coord_indices.size(); ++i) {
+        if (matchee.tex_coord_indices[i] != target_.tex_coord_indices[i]) {
+          return false;
+        }
       }
     }
 
-    for (auto i = std::size_t{ 0 }; i < matchee.normal_indices.size(); ++i) {
-      if (matchee.normal_indices[i] != target_.normal_indices[i]) {
+    // Normals.
+    if (match_normals_) {
+      if (matchee.normals.size() != target_.normals.size() ||
+        matchee.normal_indices.size() != target_.normal_indices.size()) {
         return false;
+      }
+
+      for (auto i = std::size_t{ 0 }; i < matchee.normals.size(); ++i) {
+        if (!Equals(matchee.normals[i], target_.normals[i])) {
+          return false;
+        }
+      }
+
+      for (auto i = std::size_t{ 0 }; i < matchee.normal_indices.size(); ++i) {
+        if (matchee.normal_indices[i] != target_.normal_indices[i]) {
+          return false;
+        }
       }
     }
 
@@ -140,11 +180,18 @@ struct IndexedMeshMatcher : Catch::MatcherBase<MeshT>
 
   std::string describe() const override
   {
-    return "indexed mesh mismatch";
+    auto oss = std::ostringstream{};
+    oss << "mesh mismatch ("
+      << "match_tex_coords: " << (match_tex_coords_ ? "true" : "false")
+      << "match_normals: " << (match_normals_ ? "true" : "false")
+      << ")";
+      return oss.str();
   }
 
 private:
   MeshType target_;
+  bool match_tex_coords_;
+  bool match_normals_;
 };
 
 } // namespace utils

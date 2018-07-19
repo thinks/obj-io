@@ -363,12 +363,10 @@ void ValidateFace(const FaceT& face, DynamicFaceTag)
   }
 }
 
+// No need to validate non-polygon faces, the number 
+// of indices for these are enforced in the class templates.
 template <typename FaceT>
-void ValidateFace(const FaceT& face, StaticFaceTag)
-{
-  // No need to validate non-polygon faces, the number 
-  // of indices for these are enforced in the class templates.
-}
+void ValidateFace(const FaceT& face, StaticFaceTag) {}
 
 
 constexpr inline const char* CommentPrefix() { return "#"; }

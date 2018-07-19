@@ -92,7 +92,7 @@ struct ObjTypeMaker<thinks::obj_io::QuadFace<IndexT>>
   static constexpr
     thinks::obj_io::QuadFace<IndexT> Make(const std::array<IndexT, 4>& a) noexcept
   {
-    return thinks::obj_io::TriangleFace<IndexT>(a[0], a[1], a[2], a[3]);
+    return thinks::obj_io::QuadFace<IndexT>(a[0], a[1], a[2], a[3]);
   }
 };
 

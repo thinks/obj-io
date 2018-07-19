@@ -36,10 +36,10 @@ struct Vec4
 {
   typedef FloatT ValueType;
 
-  FloatT x;
-  FloatT y;
-  FloatT z;
-  FloatT w;
+  FloatT x = FloatT{ 0 };
+  FloatT y = FloatT{ 0 };
+  FloatT z = FloatT{ 0 };
+  FloatT w = FloatT{ 0 };
 };
 
 
