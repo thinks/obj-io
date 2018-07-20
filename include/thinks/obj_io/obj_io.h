@@ -248,6 +248,21 @@ MapResult<T> End() noexcept
 }
 
 
+template<typename ParseT, typename Func>
+struct AddFunc
+{
+  typedef ParseT ParseType;
+
+  Func func;
+};
+
+template<typename ParseT, typename Func>
+AddFunc<ParseT, typename std::decay<Func>::type> MakeAddFunc(Func&& func)
+{
+  return { std::forward<Func>(func) };
+}
+
+
 namespace detail {
 
 template<typename T>
@@ -425,19 +440,21 @@ ParsedValues<ArithT, N> ParseValues(std::istringstream* const iss)
 }
 
 
-template<typename ArithT, typename AddPosition>
+template<typename AddPositionFuncT>
 void ParsePosition(
   std::istringstream* const iss,
-  AddPosition add_position)
+  AddPositionFuncT add_position)
 {
-  const auto parsed = ParseValues<ArithT, 4>(iss);
+  typedef typename AddPositionFuncT::ParseType ParseType;
+
+  const auto parsed = ParseValues<ParseType, 4>(iss);
   if (parsed.value_count == 3 || parsed.value_count == 4) {
     // Position fourth value (w) defaults to 1.
-    add_position(Position<ArithT, 4>(
+    add_position.func(Position<ParseType, 4>(
       parsed.values[0], 
       parsed.values[1], 
       parsed.values[2],
-      parsed.value_count == 4 ? parsed.values[3] : ArithT{ 1 }));
+      parsed.value_count == 4 ? parsed.values[3] : ParseType{ 1 }));
   }
   else {
     auto oss = std::ostringstream{};
@@ -536,53 +553,56 @@ std::vector<IndexGroup<IntT>> ParseIndexGroups(std::istringstream* const iss)
 }
 
 
-template<typename IntT, typename AddFace>
+template<typename AddFaceFuncT>
 void ParseFace(
   std::istringstream* const iss,
-  AddFace add_face)
+  AddFaceFuncT add_face)
 {
-  typedef IndexGroup<IntT> IndexGroupType;
+  typedef typename AddFaceFuncT::ParseType ParseType;
+  typedef IndexGroup<ParseType> IndexGroupType;
 
-  const auto index_groups = ParseIndexGroups<IntT>(iss);
+  const auto index_groups = ParseIndexGroups<ParseType>(iss);
 
   if (index_groups.size() < 3) {
     throw std::runtime_error("face must have at least three indices");
   }
   else if (index_groups.size() == 3) {
-    add_face(TriangleFace<IndexGroupType>(
+    add_face.func(TriangleFace<IndexGroupType>(
       index_groups[0],
       index_groups[1],
       index_groups[2]));
   }
   else if (index_groups.size() == 4) {
-    add_face(QuadFace<IndexGroupType>(
+    add_face.func(QuadFace<IndexGroupType>(
       index_groups[0],
       index_groups[1],
       index_groups[2],
       index_groups[3]));
   }
   else {
-    add_face(PolygonFace<IndexGroupType>(index_groups));
-    // ValidatePolygonFace(...)
+    add_face.func(PolygonFace<IndexGroupType>(index_groups));
+    // TODO - ValidatePolygonFace(...)
   }
 }
 
 
-template<typename FloatT, typename AddTexCoord>
+template<typename AddTexCoordFuncT>
 void ParseTexCoord(
   std::istringstream* const iss,
-  AddTexCoord add_tex_coord,
+  AddTexCoordFuncT add_tex_coord,
   FuncTag)
 {
-  const auto parsed = ParseValues<FloatT, 3>(iss);
+  typedef typename AddTexCoordFuncT::ParseType ParseType;
+
+  const auto parsed = ParseValues<ParseType, 3>(iss);
   if (parsed.value_count == 2 || parsed.value_count == 3) {
     // Texture coordinate third value defaults to 1.
-    const auto tex = TexCoord<FloatT, 3>(
+    const auto tex = TexCoord<ParseType, 3>(
       parsed.values[0], 
       parsed.values[1],
-      parsed.value_count == 3 ? parsed.values[2] : FloatT{ 1 });
+      parsed.value_count == 3 ? parsed.values[2] : ParseType{ 1 });
     ValidateTexCoord(tex);
-    add_tex_coord(tex);
+    add_tex_coord.func(tex);
   }
   else {
     auto oss = std::ostringstream{};
@@ -592,24 +612,21 @@ void ParseTexCoord(
 }
 
 /// Dummy.
-template<typename FloatT, typename AddTexCoord>
-void ParseTexCoord(
-  std::istringstream* const,
-  AddTexCoord,
-  NoOpFuncTag)
-{
-}
+template<typename AddTexCoordFuncT>
+void ParseTexCoord(std::istringstream* const, AddTexCoordFuncT, NoOpFuncTag) {}
 
 
-template<typename ArithT, typename AddNormal>
+template<typename AddNormalFuncT>
 void ParseNormal(
   std::istringstream* const iss,
-  AddNormal add_normal,
+  AddNormalFuncT add_normal,
   FuncTag)
 {
-  const auto parsed = ParseValues<ArithT, 3>(iss);
+  typedef typename AddNormalFuncT::ParseType ParseType;
+
+  const auto parsed = ParseValues<ParseType, 3>(iss);
   if (parsed.value_count == 3) {
-    add_normal(Normal<ArithT>(
+    add_normal.func(Normal<ParseType>(
       parsed.values[0], 
       parsed.values[1],
       parsed.values[2]));
@@ -622,28 +639,21 @@ void ParseNormal(
 }
 
 /// Dummy.
-template<typename ArithT, typename AddNormal>
-void ParseNormal(
-  std::istringstream* const,
-  AddNormal,
-  NoOpFuncTag)
-{
-}
+template<typename AddNormalFuncT>
+void ParseNormal(std::istringstream* const, AddNormalFuncT, NoOpFuncTag) {}
 
 
 template<
-  typename FloatT,
-  typename IntT,
-  typename AddPosition,
-  typename AddTexCoord,
-  typename AddNormal,
-  typename AddFace>
+  typename AddPositionFuncT,
+  typename AddTexCoordFuncT,
+  typename AddNormalFuncT,
+  typename AddFaceFuncT>
 void ParseLine(
   const std::string& line,
-  AddPosition add_position,
-  AddFace add_face,
-  AddTexCoord add_tex_coord,
-  AddNormal add_normal)
+  AddPositionFuncT add_position,
+  AddFaceFuncT add_face,
+  AddTexCoordFuncT add_tex_coord,
+  AddNormalFuncT add_normal)
 {
   auto iss = std::istringstream(line);
 
@@ -656,18 +666,18 @@ void ParseLine(
     return; // Ignore empty lines and comments.
   }
   else if (prefix == PositionPrefix()) {
-    ParsePosition<FloatT>(&iss, add_position);
+    ParsePosition(&iss, add_position);
   }
   else if (prefix == FacePrefix()) {
-    ParseFace<IntT>(&iss, add_face);
+    ParseFace(&iss, add_face);
   }
   else if (prefix == TexCoordPrefix()) {
-    ParseTexCoord<FloatT>(&iss, add_tex_coord,
-      typename FuncTraits<AddTexCoord>::FuncCategory{});
+    ParseTexCoord(&iss, add_tex_coord,
+      typename FuncTraits<AddTexCoordFuncT>::FuncCategory{});
   }
   else if (prefix == NormalPrefix()) {
-    ParseNormal<FloatT>(&iss, add_normal,
-      typename FuncTraits<AddNormal>::FuncCategory{});
+    ParseNormal(&iss, add_normal,
+      typename FuncTraits<AddNormalFuncT>::FuncCategory{});
   }
   else {
     auto oss = std::ostringstream{};
@@ -678,22 +688,20 @@ void ParseLine(
 
 
 template<
-  typename FloatT,
-  typename IndexT,
-  typename AddPosition,
-  typename AddTexCoord,
-  typename AddNormal,
-  typename AddFace>
+  typename AddPositionFuncT,
+  typename AddTexCoordFuncT,
+  typename AddNormalFuncT,
+  typename AddFaceFuncT>
 void ParseLines(
   std::istream& is, 
-  AddPosition add_position,
-  AddFace add_face,
-  AddTexCoord add_tex_coord,
-  AddNormal add_normal)
+  AddPositionFuncT add_position,
+  AddFaceFuncT add_face,
+  AddTexCoordFuncT add_tex_coord,
+  AddNormalFuncT add_normal)
 {
   auto line = std::string{};
   while (std::getline(is, line)) {
-    detail::read::ParseLine<FloatT, IndexT>(
+    detail::read::ParseLine(
       line, add_position, add_face, add_tex_coord, add_normal);
   }
 }
@@ -857,20 +865,18 @@ void WriteFaces(
 
 
 template<
-  typename FloatT,
-  typename IntT,
-  typename AddPosition,
-  typename AddFace,
-  typename AddTexCoord = std::nullptr_t,
-  typename AddNormal = std::nullptr_t>
+  typename AddPositionFuncT,
+  typename AddFaceFuncT,
+  typename AddTexCoordFuncT = std::nullptr_t,
+  typename AddNormalFuncT = std::nullptr_t>
 void Read(
   std::istream& is,
-  AddPosition add_position,
-  AddFace add_face,
-  AddTexCoord add_tex_coord = nullptr,
-  AddNormal add_normal = nullptr)
+  AddPositionFuncT add_position,
+  AddFaceFuncT add_face,
+  AddTexCoordFuncT add_tex_coord = nullptr,
+  AddNormalFuncT add_normal = nullptr)
 {
-  detail::read::ParseLines<FloatT, IntT>(
+  detail::read::ParseLines(
     is, add_position, add_face, add_tex_coord, add_normal);
 }
 

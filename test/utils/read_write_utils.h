@@ -136,18 +136,16 @@ struct FaceSelector<4, IndexT>
 
 
 template<
-  typename FloatT,
-  typename IntT,
-  typename AddPosition,
-  typename AddFace,
-  typename AddTexCoord,
-  typename AddNormal>
+  typename AddPositionFuncT,
+  typename AddFaceFuncT,
+  typename AddTexCoordFuncT,
+  typename AddNormalFuncT>
 void ReadHelper(
   std::istream& is,
-  AddPosition add_position,
-  AddFace add_face,
-  AddTexCoord add_tex_coord,
-  AddNormal add_normal,
+  AddPositionFuncT add_position,
+  AddFaceFuncT add_face,
+  AddTexCoordFuncT add_tex_coord,
+  AddNormalFuncT add_normal,
   const bool read_tex_coords,
   const bool read_normals)
 {
@@ -155,33 +153,16 @@ void ReadHelper(
 
   if (!read_tex_coords && !read_normals)
   {
-    Read<FloatT, IntT>(
-      is,
-      add_position,
-      add_face);
+    Read(is, add_position, add_face);
   }
   else if (read_tex_coords && !read_normals) {
-    Read<FloatT, IntT>(
-      is,
-      add_position,
-      add_face,
-      add_tex_coord);
+    Read(is, add_position, add_face, add_tex_coord);
   }
   else if (!read_tex_coords && read_normals) {
-    Read<FloatT, IntT>(
-      is,
-      add_position,
-      add_face,
-      nullptr,
-      add_normal);
+    Read(is, add_position, add_face, nullptr /* add_tex_coord */, add_normal);
   }
   else {
-    Read<FloatT, IntT>(
-      is,
-      add_position,
-      add_face,
-      add_tex_coord,
-      add_normal);
+    Read(is, add_position, add_face, add_tex_coord, add_normal);
   }
 }
 
@@ -245,6 +226,8 @@ MeshT ReadMesh(
   const bool read_tex_coords,
   const bool read_normals)
 {
+  using thinks::obj_io::MakeAddFunc;
+
   typedef MeshT MeshType;
   typedef typename MeshType::VertexType VertexType;
 
@@ -256,46 +239,50 @@ MeshT ReadMesh(
   // Positions.
   typedef typename VertexType::PositionType PositionType;
 
-  auto add_position = [&mesh, &pos_count](const auto& pos) {
-    if (mesh.vertices.size() <= pos_count) {
-      mesh.vertices.push_back(VertexType{});
-    }
-    mesh.vertices[pos_count++].pos = VecMaker<PositionType>::Make(pos.values);
-  };
+  auto add_position = MakeAddFunc<typename PositionType::ValueType>(
+    [&mesh, &pos_count](const auto& pos) {
+      if (mesh.vertices.size() <= pos_count) {
+        mesh.vertices.push_back(VertexType{});
+      }
+      mesh.vertices[pos_count++].pos = VecMaker<PositionType>::Make(pos.values);
+    });
 
   // Texture coordinates.
   typedef typename VertexType::TexCoordType TexCoordType;
 
-  auto add_tex_coord = [&mesh, &tex_count](const auto& tex) {
-    if (mesh.vertices.size() <= tex_count) {
-      mesh.vertices.push_back(VertexType{});
-    }
-    mesh.vertices[tex_count++].tex = VecMaker<TexCoordType>::Make(tex.values);
-  };
+  auto add_tex_coord = MakeAddFunc<typename TexCoordType::ValueType>(
+    [&mesh, &tex_count](const auto& tex) {
+      if (mesh.vertices.size() <= tex_count) {
+        mesh.vertices.push_back(VertexType{});
+      }
+      mesh.vertices[tex_count++].tex = VecMaker<TexCoordType>::Make(tex.values);
+    });
 
   // Normals.
   typedef typename VertexType::NormalType NormalType;
 
-  auto add_normal = [&mesh, &nml_count](const auto& nml) {
-    if (mesh.vertices.size() <= nml_count) {
-      mesh.vertices.push_back(VertexType{});
-    }
-    mesh.vertices[nml_count++].normal = VecMaker<NormalType>::Make(nml.values);
-  };
+  auto add_normal = MakeAddFunc<typename NormalType::ValueType>(
+    [&mesh, &nml_count](const auto& nml) {
+      if (mesh.vertices.size() <= nml_count) {
+        mesh.vertices.push_back(VertexType{});
+      }
+      mesh.vertices[nml_count++].normal = VecMaker<NormalType>::Make(nml.values);
+    });
 
   // Faces.
-  auto add_face = [&mesh](const auto& face) {
-    if (face.values.size() != MeshType::IndicesPerFace) {
-      throw std::runtime_error("unexpected face index count");
-    }
-    for (const auto idx : face.values) {
-      mesh.indices.push_back(idx.position_index.value);
-    }
-  };
-
-  // float type???
   typedef typename MeshType::IndexType IndexType;
-  detail::ReadHelper<float, IndexType>(
+
+  auto add_face = MakeAddFunc<IndexType>(
+    [&mesh](const auto& face) {
+      if (face.values.size() != MeshType::IndicesPerFace) {
+        throw std::runtime_error("unexpected face index count");
+      }
+      for (const auto idx : face.values) {
+        mesh.indices.push_back(idx.position_index.value);
+      }
+    });
+
+  detail::ReadHelper(
     is,
     add_position,
     add_face,
@@ -319,6 +306,8 @@ IndexedMeshT ReadIndexedMesh(
   const bool read_tex_coords,
   const bool read_normals)
 {
+  using thinks::obj_io::MakeAddFunc;
+
   typedef IndexedMeshT MeshType;
 
   auto mesh = MeshType{};
@@ -326,44 +315,48 @@ IndexedMeshT ReadIndexedMesh(
   // Positions.
   typedef typename MeshType::PositionType PositionType;
 
-  auto add_position = [&mesh](const auto& pos) {
-    mesh.positions.push_back(VecMaker<PositionType>::Make(pos.values));
-  };
+  auto add_position = MakeAddFunc<typename PositionType::ValueType>(
+    [&mesh](const auto& pos) {
+      mesh.positions.push_back(VecMaker<PositionType>::Make(pos.values));
+    });
 
   // Texture coordinates.
   typedef typename MeshType::TexCoordType TexCoordType;
 
-  auto add_tex_coord = [&mesh](const auto& tex) {
-    mesh.tex_coords.push_back(VecMaker<TexCoordType>::Make(tex.values));
-  };
+  auto add_tex_coord = MakeAddFunc<typename TexCoordType::ValueType>(
+    [&mesh](const auto& tex) {
+      mesh.tex_coords.push_back(VecMaker<TexCoordType>::Make(tex.values));
+    });
 
   // Normals.
   typedef typename MeshType::NormalType NormalType;
 
-  auto add_normal = [&mesh](const auto& nml) {
-    mesh.normals.push_back(VecMaker<TexCoordType>::Make(nml.values));
-  };
+  auto add_normal = MakeAddFunc<typename NormalType::ValueType>(
+    [&mesh](const auto& nml) {
+      mesh.normals.push_back(VecMaker<TexCoordType>::Make(nml.values));
+    });
 
   // Faces.
-  auto add_face = [&mesh, read_tex_coords, read_normals](const auto& face) {
-    if (face.values.size() != MeshType::IndicesPerFace) {
-      throw std::runtime_error("unexpected face index count");
-    }
-    for (const auto idx : face.values) {
-      mesh.position_indices.push_back(idx.position_index.value);
-      
-      if (read_tex_coords && idx.tex_coord_index.second) {
-        mesh.tex_coord_indices.push_back(idx.tex_coord_index.first.value);
-      }
-      if (read_normals && idx.normal_index.second) {
-        mesh.normal_indices.push_back(idx.normal_index.first.value);
-      }
-    }
-  };
-
-  // float type???
   typedef typename MeshType::IndexType IndexType;
-  detail::ReadHelper<float, IndexType>(
+
+  auto add_face = MakeAddFunc<IndexType>(
+    [&mesh, read_tex_coords, read_normals](const auto& face) {
+      if (face.values.size() != MeshType::IndicesPerFace) {
+        throw std::runtime_error("unexpected face index count");
+      }
+      for (const auto idx : face.values) {
+        mesh.position_indices.push_back(idx.position_index.value);
+      
+        if (read_tex_coords && idx.tex_coord_index.second) {
+          mesh.tex_coord_indices.push_back(idx.tex_coord_index.first.value);
+        }
+        if (read_normals && idx.normal_index.second) {
+          mesh.normal_indices.push_back(idx.normal_index.first.value);
+        }
+      }
+    });
+
+  detail::ReadHelper(
     is,
     add_position,
     add_face,
