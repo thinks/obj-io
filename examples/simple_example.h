@@ -87,6 +87,7 @@ Mesh ReadMesh(const std::string& filename)
       Vec3{ nml.values[0], nml.values[1], nml.values[2] };
   };
 
+  // Open the OBJ file and populate the mesh while parsing it.
   auto ifs = ifstream(filename);
   assert(ifs);
   Read(
@@ -114,7 +115,28 @@ namespace examples {
 
 void SimpleExample()
 {
-
+  auto mesh = Mesh{
+    std::vector<Vertex>{
+      Vertex {
+        Vec3{ 1.f, 0.f, 0.f }, // position
+        Vec2{ 1.f, 0.f },      // tex_coord
+        Vec3{ 0.f, 0.f, 1.f }  // normal
+      },
+      Vertex {
+        Vec3{ 0.f, 1.f, 0.f },
+        Vec2{ 0.f, 1.f },
+        Vec3{ 0.f, 0.f, 1.f }
+      },
+      Vertex {
+        Vec3{ 1.f, 1.f, 0.f },
+        Vec2{ 1.f, 1.f },
+        Vec3{ 0.f, 0.f, 1.f }
+      },
+    },
+    std::vector<std::uint16_t>{ 0, 1, 2 }
+  };
+  WriteMesh("simple_example.obj", mesh);
+  auto mesh2 = ReadMesh("simple_example.obj");
 }
 
 } // namespace examples

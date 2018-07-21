@@ -37,6 +37,13 @@ struct Mesh
 ```
 This type of layout is common since it fits nicely with how mesh data can be easily uploaded to the GPU for rendering. Now, let's assume that we have an OBJ file from which we want to populate a mesh. A simple implementation could be as follows.
 ```cpp
+#include <cassert>
+#include <cstdint>
+#include <fstream>
+#include <string>
+
+#include <thinks/obj_io/obj_io.h>
+
 Mesh ReadMesh(const std::string& filename)
 {
   using namespace std;
@@ -83,6 +90,7 @@ Mesh ReadMesh(const std::string& filename)
       Vec3{ nml.values[0], nml.values[1], nml.values[2] };
   };
 
+  // Open the OBJ file and populate the mesh while parsing it.
   auto ifs = ifstream(filename);
   assert(ifs);
   Read(
@@ -106,6 +114,8 @@ use catch2[link to github], header included in this repo.
 CTest
 
 ## Future Work
+
+* Add [optional] mesh validation, check indices in range.
 
 * vertices must be same size, 3 or 4 elements.
 * all primitives must be same size, greater than or equal to 3, triangle and up.
