@@ -31,7 +31,7 @@ struct Vec3
 struct Vertex
 {
   Vec3 position;
-  Vec2 tex_coords;
+  Vec2 tex_coord;
   Vec3 normal;
 };
 
@@ -55,7 +55,7 @@ Mesh ReadMesh(const std::string& filename)
   // Positions.
   auto add_position = [&mesh, &pos_count](const auto& pos) {
     if (mesh.vertices.size() <= pos_count) {
-      mesh.vertices.push_back(VertexType{});
+      mesh.vertices.push_back(Vertex{});
     }
     mesh.vertices[pos_count++].position = 
       Vec3{ pos.values[0], pos.values[1], pos.values[2] };
@@ -72,7 +72,7 @@ Mesh ReadMesh(const std::string& filename)
   // Texture coordinates [optional].
   auto add_tex_coord = [&mesh, &tex_count](const auto& tex) {
     if (mesh.vertices.size() <= tex_count) {
-      mesh.vertices.push_back(VertexType{});
+      mesh.vertices.push_back(Vertex{});
     }
     mesh.vertices[tex_count++].tex_coord = 
       Vec2{ tex.values[0], tex.values[1] };
@@ -81,7 +81,7 @@ Mesh ReadMesh(const std::string& filename)
   // Normals [optional].
   auto add_normal = [&mesh, &nml_count](const auto& nml) {
     if (mesh.vertices.size() <= nml_count) {
-      mesh.vertices.push_back(VertexType{});
+      mesh.vertices.push_back(Vertex{});
     }
     mesh.vertices[nml_count++].normal = 
       Vec3{ nml.values[0], nml.values[1], nml.values[2] };
