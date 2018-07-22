@@ -44,10 +44,11 @@ struct Mesh
 Mesh ReadMesh(const std::string& filename)
 {
   using namespace std;
-  using thinks::obj_io::MakeAddFunc;
-  using thinks::obj_io::Read;
 
   auto mesh = Mesh{};
+
+  // We cannot assume the order in which callbacks are invoked, 
+  // so we need to keep track of which vertex to add properties to.
   auto pos_count = uint32_t{ 0 };
   auto tex_count = uint32_t{ 0 };
   auto nml_count = uint32_t{ 0 };
@@ -90,12 +91,12 @@ Mesh ReadMesh(const std::string& filename)
   // Open the OBJ file and populate the mesh while parsing it.
   auto ifs = ifstream(filename);
   assert(ifs);
-  Read(
+  thinks::obj_io::Read(
     ifs,
-    MakeAddFunc<float>(add_position), 
-    MakeAddFunc<uint16_t>(add_face),
-    MakeAddFunc<float>(add_tex_coord),
-    MakeAddFunc<float>(add_normal));
+    thinks::obj_io::MakeAddFunc<float>(add_position), 
+    thinks::obj_io::MakeAddFunc<uint16_t>(add_face),
+    thinks::obj_io::MakeAddFunc<float>(add_tex_coord),
+    thinks::obj_io::MakeAddFunc<float>(add_normal));
   ifs.close();
 
   assert(pos_count == tex_count && pos_count == nml_count && 
@@ -106,7 +107,75 @@ Mesh ReadMesh(const std::string& filename)
 
 void WriteMesh(const std::string& filename, const Mesh& mesh)
 {
+  using namespace std;
 
+  const auto vtx_iend = std::end(mesh.vertices);
+
+  // Positions.
+  auto pos_vtx_iter = begin(mesh.vertices);
+  auto pos_mapper = [&pos_vtx_iter, vtx_iend]() {
+    typedef thinks::obj_io::Position<float, 3> ObjPositionType;
+
+    if (pos_vtx_iter == vtx_iend) {
+      return thinks::obj_io::End<ObjPositionType>();
+    }
+
+    const auto pos = (*pos_vtx_iter++).position;
+    return thinks::obj_io::Map(ObjPositionType(pos.x, pos.y, pos.z));
+  };
+
+  // Faces.
+  auto idx_iter = mesh.indices.begin();
+  const auto idx_iend = mesh.indices.end();
+  auto face_mapper = [&idx_iter, idx_iend]() {
+    typedef thinks::obj_io::Index<uint16_t> ObjIndexType;
+    typedef thinks::obj_io::TriangleFace<ObjIndexType> ObjFaceType;
+
+    if (distance(idx_iter, idx_iend) < 3) {
+      return thinks::obj_io::End<ObjFaceType>();
+    }
+
+    const auto idx0 = ObjIndexType(*idx_iter++);
+    const auto idx1 = ObjIndexType(*idx_iter++);
+    const auto idx2 = ObjIndexType(*idx_iter++);
+    return thinks::obj_io::Map(ObjFaceType(idx0, idx1, idx2));
+  };
+
+  // Texture coordinates. [optional]
+  auto tex_vtx_iter = begin(mesh.vertices);
+  auto tex_mapper = [&tex_vtx_iter, vtx_iend]() {
+    typedef thinks::obj_io::TexCoord<float, 2> ObjTexCoordType;
+
+    if (tex_vtx_iter == vtx_iend) {
+      return thinks::obj_io::End<ObjTexCoordType>();
+    }
+
+    const auto tex = (*tex_vtx_iter++).tex_coord;
+    return thinks::obj_io::Map(ObjTexCoordType(tex.x, tex.y));
+  };
+
+  // Normals. [optional]
+  auto nml_vtx_iter = begin(mesh.vertices);
+  auto nml_mapper = [&nml_vtx_iter, vtx_iend]() {
+    typedef thinks::obj_io::Normal<float> ObjNormalType;
+
+    if (nml_vtx_iter == vtx_iend) {
+      return thinks::obj_io::End<ObjNormalType>();
+    }
+
+    const auto nml = (*nml_vtx_iter++).normal;
+    return thinks::obj_io::Map(ObjNormalType(nml.x, nml.y, nml.z));
+  };
+
+  auto ofs = ofstream(filename);
+  assert(ofs);
+  thinks::obj_io::Write(
+    ofs,
+    pos_mapper, 
+    face_mapper,
+    tex_mapper,
+    nml_mapper);
+  ofs.close();
 }
 
 } // namespace
@@ -135,8 +204,9 @@ void SimpleExample()
     },
     std::vector<std::uint16_t>{ 0, 1, 2 }
   };
-  WriteMesh("simple_example.obj", mesh);
-  auto mesh2 = ReadMesh("simple_example.obj");
+  const auto filename = "D:/tmp/simple_example.obj";
+  WriteMesh(filename, mesh);
+  auto mesh2 = ReadMesh(filename);
 }
 
 } // namespace examples
