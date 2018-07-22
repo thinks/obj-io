@@ -34,6 +34,3 @@
 *.db
 *.opendb
 *.ipch
-
-# VS junk
-/.vs
