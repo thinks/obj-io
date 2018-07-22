@@ -176,6 +176,8 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
     tex_mapper,
     nml_mapper);
   ofs.close();
+
+  assert(idx_iter == idx_iend && "trailing indices");
 }
 
 } // namespace
