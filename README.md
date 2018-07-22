@@ -35,7 +35,7 @@ struct Mesh
   std::vector<uint16_t> indices;
 };
 ```
-This type of layout is common since it fits nicely with how mesh data can be easily uploaded to the GPU for rendering. Now, let's assume that we have an OBJ file from which we want to populate a mesh. A simple implementation could be as follows.
+This type of layout is common since it fits nicely with several common APIs for uploading a mesh to the GPU for rendering. Now, let's assume that we have an OBJ file from which we want to populate a mesh. A simple implementation could be as follows.
 ```cpp
 //#include relevant std headers.
 
@@ -118,15 +118,21 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
 
   const auto vtx_iend = std::end(mesh.vertices);
 
+  // Mappers have two responsibilities:
+  // (1) - Iterating over a certain attribute of the mesh (e.g. positions).
+  // (2) - Translating from users types to writable types (e.g. Vec3 -> Position<float, 3>)
+
   // Positions.
   auto pos_vtx_iter = begin(mesh.vertices);
   auto pos_mapper = [&pos_vtx_iter, vtx_iend]() {
     typedef thinks::obj_io::Position<float, 3> ObjPositionType;
 
     if (pos_vtx_iter == vtx_iend) {
+      // End indicates that no further need to be made to this mapper.
       return thinks::obj_io::End<ObjPositionType>();
     }
 
+    // Map indicates that more positions may be available after this one.
     const auto pos = (*pos_vtx_iter++).position;
     return thinks::obj_io::Map(ObjPositionType(pos.x, pos.y, pos.z));
   };
@@ -192,8 +198,18 @@ Again, the `Write` method has no direct knowledge of the `Mesh` class. The relev
 ## Tests
 The tests for this distribution are written in the [catch2](https://github.com/catchorg/Catch2) framework. A snapshot of the single header version of catch2 is included in this repository. 
 
+Running the tests is simple. In a terminal do the following:
+```bash
+$ cd d:
+$ git clone git@github.com:/thinks/obj-io.git D:/obj-io
+$ mkdir build-obj-io
+$ cd build-obj-io
+$ cmake ../obj-io
+$ cmake --build . --config Release
+$ ctest . -C Release
+```
+For more detailed test output locate the test executable in the build tree and run it directly.
 
-CTest
 
 ## Future Work
 

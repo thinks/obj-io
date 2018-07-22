@@ -117,9 +117,11 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
     typedef thinks::obj_io::Position<float, 3> ObjPositionType;
 
     if (pos_vtx_iter == vtx_iend) {
+      // End indicates that no further calls should be made to this mapper.
       return thinks::obj_io::End<ObjPositionType>();
     }
 
+    // Map indicates that more positions may be available after this one.
     const auto pos = (*pos_vtx_iter++).position;
     return thinks::obj_io::Map(ObjPositionType(pos.x, pos.y, pos.z));
   };
