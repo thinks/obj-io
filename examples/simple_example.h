@@ -111,13 +111,17 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
 
   const auto vtx_iend = std::end(mesh.vertices);
 
+  // Mappers have two responsibilities:
+  // (1) - Iterating over a certain attribute of the mesh (e.g. positions).
+  // (2) - Translating from users types to writable types (e.g. Vec3 -> Position<float, 3>)
+
   // Positions.
   auto pos_vtx_iter = begin(mesh.vertices);
   auto pos_mapper = [&pos_vtx_iter, vtx_iend]() {
     typedef thinks::obj_io::Position<float, 3> ObjPositionType;
 
     if (pos_vtx_iter == vtx_iend) {
-      // End indicates that no further calls should be made to this mapper.
+      // End indicates that no further need to be made to this mapper.
       return thinks::obj_io::End<ObjPositionType>();
     }
 

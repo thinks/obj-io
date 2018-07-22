@@ -196,7 +196,7 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
 Again, the `Write` method has no direct knowledge of the `Mesh` class. The relevant information is provided through the lambdas that are passed in. A complete code example using the above methods can be found in the [examples](https://github.com/thinks/obj-io/tree/master/examples) folder. A more advanced framework built on top of the provided framework can be found in the [test/utils](https://github.com/thinks/obj-io/tree/master/test/utils) folder.
 
 ## Tests
-The tests for this distribution are written in the [catch2](https://github.com/catchorg/Catch2) framework. A snapshot of the single header version of catch2 is included in this repository. 
+The tests for this distribution are written in the [catch2](https://github.com/catchorg/Catch2) framework. A [snapshot](https://github.com/thinks/obj-io/blob/master/test/catch.hpp) of the single header version of catch2 is included in this repository. 
 
 Running the tests is simple. In a terminal do the following:
 ```bash
