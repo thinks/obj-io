@@ -34,3 +34,5 @@
 *.db
 *.opendb
 *.ipch
+
+.vs
