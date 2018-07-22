@@ -186,7 +186,7 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
   assert(idx_iter == idx_iend && "trailing indices");
 }
 ```
-Again, the `Write` method has no direct knowledge of the `Mesh` class. The relevant information is provided through the lambdas that are passed in. A complete code example using the above methods can be found in the (examples)[https://github.com/thinks/obj-io/tree/master/examples] folder. A more advanced framework built on top of the provided framework can be found in the (test/utils)[https://github.com/thinks/obj-io/tree/master/test/utils] folder.
+Again, the `Write` method has no direct knowledge of the `Mesh` class. The relevant information is provided through the lambdas that are passed in. A complete code example using the above methods can be found in the [examples](https://github.com/thinks/obj-io/tree/master/examples) folder. A more advanced framework built on top of the provided framework can be found in the [test/utils](https://github.com/thinks/obj-io/tree/master/test/utils) folder.
 
 ## Tests
 use catch2[link to github], header included in this repo.
