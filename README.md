@@ -37,10 +37,7 @@ struct Mesh
 ```
 This type of layout is common since it fits nicely with how mesh data can be easily uploaded to the GPU for rendering. Now, let's assume that we have an OBJ file from which we want to populate a mesh. A simple implementation could be as follows.
 ```cpp
-#include <cassert>
-#include <cstdint>
-#include <fstream>
-#include <string>
+//#include relevant std headers.
 
 #include <thinks/obj_io/obj_io.h>
 
@@ -111,6 +108,10 @@ Mesh ReadMesh(const std::string& filename)
 ``` 
 A nice feature of reading a mesh this way is that we avoid memory spikes. The mesh data is never duplicated, as it might be if the `Read` method were to build its own internal representation of the mesh. Also, note that the `Read` method has no knowledge of the `Mesh` class itself, it simply calls the provided lambdas while parsing the OBJ file. Writing a mesh is done in a similar fashion.
 ```cpp
+//#include relevant std headers.
+
+#include <thinks/obj_io/obj_io.h>
+
 void WriteMesh(const std::string& filename, const Mesh& mesh)
 {
   using namespace std;
@@ -189,7 +190,9 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
 Again, the `Write` method has no direct knowledge of the `Mesh` class. The relevant information is provided through the lambdas that are passed in. A complete code example using the above methods can be found in the [examples](https://github.com/thinks/obj-io/tree/master/examples) folder. A more advanced framework built on top of the provided framework can be found in the [test/utils](https://github.com/thinks/obj-io/tree/master/test/utils) folder.
 
 ## Tests
-use catch2[link to github], header included in this repo.
+The tests for this distribution are written in the [catch2](https://github.com/catchorg/Catch2) framework. A snapshot of the single header version of catch2 is included in this repository. 
+
+
 CTest
 
 ## Future Work
