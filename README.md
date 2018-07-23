@@ -1,8 +1,10 @@
-# obj-io
+# OBJ-IO
 This repository contains a single-file, header-only, no-dependencies C++ implementation of the [OBJ file format](https://en.wikipedia.org/wiki/Wavefront_.obj_file). All code in this repository is released under the [MIT license](https://en.wikipedia.org/wiki/MIT_License), as per the included [license file](https://github.com/thinks/obj-io/blob/master/LICENSE). The code herein has not been optimized for speed, but rather for readability, robustness, and generality.  
 
 ## The OBJ File Format
 The [OBJ file format](https://en.wikipedia.org/wiki/Wavefront_.obj_file) is commonly used throughout the field of computer graphics. While it is arguably not the most efficient way to store meshes on disk, the fact that it is widely supported has made it ubiquitous. The OBJ file format is extremely useful for debugging and for transferring meshes between different software packages.
+
+It should be noted that we currently only support _geometric vertices_ (i.e. positions), _texture coordinates_, _normals_, and _face elements_. These are the most fundamental properties of meshes and should cover the vast majority of use cases.  
 
 ## Examples
 Mesh representations vary wildly across different frameworks. It seems fairly likely that most frameworks have their own representation. Because of this, the methods provided for reading and writing OBJ files assume no knowledge of a mesh class. Instead, the methods rely on callbacks provided by users that provide the methods with the required information. As such, the methods act more as middle-ware than some out-of-the-box solution. While this approach requires some additional work for users, it provides great flexibility and arguably makes this distribution more usable in the long run.
@@ -193,12 +195,12 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
   assert(idx_iter == idx_iend && "trailing indices");
 }
 ```
-Again, the `Write` method has no direct knowledge of the `Mesh` class. The relevant information is provided through the lambdas that are passed in. A complete code example using the above methods can be found in the [examples](https://github.com/thinks/obj-io/tree/master/examples) folder. More advanced mesh I/O built on top of the provided framework can be found in the [test/utils/read_write_utils.h](https://github.com/thinks/obj-io/blob/master/test/utils/read_write_utils.h) file.
+Again, the `Write` method has no direct knowledge of the `Mesh` class. The relevant information is provided through the lambdas that are passed in. A complete code example using the above methods can be found in the [examples](https://github.com/thinks/obj-io/tree/master/examples) folder. More advanced mesh I/O utilities built on top of the provided framework can be found in the [test/utils/read_write_utils.h](https://github.com/thinks/obj-io/blob/master/test/utils/read_write_utils.h) file.
 
 ## Tests
 The tests for this distribution are written in the [catch2](https://github.com/catchorg/Catch2) framework. A [snapshot](https://github.com/thinks/obj-io/blob/master/test/catch.hpp) of the single header version of catch2 is included in this repository. 
 
-Running the tests is simple. In a terminal do the following:
+Running the tests is simple. In a terminal do the following (and similar for `Debug`):
 ```bash
 $ cd d:
 $ git clone git@github.com:/thinks/obj-io.git D:/obj-io
@@ -212,10 +214,5 @@ For more detailed test output locate the test executable in the build tree and r
 
 
 ## Future Work
-
-* Add [optional] mesh validation, check indices in range.
-
-* vertices must be same size, 3 or 4 elements.
-* all primitives must be same size, greater than or equal to 3, triangle and up.
-* does not support materials.
-
+* _Improved read performance_ - The current implementation is rather naive in that it reads only a single line at a time. Additionally, many operations are done using `std::string` operations, which is not ideal performance-wise.
+* _Optional validation_ - It would be nice to have optional mechanisms to perform validation such as checking that face indices are within the range of the other attributes. However, this has recieved low priority since it can easily be done by the user before/after reading/writing.
