@@ -1,5 +1,7 @@
 # OBJ-IO
-This repository contains a single-file, header-only, no-dependencies C++ implementation of the [OBJ file format](https://en.wikipedia.org/wiki/Wavefront_.obj_file). All code in this repository is released under the [MIT license](https://en.wikipedia.org/wiki/MIT_License), as per the included [license file](https://github.com/thinks/obj-io/blob/master/LICENSE). The code herein has not been optimized for speed, but rather for readability, robustness, and generality.  
+This repository contains a [single-file](https://github.com/thinks/obj-io/blob/master/include/thinks/obj_io/obj_io.h), header-only, no-dependencies C++ implementation of the [OBJ file format](https://en.wikipedia.org/wiki/Wavefront_.obj_file). All code in this repository is released under the [MIT license](https://en.wikipedia.org/wiki/MIT_License), as per the included [license file](https://github.com/thinks/obj-io/blob/master/LICENSE). The code herein has not been optimized for speed, but rather for generality, readability, and robustness.  
+
+Invariably, those in need of the tools provided here have at some point written simple functions for writing (and/or reading) OBJ files. However, those utilities were likely hard-coded for the mesh structures at hand and not easily generalizable. Additionally, even though the OBJ format is embarrasingly simple there are a few pit-falls (did you forget that OBJ uses one-based indexing?). The goal here is to use the type system available in C++ to make it so that writing erroneous code becomes exceedingly difficult. The price to pay for this is learning yet another API, which in this case translates to a handful of functions, as shown below. 
 
 ## The OBJ File Format
 The [OBJ file format](https://en.wikipedia.org/wiki/Wavefront_.obj_file) is commonly used throughout the field of computer graphics. While it is arguably not the most efficient way to store meshes on disk, the fact that it is widely supported has made it ubiquitous. The OBJ file format is extremely useful for debugging and for transferring meshes between different software packages.
@@ -37,7 +39,7 @@ struct Mesh
   std::vector<uint16_t> indices;
 };
 ```
-This type of layout is common since it fits nicely with several common APIs for uploading a mesh to the GPU for rendering. Now, let's assume that we have an OBJ file from which we want to populate a mesh. A simple implementation could be as follows.
+This type of layout is common since it fits nicely with several widely used APIs for uploading a mesh to the GPU for rendering. Now, let's assume that we have an OBJ file from which we want to populate a mesh. A simple implementation could be as follows.
 ```cpp
 //#include relevant std headers.
 
