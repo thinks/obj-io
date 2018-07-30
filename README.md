@@ -224,7 +224,7 @@ $ cmake ../obj-io
 $ cmake --build . --config Release
 $ ctest . -C Release
 ```
-For more detailed test output locate the test executable in the build tree and run it directly.
+For more detailed test output locate the test executable (_thinks_obj_io_test.exe_) in the build tree and run it directly.
 
 
 ## Future Work
