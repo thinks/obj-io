@@ -1,15 +1,15 @@
 # OBJ-IO
 This repository contains a [single-file](https://github.com/thinks/obj-io/blob/master/include/thinks/obj_io/obj_io.h), header-only, no-dependencies C++ implementation of the [OBJ file format](https://en.wikipedia.org/wiki/Wavefront_.obj_file). All code in this repository is released under the [MIT license](https://en.wikipedia.org/wiki/MIT_License), as per the included [license file](https://github.com/thinks/obj-io/blob/master/LICENSE). The code herein has not been optimized for speed, but rather for generality, readability, and robustness.  
 
-Invariably, those in need of the tools provided here have at some point written simple functions for writing (and/or reading) OBJ files. However, those utilities were likely hard-coded for the mesh structures at hand and not easily generalizable. Additionally, even though the OBJ format is embarrasingly simple there are a few pit-falls (did you forget that OBJ uses one-based indexing?). The goal here is to use the type system available in C++ to make it so that writing erroneous code becomes exceedingly difficult. The price to pay for this is learning yet another API, which in this case translates to a handful of functions, as shown below. 
+Invariably, those in need of the provided tools are likely to have written simple functions for writing (and/or reading) OBJ files at some point. Those utilities, however, were probably hard-coded for the mesh class at hand and not easily generalizable. Even though the OBJ format is embarrasingly simple there are a few pit-falls (did you forget that OBJ files use one-based indexing?). The goal here is to use the type system available in C++ to make it so that writing erroneous code becomes exceedingly difficult. The price to pay for this is learning yet another API, which in this case translates to a handful of functions, as shown in the examples below. 
 
 ## The OBJ File Format
-The [OBJ file format](https://en.wikipedia.org/wiki/Wavefront_.obj_file) is commonly used throughout the field of computer graphics. While it is arguably not the most efficient way to store meshes on disk, the fact that it is widely supported has made it ubiquitous. The OBJ file format is extremely useful for debugging and for transferring meshes between different software packages.
+The [OBJ file format](https://en.wikipedia.org/wiki/Wavefront_.obj_file) is ubiquitous in the field of computer graphics. While it is arguably not the most efficient way to store meshes on disk, its simplicity has made it widely supported. The OBJ file format is extremely useful for debugging and for transferring meshes between different software packages.
 
 It should be noted that we currently only support _geometric vertices_ (i.e. positions), _texture coordinates_, _normals_, and _face elements_. These are the most fundamental properties of meshes and should cover the vast majority of use cases.  
 
 ## Examples
-Mesh representations vary wildly across different frameworks. It seems fairly likely that most frameworks have their own representation. Because of this, the methods provided for reading and writing OBJ files assume no knowledge of a mesh class. Instead, the methods rely on callbacks provided by users that provide the methods with the required information. As such, the methods act more as middle-ware than some out-of-the-box solution. While this approach requires some additional work for users, it provides great flexibility and arguably makes this distribution more usable in the long run.
+Mesh representations vary wildly across different frameworks. It seems fairly likely that most frameworks have their own representation. Because of this, our distribution provide methods for reading and writing OBJ files assuming no knowledge of a mesh class. Instead, our methods rely on callbacks that feed the methods with the required information. As such, our methods act more as middle-ware than some out-of-the-box solution. While this approach requires some additional work for users, it provides great flexibility and arguably makes this distribution more usable in the long run.
 
 A simple example illustrates how to read and write a mesh using our method. Let's assume we have the following simple mesh class.
 ```cpp
@@ -53,22 +53,29 @@ Mesh ReadMesh(const std::string& filename)
 
   // We cannot assume the order in which callbacks are invoked, 
   // so we need to keep track of which vertex to add properties to.
+  // The first encountered position gets added to the first vertex, etc.
   auto pos_count = uint32_t{ 0 };
   auto tex_count = uint32_t{ 0 };
   auto nml_count = uint32_t{ 0 };
 
   // Positions.
   auto add_position = [&mesh, &pos_count](const auto& pos) {
+    // Check if we need a new vertex.
     if (mesh.vertices.size() <= pos_count) {
       mesh.vertices.push_back(Vertex{});
     }
-    mesh.vertices[pos_count++].position = 
-      Vec3{ pos.values[0], pos.values[1], pos.values[2] };
+
+    // Write the position property of current vertex and 
+    // set position index to next vertex. Values are translated
+    // from OBJ representation to our vector class.
+    mesh.vertices[pos_count++].position = Vec3{ pos.values[0], pos.values[1], pos.values[2] };
   };
 
   // Faces.
   auto add_face = [&mesh](const auto& face) {
     assert(face.values.size() == 3 && "expecting only triangle faces");
+
+    // Add triangle indices into the linear storage of our mesh class.
     for (const auto index : face.values) {
       mesh.indices.push_back(index.position_index.value);
     }
@@ -79,8 +86,7 @@ Mesh ReadMesh(const std::string& filename)
     if (mesh.vertices.size() <= tex_count) {
       mesh.vertices.push_back(Vertex{});
     }
-    mesh.vertices[tex_count++].tex_coord = 
-      Vec2{ tex.values[0], tex.values[1] };
+    mesh.vertices[tex_count++].tex_coord = Vec2{ tex.values[0], tex.values[1] };
   };
 
   // Normals [optional].
@@ -88,11 +94,13 @@ Mesh ReadMesh(const std::string& filename)
     if (mesh.vertices.size() <= nml_count) {
       mesh.vertices.push_back(Vertex{});
     }
-    mesh.vertices[nml_count++].normal = 
-      Vec3{ nml.values[0], nml.values[1], nml.values[2] };
+    mesh.vertices[nml_count++].normal = Vec3{ nml.values[0], nml.values[1], nml.values[2] };
   };
 
   // Open the OBJ file and populate the mesh while parsing it.
+  // Note that we provide the MakeAddFunc with the type to use 
+  // while parsing. In this case the type is the same as that of 
+  // the storage in our mesh class.
   auto ifs = ifstream(filename);
   assert(ifs);
   thinks::obj_io::Read(
@@ -101,10 +109,9 @@ Mesh ReadMesh(const std::string& filename)
     thinks::obj_io::MakeAddFunc<uint16_t>(add_face),
     thinks::obj_io::MakeAddFunc<float>(add_tex_coord),
     thinks::obj_io::MakeAddFunc<float>(add_normal));
-  ifs.close();
-
   assert(pos_count == tex_count && pos_count == nml_count && 
     "all vertices must be completely initialized");
+  ifs.close();
 
   return mesh;
 }
@@ -116,15 +123,86 @@ A nice feature of reading a mesh this way is that we avoid memory spikes. The me
 
 #include <thinks/obj_io/obj_io.h>
 
+Mesh ReadMesh(const std::string& filename)
+{
+  using namespace std;
+
+  auto mesh = Mesh{};
+
+  // We cannot assume the order in which callbacks are invoked, 
+  // so we need to keep track of which vertex to add properties to.
+  // The first encountered position gets added to the first vertex, etc.
+  auto pos_count = uint32_t{ 0 };
+  auto tex_count = uint32_t{ 0 };
+  auto nml_count = uint32_t{ 0 };
+
+  // Positions.
+  auto add_position = [&mesh, &pos_count](const auto& pos) {
+    // Check if we need a new vertex.
+    if (mesh.vertices.size() <= pos_count) {
+      mesh.vertices.push_back(Vertex{});
+    }
+
+    // Write the position property of current vertex and 
+    // set position index to next vertex. Values are translated
+    // from OBJ representation to our vector class.
+    mesh.vertices[pos_count++].position = Vec3{ pos.values[0], pos.values[1], pos.values[2] };
+  };
+
+  // Faces.
+  auto add_face = [&mesh](const auto& face) {
+    assert(face.values.size() == 3 && "expecting only triangle faces");
+
+    // Add triangle indices into the linear storage of our mesh class.
+    for (const auto index : face.values) {
+      mesh.indices.push_back(index.position_index.value);
+    }
+  };
+
+  // Texture coordinates [optional].
+  auto add_tex_coord = [&mesh, &tex_count](const auto& tex) {
+    if (mesh.vertices.size() <= tex_count) {
+      mesh.vertices.push_back(Vertex{});
+    }
+    mesh.vertices[tex_count++].tex_coord = Vec2{ tex.values[0], tex.values[1] };
+  };
+
+  // Normals [optional].
+  auto add_normal = [&mesh, &nml_count](const auto& nml) {
+    if (mesh.vertices.size() <= nml_count) {
+      mesh.vertices.push_back(Vertex{});
+    }
+    mesh.vertices[nml_count++].normal = Vec3{ nml.values[0], nml.values[1], nml.values[2] };
+  };
+
+  // Open the OBJ file and populate the mesh while parsing it.
+  // Note that we provide the MakeAddFunc with the type to use 
+  // while parsing. In this case the type is the same as that of 
+  // the storage in our mesh class.
+  auto ifs = ifstream(filename);
+  assert(ifs);
+  thinks::obj_io::Read(
+    ifs,
+    thinks::obj_io::MakeAddFunc<float>(add_position), 
+    thinks::obj_io::MakeAddFunc<uint16_t>(add_face),
+    thinks::obj_io::MakeAddFunc<float>(add_tex_coord),
+    thinks::obj_io::MakeAddFunc<float>(add_normal));
+  assert(pos_count == tex_count && pos_count == nml_count && 
+    "all vertices must be completely initialized");
+  ifs.close();
+
+  return mesh;
+}
+
 void WriteMesh(const std::string& filename, const Mesh& mesh)
 {
   using namespace std;
 
-  const auto vtx_iend = std::end(mesh.vertices);
+  const auto vtx_iend = end(mesh.vertices);
 
   // Mappers have two responsibilities:
   // (1) - Iterating over a certain attribute of the mesh (e.g. positions).
-  // (2) - Translating from users types to writable types (e.g. Vec3 -> Position<float, 3>)
+  // (2) - Translating from users types to OBJ types (e.g. Vec3 -> Position<float, 3>)
 
   // Positions.
   auto pos_vtx_iter = begin(mesh.vertices);
@@ -132,11 +210,13 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
     typedef thinks::obj_io::Position<float, 3> ObjPositionType;
 
     if (pos_vtx_iter == vtx_iend) {
-      // End indicates that no further need to be made to this mapper.
+      // End indicates that no further calls should be made to this mapper,
+      // in this case because the captured iterator has reached the end
+      // of the vector.
       return thinks::obj_io::End<ObjPositionType>();
     }
 
-    // Map indicates that more positions may be available after this one.
+    // Map indicates that additional positions may be available after this one.
     const auto pos = (*pos_vtx_iter++).position;
     return thinks::obj_io::Map(ObjPositionType(pos.x, pos.y, pos.z));
   };
@@ -148,17 +228,19 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
     typedef thinks::obj_io::Index<uint16_t> ObjIndexType;
     typedef thinks::obj_io::TriangleFace<ObjIndexType> ObjFaceType;
 
+    // Check that there are 3 more indices (trailing indices handled below).
     if (distance(idx_iter, idx_iend) < 3) {
       return thinks::obj_io::End<ObjFaceType>();
     }
 
+    // Create a face from the mesh indices.
     const auto idx0 = ObjIndexType(*idx_iter++);
     const auto idx1 = ObjIndexType(*idx_iter++);
     const auto idx2 = ObjIndexType(*idx_iter++);
     return thinks::obj_io::Map(ObjFaceType(idx0, idx1, idx2));
   };
 
-  // Texture coordinates. [optional]
+  // Texture coordinates [optional]. 
   auto tex_vtx_iter = begin(mesh.vertices);
   auto tex_mapper = [&tex_vtx_iter, vtx_iend]() {
     typedef thinks::obj_io::TexCoord<float, 2> ObjTexCoordType;
@@ -171,7 +253,7 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
     return thinks::obj_io::Map(ObjTexCoordType(tex.x, tex.y));
   };
 
-  // Normals. [optional]
+  // Normals [optional]. 
   auto nml_vtx_iter = begin(mesh.vertices);
   auto nml_mapper = [&nml_vtx_iter, vtx_iend]() {
     typedef thinks::obj_io::Normal<float> ObjNormalType;
@@ -184,6 +266,8 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
     return thinks::obj_io::Map(ObjNormalType(nml.x, nml.y, nml.z));
   };
 
+  // Open the OBJ file and pass in the mappers, which will be called 
+  // internally to write the contents of the mesh to the file.
   auto ofs = ofstream(filename);
   assert(ofs);
   thinks::obj_io::Write(
@@ -192,9 +276,8 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
     face_mapper,
     tex_mapper,
     nml_mapper);
-  ofs.close();
-
   assert(idx_iter == idx_iend && "trailing indices");
+  ofs.close();
 }
 ```
 Again, the `Write` method has no direct knowledge of the `Mesh` class. The relevant information is provided through the lambdas that are passed in. A complete code example using the above methods can be found in the [examples](https://github.com/thinks/obj-io/tree/master/examples) folder. More advanced mesh I/O utilities built on top of the provided framework can be found in the [test/utils/read_write_utils.h](https://github.com/thinks/obj-io/blob/master/test/utils/read_write_utils.h) file.
