@@ -5,12 +5,42 @@
 #include <simple_example.h>
 
 #include <cassert>
+#include <cstdint>
 #include <fstream>
+#include <string>
+#include <vector>
 
 #include <thinks/obj_io/obj_io.h>
 
 
-namespace examples {
+namespace {
+
+struct Vec2
+{
+  float x;
+  float y;
+};
+
+struct Vec3
+{
+  float x;
+  float y;
+  float z;
+};
+
+struct Vertex
+{
+  Vec3 position;
+  Vec2 tex_coord;
+  Vec3 normal;
+};
+
+struct Mesh
+{
+  std::vector<Vertex> vertices;
+  std::vector<std::uint16_t> indices;
+};
+
 
 Mesh ReadMesh(const std::string& filename)
 {
@@ -72,11 +102,11 @@ Mesh ReadMesh(const std::string& filename)
   assert(ifs);
   thinks::obj_io::Read(
     ifs,
-    thinks::obj_io::MakeAddFunc<float>(add_position), 
+    thinks::obj_io::MakeAddFunc<float>(add_position),
     thinks::obj_io::MakeAddFunc<uint16_t>(add_face),
     thinks::obj_io::MakeAddFunc<float>(add_tex_coord),
     thinks::obj_io::MakeAddFunc<float>(add_normal));
-  assert(pos_count == tex_count && pos_count == nml_count && 
+  assert(pos_count == tex_count && pos_count == nml_count &&
     "all vertices must be completely initialized");
   ifs.close();
 
@@ -161,13 +191,17 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
   assert(ofs);
   thinks::obj_io::Write(
     ofs,
-    pos_mapper, 
+    pos_mapper,
     face_mapper,
     tex_mapper,
     nml_mapper);
   assert(idx_iter == idx_iend && "trailing indices");
   ofs.close();
 }
+
+} // namespace
+
+namespace examples {
 
 void SimpleExample()
 {
