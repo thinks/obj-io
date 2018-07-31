@@ -2,8 +2,8 @@
 // This file is subject to the license terms in the LICENSE file
 // found in the top-level directory of this distribution.
 
-#ifndef THINKS_OBJ_IO_UTILS_CATCH_UTILS_H_INCLUDED
-#define THINKS_OBJ_IO_UTILS_CATCH_UTILS_H_INCLUDED
+#ifndef THINKS_OBJ_IO_TEST_UTILS_CATCH_UTILS_H_INCLUDED
+#define THINKS_OBJ_IO_TEST_UTILS_CATCH_UTILS_H_INCLUDED
 
 #include <exception>
 #include <sstream>
@@ -196,4 +196,4 @@ private:
 
 } // namespace utils
 
-#endif // THINKS_OBJ_IO_UTILS_CATCH_UTILS_H_INCLUDED
+#endif // THINKS_OBJ_IO_TEST_UTILS_CATCH_UTILS_H_INCLUDED

@@ -15,12 +15,12 @@
 
 TEST_CASE("write", "[container]")
 {
-  typedef utils::TriangleMesh<utils::Vertex<>, std::uint32_t> MeshType;
+  typedef utils::TriangleMesh<> MeshType;
+  typedef typename MeshType::IndexType IndexType;
   typedef typename MeshType::VertexType VertexType;
   typedef typename VertexType::PositionType PositionType;
   typedef typename VertexType::TexCoordType TexCoordType;
   typedef typename VertexType::NormalType NormalType;
-  typedef typename MeshType::IndexType IndexType;
 
   // Setup.
   auto mesh = MeshType{};
@@ -46,18 +46,18 @@ TEST_CASE("write", "[container]")
   SECTION("positions")
   {
     // Arrange.
-    const std::string expected_string =
+    const auto expected_string = std::string(
       "# Written by https://github.com/thinks/obj-io\n"
       "v 1 2 3\n"
       "v 4 5 6\n"
       "v 7 8 9\n"
       "f 1 2 3\n"
-      "f 3 2 1\n"; 
+      "f 3 2 1\n"); 
 
     // Act.
     constexpr auto write_tex = false;
     constexpr auto write_nml = false;
-    const auto mesh_string = utils::WriteMesh(mesh, write_tex, write_nml);
+    const auto mesh_string = utils::WriteMesh(mesh, write_tex, write_nml).mesh_str;
 
     // Assert.
     REQUIRE(expected_string == mesh_string);
@@ -66,7 +66,7 @@ TEST_CASE("write", "[container]")
   SECTION("positions and tex coords")
   {
     // Arrange.
-    const std::string expected_string =
+    const auto expected_string = std::string(
       "# Written by https://github.com/thinks/obj-io\n"
       "v 1 2 3\n"
       "v 4 5 6\n"
@@ -75,12 +75,12 @@ TEST_CASE("write", "[container]")
       "vt 0 1\n"
       "vt 1 1\n"
       "f 1 2 3\n"
-      "f 3 2 1\n";
+      "f 3 2 1\n");
 
     // Act.
     constexpr auto write_tex = true;
     constexpr auto write_nml = false;
-    const auto mesh_string = utils::WriteMesh(mesh, write_tex, write_nml);
+    const auto mesh_string = utils::WriteMesh(mesh, write_tex, write_nml).mesh_str;
 
     // Assert.
     REQUIRE(expected_string == mesh_string);
@@ -89,7 +89,7 @@ TEST_CASE("write", "[container]")
   SECTION("positions and normals")
   {
     // Arrange.
-    const std::string expected_string =
+    const auto expected_string = std::string(
       "# Written by https://github.com/thinks/obj-io\n"
       "v 1 2 3\n"
       "v 4 5 6\n"
@@ -98,12 +98,12 @@ TEST_CASE("write", "[container]")
       "vn 0 1 0\n"
       "vn 0 0 1\n"
       "f 1 2 3\n"
-      "f 3 2 1\n";
+      "f 3 2 1\n");
 
     // Act.
     constexpr auto write_tex = false;
     constexpr auto write_nml = true;
-    const auto mesh_string = utils::WriteMesh(mesh, write_tex, write_nml);
+    const auto mesh_string = utils::WriteMesh(mesh, write_tex, write_nml).mesh_str;
     
     // Assert.
     REQUIRE(expected_string == mesh_string);
@@ -112,7 +112,7 @@ TEST_CASE("write", "[container]")
   SECTION("positions and tex coords and normals") 
   {
     // Arrange.
-    const std::string expected_string =
+    const auto expected_string = std::string(
       "# Written by https://github.com/thinks/obj-io\n"
       "v 1 2 3\n"
       "v 4 5 6\n"
@@ -124,12 +124,12 @@ TEST_CASE("write", "[container]")
       "vn 0 1 0\n"
       "vn 0 0 1\n"
       "f 1 2 3\n"
-      "f 3 2 1\n";
+      "f 3 2 1\n");
 
     // Act.
     constexpr auto write_tex = true;
     constexpr auto write_nml = true;
-    const auto mesh_string = utils::WriteMesh(mesh, write_tex, write_nml);
+    const auto mesh_string = utils::WriteMesh(mesh, write_tex, write_nml).mesh_str;
 
     // Assert.
     REQUIRE(expected_string == mesh_string);
@@ -176,18 +176,19 @@ TEST_CASE("write indexed", "[container]")
   SECTION("positions")
   {
     // Arrange.
-    const std::string expected_string =
+    const auto expected_string = std::string(
       "# Written by https://github.com/thinks/obj-io\n"
       "v 1 2 3\n"
       "v 4 5 6\n"
       "v 7 8 9\n"
       "f 1 2 3\n"
-      "f 3 2 1\n";
+      "f 3 2 1\n");
 
     // Act.
     constexpr auto write_tex = false;
     constexpr auto write_nml = false;
-    const auto mesh_string = utils::WriteIndexedMesh(imesh, write_tex, write_nml);
+    const auto mesh_string = 
+      utils::WriteIndexedMesh(imesh, write_tex, write_nml).mesh_str;
 
     // Assert.
     REQUIRE(expected_string == mesh_string);
@@ -196,7 +197,7 @@ TEST_CASE("write indexed", "[container]")
   SECTION("positions and indexed tex coords")
   {
     // Arrange.
-    const std::string expected_string =
+    const auto expected_string = std::string(
       "# Written by https://github.com/thinks/obj-io\n"
       "v 1 2 3\n"
       "v 4 5 6\n"
@@ -204,12 +205,13 @@ TEST_CASE("write indexed", "[container]")
       "vt 0 0\n"
       "vt 1 1\n"
       "f 1/1 2/1 3/1\n"
-      "f 3/2 2/2 1/2\n";
+      "f 3/2 2/2 1/2\n");
 
     // Act.
     constexpr auto write_tex = true;
     constexpr auto write_nml = false;
-    const auto mesh_string = utils::WriteIndexedMesh(imesh, write_tex, write_nml);
+    const auto mesh_string = 
+      utils::WriteIndexedMesh(imesh, write_tex, write_nml).mesh_str;
 
     // Assert.
     REQUIRE(expected_string == mesh_string);
@@ -218,7 +220,7 @@ TEST_CASE("write indexed", "[container]")
   SECTION("positions and indexed normals")
   {
     // Arrange.
-    const std::string expected_string =
+    const auto expected_string = std::string(
       "# Written by https://github.com/thinks/obj-io\n"
       "v 1 2 3\n"
       "v 4 5 6\n"
@@ -226,12 +228,13 @@ TEST_CASE("write indexed", "[container]")
       "vn 0 0 -1\n"
       "vn 0 0 1\n"
       "f 1//2 2//2 3//2\n"
-      "f 3//1 2//1 1//1\n";
+      "f 3//1 2//1 1//1\n");
 
     // Act.
     constexpr auto write_tex = false;
     constexpr auto write_nml = true;
-    const auto mesh_string = utils::WriteIndexedMesh(imesh, write_tex, write_nml);
+    const auto mesh_string = 
+      utils::WriteIndexedMesh(imesh, write_tex, write_nml).mesh_str;
     
     // Assert.
     REQUIRE(expected_string == mesh_string);
@@ -240,7 +243,7 @@ TEST_CASE("write indexed", "[container]")
   SECTION("positions and indexed tex coords and indexed normals")
   {
     // Arrange.
-    const std::string expected_string =
+    const auto expected_string = std::string(
       "# Written by https://github.com/thinks/obj-io\n"
       "v 1 2 3\n"
       "v 4 5 6\n"
@@ -250,12 +253,13 @@ TEST_CASE("write indexed", "[container]")
       "vn 0 0 -1\n"
       "vn 0 0 1\n"
       "f 1/1/2 2/1/2 3/1/2\n"
-      "f 3/2/1 2/2/1 1/2/1\n";
+      "f 3/2/1 2/2/1 1/2/1\n");
 
     // Act.
     constexpr auto write_tex = true;
     constexpr auto write_nml = true;
-    const auto mesh_string = utils::WriteIndexedMesh(imesh, write_tex, write_nml);
+    const auto mesh_string = 
+      utils::WriteIndexedMesh(imesh, write_tex, write_nml).mesh_str;
     
     // Assert.
     REQUIRE(expected_string == mesh_string);
@@ -263,9 +267,8 @@ TEST_CASE("write indexed", "[container]")
 }
 
 
-TEST_CASE("Quads", "[container]")
+TEST_CASE("write quads")
 {
-  // Five indices per face!
   typedef utils::IndexedMesh<
     utils::Vec4<float>,
     utils::Vec3<float>,
@@ -309,7 +312,7 @@ TEST_CASE("Quads", "[container]")
     3, 2, 1, 0 
   };
 
-  const std::string expected_string =
+  const auto expected_string = std::string(
     "# Written by https://github.com/thinks/obj-io\n"
     "v 1 2 3 1\n"
     "v 4 5 6 1\n"
@@ -324,17 +327,18 @@ TEST_CASE("Quads", "[container]")
     "vn 0 1 0\n"
     "vn 0 -1 0\n"
     "f 1/1/1 2/2/2 3/3/3 4/4/4\n"
-    "f 4/4/4 3/3/3 2/2/2 1/1/1\n";
+    "f 4/4/4 3/3/3 2/2/2 1/1/1\n");
 
   constexpr auto write_tex = true;
   constexpr auto write_nml = true;
-  const auto mesh_string = utils::WriteIndexedMesh(imesh, write_tex, write_nml);
+  const auto mesh_string = 
+    utils::WriteIndexedMesh(imesh, write_tex, write_nml).mesh_str;
 
   REQUIRE(expected_string == mesh_string);
 }
 
 
-TEST_CASE("Polygons", "[container]")
+TEST_CASE("write polygons")
 {
   // Five indices per face!
   typedef utils::IndexedMesh<
@@ -383,7 +387,7 @@ TEST_CASE("Polygons", "[container]")
     4, 3, 2, 1, 0 
   };
 
-  const std::string expected_string =
+  const auto expected_string = std::string(
     "# Written by https://github.com/thinks/obj-io\n"
     "v 1 2 3 1\n"
     "v 4 5 6 1\n"
@@ -401,11 +405,12 @@ TEST_CASE("Polygons", "[container]")
     "vn 0 -1 0\n"
     "vn 0 0 1\n"
     "f 1/1/1 2/2/2 3/3/3 4/4/4 5/5/5\n"
-    "f 5/5/5 4/4/4 3/3/3 2/2/2 1/1/1\n";
+    "f 5/5/5 4/4/4 3/3/3 2/2/2 1/1/1\n");
 
   constexpr auto write_tex = true;
   constexpr auto write_nml = true;
-  const auto mesh_string = utils::WriteIndexedMesh(imesh, write_tex, write_nml);
+  const auto mesh_string = 
+    utils::WriteIndexedMesh(imesh, write_tex, write_nml).mesh_str;
 
   REQUIRE(expected_string == mesh_string);
 }

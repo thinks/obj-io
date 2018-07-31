@@ -2,8 +2,8 @@
 // This file is subject to the license terms in the LICENSE file
 // found in the top-level directory of this distribution.
 
-#ifndef THINKS_OBJ_IO_UTILS_READ_WRITE_UTILS_H_INCLUDED
-#define THINKS_OBJ_IO_UTILS_READ_WRITE_UTILS_H_INCLUDED
+#ifndef THINKS_OBJ_IO_TEST_UTILS_READ_WRITE_UTILS_H_INCLUDED
+#define THINKS_OBJ_IO_TEST_UTILS_READ_WRITE_UTILS_H_INCLUDED
 
 #include <utils/type_utils.h>
 #include <thinks/obj_io/obj_io.h>
@@ -16,6 +16,13 @@
 
 
 namespace utils {
+
+struct WriteResult
+{
+  thinks::obj_io::WriteResult write_result;
+  std::string mesh_str;
+};
+
 namespace detail {
 
 template<typename ObjT>
@@ -172,7 +179,7 @@ template<
   typename FaceMapper,
   typename TexMapper,
   typename NmlMapper>
-std::string WriteHelper(
+WriteResult WriteHelper(
   PosMapper pos_mapper,
   FaceMapper face_mapper,
   TexMapper tex_mapper,
@@ -182,23 +189,24 @@ std::string WriteHelper(
 {
   using thinks::obj_io::Write;
 
+  auto result = thinks::obj_io::WriteResult{};
   auto oss = std::ostringstream{};
   if (!write_tex_coords && !write_normals)
   {
-    Write(
+    result = Write(
       oss,
       pos_mapper,
       face_mapper);
   }
   else if (write_tex_coords && !write_normals) {
-    Write(
+    result = Write(
       oss,
       pos_mapper,
       face_mapper,
       tex_mapper);
   }
   else if (!write_tex_coords && write_normals) {
-    Write(
+    result = Write(
       oss,
       pos_mapper,
       face_mapper,
@@ -206,7 +214,7 @@ std::string WriteHelper(
       nml_mapper);
   }
   else {
-    Write(
+    result = Write(
       oss,
       pos_mapper,
       face_mapper,
@@ -214,7 +222,7 @@ std::string WriteHelper(
       nml_mapper);
   }
 
-  return oss.str();
+  return { result, oss.str() };
 }
 
 } // namespace detail
@@ -370,7 +378,7 @@ IndexedMeshT ReadIndexedMesh(
 
 
 template<typename MeshT>
-std::string WriteMesh(
+WriteResult WriteMesh(
   const MeshT& mesh,
   const bool write_tex_coords,
   const bool write_normals)
@@ -387,52 +395,53 @@ std::string WriteMesh(
   const auto vtx_iend = std::end(mesh.vertices);
 
   // Positions.
-  typedef typename VertexType::PositionType PositionType;
-  using thinks::obj_io::Position;
-  typedef Position<PositionType::ValueType, VecSize<PositionType>::value>
-    ObjPositionType;
-
   auto pos_vtx_iter = begin(mesh.vertices);
   auto pos_mapper = [&pos_vtx_iter, vtx_iend]() {
+    typedef typename VertexType::PositionType PositionType;
+    using thinks::obj_io::Position;
+    typedef Position<PositionType::ValueType, VecSize<PositionType>::value>
+      ObjPositionType;
+
     return pos_vtx_iter == vtx_iend ?
       End<ObjPositionType>() :
       Map(ObjTypeMaker<ObjPositionType>::Make((*pos_vtx_iter++).pos));
   };
 
   // Texture coordinates.
-  typedef typename VertexType::TexCoordType TexCoordType;
-  using thinks::obj_io::TexCoord;
-  typedef TexCoord<TexCoordType::ValueType, VecSize<TexCoordType>::value>
-    ObjTexCoordType;
-
   auto tex_vtx_iter = begin(mesh.vertices);
   auto tex_mapper = [&tex_vtx_iter, vtx_iend]() {
+    typedef typename VertexType::TexCoordType TexCoordType;
+    using thinks::obj_io::TexCoord;
+    typedef TexCoord<TexCoordType::ValueType, VecSize<TexCoordType>::value>
+      ObjTexCoordType;
+
     return tex_vtx_iter == vtx_iend ? 
       End<ObjTexCoordType>() :
       Map(ObjTypeMaker<ObjTexCoordType>::Make((*tex_vtx_iter++).tex));
   };
 
   // Normals.
-  typedef typename VertexType::NormalType NormalType;
-  using thinks::obj_io::Normal;
-  typedef Normal<NormalType::ValueType> ObjNormalType;
   auto nml_vtx_iter = begin(mesh.vertices);
   auto nml_mapper = [&nml_vtx_iter, vtx_iend]() {
+    typedef typename VertexType::NormalType NormalType;
+    using thinks::obj_io::Normal;
+    typedef Normal<NormalType::ValueType> ObjNormalType;
+
     return nml_vtx_iter == vtx_iend ?
       End<ObjNormalType>() :
       Map(ObjTypeMaker<ObjNormalType>::Make((*nml_vtx_iter++).normal));
   };
 
   // Faces.
-  typedef typename MeshType::IndexType MeshIndexType;
-  using thinks::obj_io::Index;
-  typedef Index<MeshIndexType> ObjIndexType;
-  typedef FaceSelector<MeshType::IndicesPerFace, ObjIndexType>::Type 
-    ObjFaceType;
-
   auto idx_iter = mesh.indices.begin();
   const auto idx_iend = mesh.indices.end();
   auto face_mapper = [&idx_iter, idx_iend]() {
+    typedef typename MeshType::IndexType MeshIndexType;
+    using thinks::obj_io::Index;
+    typedef Index<MeshIndexType> ObjIndexType;
+    typedef FaceSelector<MeshType::IndicesPerFace, ObjIndexType>::Type 
+      ObjFaceType;
+
     if (std::distance(idx_iter, idx_iend) < MeshType::IndicesPerFace) {
       return End<ObjFaceType>();
     }
@@ -444,25 +453,37 @@ std::string WriteMesh(
     return Map(ObjTypeMaker<ObjFaceType>::Make(idx_buf));
   };
 
-  const auto mesh_str = WriteHelper(
+  const auto result = WriteHelper(
     pos_mapper,
     face_mapper,
     tex_mapper,
     nml_mapper,
     write_tex_coords,
     write_normals);
+  const auto wr = result.write_result;
 
-  // Verify that all indices where mapped.
-  if (idx_iter != idx_iend) {
-    throw std::runtime_error("trailing indices");
+  // Some sanity checks...
+  if (wr.position_count != mesh.vertices.size()) {
+    throw std::runtime_error("bad position count");
+  }
+  if (write_tex_coords &&
+    wr.tex_coord_count != mesh.vertices.size()) {
+    throw std::runtime_error("bad tex coord count");
+  }
+  if (write_normals && 
+    wr.normal_count != mesh.vertices.size()) {
+    throw std::runtime_error("bad normal count");
+  }
+  if (wr.face_count != mesh.indices.size() / MeshType::IndicesPerFace) {
+    throw std::runtime_error("bad index count");
   }
 
-  return mesh_str;
+  return result;
 }
 
 
 template<typename IndexedMeshT>
-std::string WriteIndexedMesh(
+WriteResult WriteIndexedMesh(
   const IndexedMeshT& imesh,
   const bool write_tex_coords,
   const bool write_normals)
@@ -476,50 +497,47 @@ std::string WriteIndexedMesh(
   typedef IndexedMeshT MeshType;
 
   // Positions.
-  typedef typename MeshType::PositionType PositionType;
-  using thinks::obj_io::Position;
-  typedef Position<PositionType::ValueType, VecSize<PositionType>::value>
-    ObjPositionType;
   auto pos_iter = std::begin(imesh.positions);
   const auto pos_iend = std::end(imesh.positions);
   auto pos_mapper = [&pos_iter, pos_iend]() {
+    typedef typename MeshType::PositionType PositionType;
+    using thinks::obj_io::Position;
+    typedef Position<PositionType::ValueType, VecSize<PositionType>::value>
+      ObjPositionType;
+
     return pos_iter == pos_iend ?
       End<ObjPositionType>() :
       Map(ObjTypeMaker<ObjPositionType>::Make(*pos_iter++));
   };
 
   // Texture coordinates.
-  typedef typename MeshType::TexCoordType TexCoordType;
-  using thinks::obj_io::TexCoord;
-  typedef TexCoord<TexCoordType::ValueType, VecSize<TexCoordType>::value>
-    ObjTexCoordType;
   auto tex_iter = std::begin(imesh.tex_coords);
   const auto tex_iend = std::end(imesh.tex_coords);
   auto tex_mapper = [&tex_iter, tex_iend]() {
+    typedef typename MeshType::TexCoordType TexCoordType;
+    using thinks::obj_io::TexCoord;
+    typedef TexCoord<TexCoordType::ValueType, VecSize<TexCoordType>::value>
+      ObjTexCoordType;
+
     return tex_iter == tex_iend ?
       End<ObjTexCoordType>() :
       Map(ObjTypeMaker<ObjTexCoordType>::Make(*tex_iter++));
   };
 
   // Normals.
-  typedef typename MeshType::NormalType NormalType;
-  using thinks::obj_io::Normal;
-  typedef Normal<NormalType::ValueType> ObjNormalType;
   auto nml_iter = std::begin(imesh.normals);
   const auto nml_iend = std::end(imesh.normals);
   auto nml_mapper = [&nml_iter, nml_iend]() {
+    typedef typename MeshType::NormalType NormalType;
+    using thinks::obj_io::Normal;
+    typedef Normal<NormalType::ValueType> ObjNormalType;
+
     return nml_iter == nml_iend ?
       End<ObjNormalType>() :
       Map(ObjTypeMaker<ObjNormalType>::Make(*nml_iter++));
   };
 
   // Faces.
-  typedef typename MeshType::IndexType MeshIndexType;
-  using thinks::obj_io::IndexGroup;
-  typedef IndexGroup<MeshIndexType> ObjIndexGroupType;
-  typedef FaceSelector<MeshType::IndicesPerFace, ObjIndexGroupType>::Type
-    ObjFaceType;
-
   auto pos_idx_iter = std::begin(imesh.position_indices);
   auto pos_idx_iend = std::end(imesh.position_indices);
   auto tex_idx_iter = std::begin(imesh.tex_coord_indices);
@@ -530,6 +548,12 @@ std::string WriteIndexedMesh(
     [&pos_idx_iter, &tex_idx_iter, &nml_idx_iter,
     pos_idx_iend, tex_idx_iend, nml_idx_iend,
     write_tex_coords, write_normals]() {
+    typedef typename MeshType::IndexType MeshIndexType;
+    using thinks::obj_io::IndexGroup;
+    typedef IndexGroup<MeshIndexType> ObjIndexGroupType;
+    typedef FaceSelector<MeshType::IndicesPerFace, ObjIndexGroupType>::Type
+      ObjFaceType;
+
     if (std::distance(pos_idx_iter, pos_idx_iend) < MeshType::IndicesPerFace ||
         std::distance(tex_idx_iter, tex_idx_iend) < MeshType::IndicesPerFace ||
         std::distance(nml_idx_iter, nml_idx_iend) < MeshType::IndicesPerFace) {
@@ -545,30 +569,42 @@ std::string WriteIndexedMesh(
     return Map(ObjTypeMaker<ObjFaceType>::Make(idx_group_buf));
   };
 
-  const auto mesh_str = WriteHelper(
+  const auto result = WriteHelper(
     pos_mapper,
     face_mapper,
     tex_mapper,
     nml_mapper,
     write_tex_coords,
     write_normals);
+  const auto wr = result.write_result;
 
-  // Verify that all indices where mapped.
-  if (pos_idx_iter != pos_idx_iend) {
-    throw std::runtime_error("trailing position indices");
+  // Some sanity checks...
+  if (wr.position_count != imesh.positions.size()) {
+    throw std::runtime_error("bad position count");
+  }
+  if (write_tex_coords &&
+    wr.tex_coord_count != imesh.tex_coords.size()) {
+    throw std::runtime_error("bad tex coord count");
+  }
+  if (write_normals && 
+    wr.normal_count != imesh.normals.size()) {
+    throw std::runtime_error("bad normal count");
+  }
+  if (wr.face_count != imesh.position_indices.size() / MeshType::IndicesPerFace) {
+    throw std::runtime_error("bad position index count");
+  }
+  if (write_tex_coords &&
+    wr.face_count != imesh.tex_coord_indices.size() / MeshType::IndicesPerFace) {
+    throw std::runtime_error("bad tex coord index count");
+  }
+  if (write_normals && 
+    wr.face_count != imesh.position_indices.size() / MeshType::IndicesPerFace) {
+    throw std::runtime_error("bad normal index count");
   }
 
-  if (tex_idx_iter != tex_idx_iend) {
-    throw std::runtime_error("trailing texture coordinate indices");
-  }
-
-  if (nml_idx_iter != nml_idx_iend) {
-    throw std::runtime_error("trailing normal indices");
-  }
-
-  return mesh_str;
+  return result;
 }
 
 } // namespace utils
 
-#endif // THINKS_OBJ_IO_UTILS_READ_WRITE_UTILS_H_INCLUDED
+#endif // THINKS_OBJ_IO_TEST_UTILS_READ_WRITE_UTILS_H_INCLUDED

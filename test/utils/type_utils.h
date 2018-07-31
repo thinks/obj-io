@@ -2,8 +2,8 @@
 // This file is subject to the license terms in the LICENSE file
 // found in the top-level directory of this distribution.
 
-#ifndef THINKS_OBJ_IO_UTILS_TYPE_UTILS_H_INCLUDED
-#define THINKS_OBJ_IO_UTILS_TYPE_UTILS_H_INCLUDED
+#ifndef THINKS_OBJ_IO_TEST_UTILS_TYPE_UTILS_H_INCLUDED
+#define THINKS_OBJ_IO_TEST_UTILS_TYPE_UTILS_H_INCLUDED
 
 #include <array>
 #include <cstdint>
@@ -153,10 +153,10 @@ struct Mesh
   std::vector<IntT> indices;
 };
 
-template<typename VertexT, typename IntT>
+template<typename VertexT = Vertex<>, typename IntT = std::uint32_t>
 using TriangleMesh = Mesh<VertexT, IntT, 3>;
 
-template<typename VertexT, typename IntT>
+template<typename VertexT = Vertex<>, typename IntT = std::uint32_t>
 using QuadMesh = Mesh<VertexT, IntT, 4>;
 
 
@@ -184,4 +184,4 @@ struct IndexedMesh
 
 } // namespace utils
 
-#endif // THINKS_OBJ_IO_UTILS_TYPE_UTILS_H_INCLUDED
+#endif // THINKS_OBJ_IO_TEST_UTILS_TYPE_UTILS_H_INCLUDED

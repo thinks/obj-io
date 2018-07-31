@@ -765,6 +765,7 @@ void WriteMappedLines(
   std::ostream& os,
   const std::string& line_prefix,
   MapperT mapper,
+  std::uint32_t* const count,
   ValidatorT validator,
   const std::string& newline)
 {
@@ -782,6 +783,7 @@ void WriteMappedLines(
       os << " " << element;
     }
     os << newline;
+    (*count)++;
 
     map_result = mapper();
   }
@@ -792,12 +794,14 @@ template<typename MapperT>
 void WritePositions(
   std::ostream& os,
   MapperT mapper,
+  std::uint32_t* const count,
   const std::string& newline)
 {
   WriteMappedLines<IsPosition>(
     os, 
     PositionPrefix(), 
     mapper, 
+    count,
     [](const auto&) {}, // No validation.  
     newline);
 }
@@ -807,6 +811,7 @@ template<typename MapperT>
 void WriteTexCoords(
   std::ostream& os,
   MapperT mapper,
+  std::uint32_t* const count,
   const std::string& newline,
   FuncTag)
 {
@@ -814,19 +819,21 @@ void WriteTexCoords(
     os,
     TexCoordPrefix(),
     mapper,
+    count,
     [](const auto& tex) { ValidateTexCoord(tex); },  
     newline);
 }
 
 /// Dummy.
 template<typename MapperT>
-void WriteTexCoords(std::ostream&, MapperT, const std::string&, NoOpFuncTag) {}
+void WriteTexCoords(std::ostream&, MapperT, std::uint32_t* const, const std::string&, NoOpFuncTag) {}
 
 
 template<typename MapperT>
 void WriteNormals(
   std::ostream& os,
   MapperT mapper,
+  std::uint32_t* const count,
   const std::string& newline,
   FuncTag)
 {
@@ -834,25 +841,28 @@ void WriteNormals(
     os,
     NormalPrefix(),
     mapper,
+    count,
     [](const auto&) {}, // No validation.
     newline);
 }
 
 /// Dummy.
 template<typename MapperT>
-void WriteNormals(std::ostream&, MapperT, const std::string&, NoOpFuncTag) {}
+void WriteNormals(std::ostream&, MapperT, std::uint32_t* const, const std::string&, NoOpFuncTag) {}
 
 
 template<typename MapperT>
 void WriteFaces(
   std::ostream& os,
   MapperT mapper,
+  std::uint32_t* const count,
   const std::string& newline)
 {
   WriteMappedLines<IsFace>(
     os, 
     FacePrefix(), 
     mapper, 
+    count,
     [](const auto& face) { 
       ValidateFace(face, typename FaceTraits<decltype(face)>::FaceCategory{});
     }, 
@@ -881,12 +891,20 @@ void Read(
 }
 
 
+struct WriteResult
+{
+  std::uint32_t position_count = 0;
+  std::uint32_t face_count = 0;
+  std::uint32_t tex_coord_count = 0;
+  std::uint32_t normal_count = 0;
+};
+
 template<
   typename PositionMapperT,
   typename FaceMapperT,
   typename TexCoordMapperT = std::nullptr_t,
   typename NormalMapperT = std::nullptr_t>
-void Write(
+WriteResult Write(
   std::ostream& os,
   PositionMapperT position_mapper,
   FaceMapperT face_mapper,
@@ -894,13 +912,15 @@ void Write(
   NormalMapperT normal_mapper = nullptr,
   const std::string& newline = "\n")
 {
+  auto result = WriteResult{};
   detail::write::WriteHeader(os, newline);
-  detail::write::WritePositions(os, position_mapper, newline);
-  detail::write::WriteTexCoords(os, tex_coord_mapper, newline,
+  detail::write::WritePositions(os, position_mapper, &result.position_count, newline);
+  detail::write::WriteTexCoords(os, tex_coord_mapper, &result.tex_coord_count, newline,
     typename detail::FuncTraits<TexCoordMapperT>::FuncCategory{});
-  detail::write::WriteNormals(os, normal_mapper, newline,
+  detail::write::WriteNormals(os, normal_mapper, &result.normal_count, newline,
     typename detail::FuncTraits<NormalMapperT>::FuncCategory{});
-  detail::write::WriteFaces(os, face_mapper, newline);
+  detail::write::WriteFaces(os, face_mapper, &result.face_count, newline);
+  return result;
 }
 
 } // namespace obj_io
