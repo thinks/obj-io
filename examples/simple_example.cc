@@ -100,15 +100,28 @@ Mesh ReadMesh(const std::string& filename)
   // the storage in our mesh class.
   auto ifs = ifstream(filename);
   assert(ifs);
-  thinks::obj_io::Read(
+  const auto result = thinks::obj_io::Read(
     ifs,
     thinks::obj_io::MakeAddFunc<float>(add_position),
     thinks::obj_io::MakeAddFunc<uint16_t>(add_face),
     thinks::obj_io::MakeAddFunc<float>(add_tex_coord),
     thinks::obj_io::MakeAddFunc<float>(add_normal));
-  assert(pos_count == tex_count && pos_count == nml_count &&
-    "all vertices must be completely initialized");
   ifs.close();
+
+  // Some sanity checks.
+  assert(
+    result.position_count == result.tex_coord_count &&
+    result.position_count == result.normal_count &&
+    "incomplete vertices in file");
+  assert(result.position_count == mesh.vertices.size() &&
+    "bad position count");
+  assert(result.tex_coord_count == mesh.vertices.size() &&
+    "bad tex_coord count");
+  assert(result.normal_count == mesh.vertices.size() &&
+    "bad normal count");
+  assert(
+    pos_count == tex_count && pos_count == nml_count &&
+    "all vertices must be completely initialized");
 
   return mesh;
 }
@@ -189,14 +202,24 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
   // internally to write the contents of the mesh to the file.
   auto ofs = ofstream(filename);
   assert(ofs);
-  thinks::obj_io::Write(
+  const auto result = thinks::obj_io::Write(
     ofs,
     pos_mapper,
     face_mapper,
     tex_mapper,
     nml_mapper);
-  assert(idx_iter == idx_iend && "trailing indices");
   ofs.close();
+
+  // Some sanity checks.
+  assert(result.position_count == mesh.vertices.size() &&
+    "bad position count");
+  assert(result.tex_coord_count == mesh.vertices.size() &&
+    "bad position count");
+  assert(result.normal_count == mesh.vertices.size() &&
+    "bad normal count");
+  assert(result.face_count == mesh.indices.size() / 3 &&
+    "bad face count");
+  assert(idx_iter == idx_iend && "trailing indices");
 }
 
 } // namespace
