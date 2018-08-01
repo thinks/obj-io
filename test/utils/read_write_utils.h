@@ -23,6 +23,13 @@ struct WriteResult
   std::string mesh_str;
 };
 
+template<typename MeshT>
+struct ReadResult
+{
+  MeshT mesh;
+  thinks::obj_io::ReadResult read_result;
+};
+
 namespace detail {
 
 template<typename ObjT>
@@ -147,7 +154,7 @@ template<
   typename AddFaceFuncT,
   typename AddTexCoordFuncT,
   typename AddNormalFuncT>
-void ReadHelper(
+thinks::obj_io::ReadResult ReadHelper(
   std::istream& is,
   AddPositionFuncT add_position,
   AddFaceFuncT add_face,
@@ -158,19 +165,21 @@ void ReadHelper(
 {
   using thinks::obj_io::Read;
 
+  auto result = thinks::obj_io::ReadResult{};
   if (!read_tex_coords && !read_normals)
   {
-    Read(is, add_position, add_face);
+    result = Read(is, add_position, add_face);
   }
   else if (read_tex_coords && !read_normals) {
-    Read(is, add_position, add_face, add_tex_coord);
+    result = Read(is, add_position, add_face, add_tex_coord);
   }
   else if (!read_tex_coords && read_normals) {
-    Read(is, add_position, add_face, nullptr /* add_tex_coord */, add_normal);
+    result = Read(is, add_position, add_face, nullptr /* add_tex_coord */, add_normal);
   }
   else {
-    Read(is, add_position, add_face, add_tex_coord, add_normal);
+    result = Read(is, add_position, add_face, add_tex_coord, add_normal);
   }
+  return result;
 }
 
 
@@ -229,7 +238,7 @@ WriteResult WriteHelper(
 
 
 template<typename MeshT>
-MeshT ReadMesh(
+ReadResult<MeshT> ReadMesh(
   std::istream& is,
   const bool read_tex_coords,
   const bool read_normals)
@@ -290,7 +299,7 @@ MeshT ReadMesh(
       }
     });
 
-  detail::ReadHelper(
+  const auto result = detail::ReadHelper(
     is,
     add_position,
     add_face,
@@ -299,17 +308,33 @@ MeshT ReadMesh(
     read_tex_coords,
     read_normals);
 
+  // Some sanity checks...
   if (read_tex_coords && pos_count != tex_count ||
       read_normals && pos_count != nml_count) {
     throw std::runtime_error("all channels must have same value count");
   }
 
-  return mesh;
+  if (result.position_count != mesh.vertices.size()) {
+    throw std::runtime_error("bad position count");
+  }
+  if (read_tex_coords && 
+    result.tex_coord_count != mesh.vertices.size()) {
+    throw std::runtime_error("bad tex coord count");
+  }
+  if (read_normals && 
+    result.normal_count != mesh.vertices.size()) {
+    throw std::runtime_error("bad normal count");
+  }
+  if (result.face_count != mesh.indices.size() / MeshType::IndicesPerFace) {
+    throw std::runtime_error("bad face count");
+  }
+
+  return { mesh, result };
 }
 
 
 template <typename IndexedMeshT>
-IndexedMeshT ReadIndexedMesh(
+ReadResult<IndexedMeshT> ReadIndexedMesh(
   std::istream& is,
   const bool read_tex_coords,
   const bool read_normals)
@@ -364,7 +389,7 @@ IndexedMeshT ReadIndexedMesh(
       }
     });
 
-  detail::ReadHelper(
+  const auto result = detail::ReadHelper(
     is,
     add_position,
     add_face,
@@ -373,7 +398,31 @@ IndexedMeshT ReadIndexedMesh(
     read_tex_coords,
     read_normals);
 
-  return mesh;
+  // Some sanity checks...
+  if (result.position_count != mesh.positions.size()) {
+    throw std::runtime_error("bad position count");
+  }
+  if (read_tex_coords && 
+    result.tex_coord_count != mesh.tex_coords.size()) {
+    throw std::runtime_error("bad tex coord count");
+  }
+  if (read_normals && 
+    result.normal_count != mesh.normals.size()) {
+    throw std::runtime_error("bad normal count");
+  }
+  if (result.face_count != mesh.position_indices.size() / MeshType::IndicesPerFace) {
+    throw std::runtime_error("bad face count");
+  }
+  if (read_tex_coords &&
+    result.face_count != mesh.tex_coord_indices.size() / MeshType::IndicesPerFace) {
+    throw std::runtime_error("bad face count");
+  }
+  if (read_normals &&
+    result.face_count != mesh.normal_indices.size() / MeshType::IndicesPerFace) {
+    throw std::runtime_error("bad face count");
+  }
+
+  return { mesh, result };
 }
 
 

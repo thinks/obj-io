@@ -34,7 +34,7 @@ TEST_CASE("read", "[container]")
     constexpr auto use_normals = false;
     auto iss = std::istringstream(input);
     const auto mesh = utils::ReadMesh<utils::Mesh<>>(
-      iss, use_tex_coords, use_normals);
+      iss, use_tex_coords, use_normals).mesh;
 
     typedef decltype(mesh) MeshType;
     typedef typename MeshType::VertexType VertexType;
@@ -59,7 +59,7 @@ TEST_CASE("read", "[container]")
     constexpr auto use_normals = false;
     auto iss = std::istringstream(input);
     const auto mesh = utils::ReadMesh<utils::Mesh<>>(
-      iss, use_tex_coords, use_normals);
+      iss, use_tex_coords, use_normals).mesh;
 
     typedef decltype(mesh) MeshType;
     typedef typename MeshType::VertexType VertexType;
@@ -94,7 +94,7 @@ TEST_CASE("read", "[container]")
     constexpr auto use_normals = true;
     auto iss = std::istringstream(input);
     const auto mesh = utils::ReadMesh<utils::Mesh<>>(
-      iss, use_tex_coords, use_normals);
+      iss, use_tex_coords, use_normals).mesh;
 
     typedef decltype(mesh) MeshType;
     typedef typename MeshType::VertexType VertexType;
@@ -133,7 +133,7 @@ TEST_CASE("read", "[container]")
     constexpr auto use_normals = true;
     auto iss = std::istringstream(input);
     const auto mesh = utils::ReadMesh<utils::Mesh<>>(
-      iss, use_tex_coords, use_normals);
+      iss, use_tex_coords, use_normals).mesh;
 
     typedef decltype(mesh) MeshType;
     typedef typename MeshType::VertexType VertexType;

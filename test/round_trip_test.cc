@@ -58,7 +58,7 @@ TEST_CASE("round trip", "[container]")
   // Read.
   auto iss = std::istringstream(mesh_str);
   const auto read_mesh = 
-    utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
+    utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals).mesh;
 
   REQUIRE_THAT(read_mesh, utils::MeshMatcher<MeshType>(
     mesh, use_tex_coords, use_normals));
@@ -114,7 +114,8 @@ TEST_CASE("round trip indexed", "[container]")
 
   // Read.
   auto iss = std::istringstream(mesh_str);
-  const auto read_mesh = utils::ReadIndexedMesh<MeshType>(iss, use_tex_coords, use_normals);
+  const auto read_mesh = 
+    utils::ReadIndexedMesh<MeshType>(iss, use_tex_coords, use_normals).mesh;
 
   REQUIRE_THAT(read_mesh, utils::IndexedMeshMatcher<MeshType>(
     imesh, use_tex_coords, use_normals));
