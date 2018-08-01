@@ -88,7 +88,7 @@ struct MeshMatcher : Catch::MatcherBase<MeshT>
   {
     auto oss = std::ostringstream{};
     oss << "mesh mismatch ("
-      << "match_tex_coords: " << (match_tex_coords_ ? "true" : "false")
+      << "match_tex_coords: " << (match_tex_coords_ ? "true" : "false") << ", "
       << "match_normals: " << (match_normals_ ? "true" : "false")
       << ")";
     return oss.str();
@@ -181,8 +181,8 @@ struct IndexedMeshMatcher : Catch::MatcherBase<MeshT>
   std::string describe() const override
   {
     auto oss = std::ostringstream{};
-    oss << "mesh mismatch ("
-      << "match_tex_coords: " << (match_tex_coords_ ? "true" : "false")
+    oss << "indexed mesh mismatch ("
+      << "match_tex_coords: " << (match_tex_coords_ ? "true" : "false") << ", "
       << "match_normals: " << (match_normals_ ? "true" : "false")
       << ")";
       return oss.str();

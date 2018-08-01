@@ -12,7 +12,7 @@
 #include <utils/type_utils.h>
 
 
-TEST_CASE("round trip", "[container]")
+TEST_CASE("round trip")
 {
   typedef utils::Mesh<
     utils::Vertex<
@@ -52,20 +52,20 @@ TEST_CASE("round trip", "[container]")
   constexpr auto use_normals = true;
 
   // Write.
-  const auto mesh_str = 
-    utils::WriteMesh(mesh, use_tex_coords, use_normals).mesh_str;
+  const auto write_result = 
+    utils::WriteMesh(mesh, use_tex_coords, use_normals);
 
   // Read.
-  auto iss = std::istringstream(mesh_str);
-  const auto read_mesh = 
-    utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals).mesh;
+  auto iss = std::istringstream(write_result.mesh_str);
+  const auto read_result = 
+    utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
 
-  REQUIRE_THAT(read_mesh, utils::MeshMatcher<MeshType>(
+  REQUIRE_THAT(read_result.mesh, utils::MeshMatcher<MeshType>(
     mesh, use_tex_coords, use_normals));
 }
 
 
-TEST_CASE("round trip indexed", "[container]")
+TEST_CASE("round trip indexed")
 {
   typedef utils::IndexedMesh<
     utils::Vec4<float>,
@@ -109,14 +109,14 @@ TEST_CASE("round trip indexed", "[container]")
   constexpr auto use_normals = true;
 
   // Write.
-  const auto mesh_str = 
-    utils::WriteIndexedMesh(imesh, use_tex_coords, use_normals).mesh_str;
+  const auto write_result = 
+    utils::WriteIndexedMesh(imesh, use_tex_coords, use_normals);
 
   // Read.
-  auto iss = std::istringstream(mesh_str);
-  const auto read_mesh = 
-    utils::ReadIndexedMesh<MeshType>(iss, use_tex_coords, use_normals).mesh;
+  auto iss = std::istringstream(write_result.mesh_str);
+  const auto read_result = 
+    utils::ReadIndexedMesh<MeshType>(iss, use_tex_coords, use_normals);
 
-  REQUIRE_THAT(read_mesh, utils::IndexedMeshMatcher<MeshType>(
+  REQUIRE_THAT(read_result.mesh, utils::IndexedMeshMatcher<MeshType>(
     imesh, use_tex_coords, use_normals));
 }

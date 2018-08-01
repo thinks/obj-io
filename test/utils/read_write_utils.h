@@ -26,8 +26,8 @@ struct WriteResult
 template<typename MeshT>
 struct ReadResult
 {
-  MeshT mesh;
   thinks::obj_io::ReadResult read_result;
+  MeshT mesh;
 };
 
 namespace detail {
@@ -256,62 +256,58 @@ ReadResult<MeshT> ReadMesh(
   // Positions.
   typedef typename VertexType::PositionType PositionType;
 
-  auto add_position = MakeAddFunc<typename PositionType::ValueType>(
-    [&mesh, &pos_count](const auto& pos) {
-      if (mesh.vertices.size() <= pos_count) {
-        mesh.vertices.push_back(VertexType{});
-      }
-      mesh.vertices[pos_count++].pos = VecMaker<PositionType>::Make(pos.values);
-    });
+  auto add_position = [&mesh, &pos_count](const auto& pos) {
+    if (mesh.vertices.size() <= pos_count) {
+      mesh.vertices.push_back(VertexType{});
+    }
+    mesh.vertices[pos_count++].pos = VecMaker<PositionType>::Make(pos.values);
+  };
 
   // Texture coordinates.
   typedef typename VertexType::TexCoordType TexCoordType;
 
-  auto add_tex_coord = MakeAddFunc<typename TexCoordType::ValueType>(
-    [&mesh, &tex_count](const auto& tex) {
-      if (mesh.vertices.size() <= tex_count) {
-        mesh.vertices.push_back(VertexType{});
-      }
-      mesh.vertices[tex_count++].tex = VecMaker<TexCoordType>::Make(tex.values);
-    });
+  auto add_tex_coord = [&mesh, &tex_count](const auto& tex) {
+    if (mesh.vertices.size() <= tex_count) {
+      mesh.vertices.push_back(VertexType{});
+    }
+    mesh.vertices[tex_count++].tex = VecMaker<TexCoordType>::Make(tex.values);
+  };
 
   // Normals.
   typedef typename VertexType::NormalType NormalType;
 
-  auto add_normal = MakeAddFunc<typename NormalType::ValueType>(
-    [&mesh, &nml_count](const auto& nml) {
-      if (mesh.vertices.size() <= nml_count) {
-        mesh.vertices.push_back(VertexType{});
-      }
-      mesh.vertices[nml_count++].normal = VecMaker<NormalType>::Make(nml.values);
-    });
+  auto add_normal = [&mesh, &nml_count](const auto& nml) {
+    if (mesh.vertices.size() <= nml_count) {
+      mesh.vertices.push_back(VertexType{});
+    }
+    mesh.vertices[nml_count++].normal = VecMaker<NormalType>::Make(nml.values);
+  };
 
   // Faces.
-  typedef typename MeshType::IndexType IndexType;
-
-  auto add_face = MakeAddFunc<IndexType>(
-    [&mesh](const auto& face) {
-      if (face.values.size() != MeshType::IndicesPerFace) {
-        throw std::runtime_error("unexpected face index count");
-      }
-      for (const auto idx : face.values) {
-        mesh.indices.push_back(idx.position_index.value);
-      }
-    });
+  auto add_face = [&mesh](const auto& face) {
+    if (face.values.size() != MeshType::IndicesPerFace) {
+      throw std::runtime_error("unexpected face index count");
+    }
+    for (const auto idx : face.values) {
+      mesh.indices.push_back(idx.position_index.value);
+    }
+  };
 
   const auto result = detail::ReadHelper(
     is,
-    add_position,
-    add_face,
-    add_tex_coord,
-    add_normal,
+    MakeAddFunc<typename PositionType::ValueType>(add_position),
+    MakeAddFunc<typename MeshType::IndexType>(add_face),
+    MakeAddFunc<typename TexCoordType::ValueType>(add_tex_coord),
+    MakeAddFunc<typename NormalType::ValueType>(add_normal),
     read_tex_coords,
     read_normals);
 
   // Some sanity checks...
-  if (read_tex_coords && pos_count != tex_count ||
-      read_normals && pos_count != nml_count) {
-    throw std::runtime_error("all channels must have same value count");
+  if (read_tex_coords && pos_count != tex_count) {
+    throw std::runtime_error("tex coord count must match position count");
+  }
+  if (read_normals && pos_count != nml_count) {
+    throw std::runtime_error("normal count must match position count");
   }
 
   if (result.position_count != mesh.vertices.size()) {
@@ -329,7 +325,7 @@ ReadResult<MeshT> ReadMesh(
     throw std::runtime_error("bad face count");
   }
 
-  return { mesh, result };
+  return { result, mesh };
 }
 
 
@@ -422,7 +418,7 @@ ReadResult<IndexedMeshT> ReadIndexedMesh(
     throw std::runtime_error("bad face count");
   }
 
-  return { mesh, result };
+  return { result, mesh };
 }
 
 

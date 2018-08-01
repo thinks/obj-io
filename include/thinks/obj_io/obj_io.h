@@ -449,20 +449,19 @@ void ParsePosition(
   typedef typename AddPositionFuncT::ParseType ParseType;
 
   const auto parsed = ParseValues<ParseType, 4>(iss);
-  if (parsed.value_count == 3 || parsed.value_count == 4) {
-    // Position fourth value (w) defaults to 1.
-    add_position.func(Position<ParseType, 4>(
-      parsed.values[0], 
-      parsed.values[1], 
-      parsed.values[2],
-      parsed.value_count == 4 ? parsed.values[3] : ParseType{ 1 }));
-    ++(*count);
-  }
-  else {
+  if (parsed.value_count < 3) {
     auto oss = std::ostringstream{};
-    oss << "positions must have 3 or 4 values";
+    oss << "positions must have 3 or 4 values (found " << parsed.value_count << ")";
     throw std::runtime_error(oss.str());
   }
+
+  // Fourth position value (w) defaults to 1.
+  add_position.func(Position<ParseType, 4>(
+    parsed.values[0], 
+    parsed.values[1], 
+    parsed.values[2],
+    parsed.value_count == 4 ? parsed.values[3] : ParseType{ 1 }));
+  ++(*count);
 }
 
 
@@ -602,21 +601,21 @@ void ParseTexCoord(
   typedef typename AddTexCoordFuncT::ParseType ParseType;
 
   const auto parsed = ParseValues<ParseType, 3>(iss);
-  if (parsed.value_count == 2 || parsed.value_count == 3) {
-    // Texture coordinate third value defaults to 1.
-    const auto tex = TexCoord<ParseType, 3>(
-      parsed.values[0], 
-      parsed.values[1],
-      parsed.value_count == 3 ? parsed.values[2] : ParseType{ 1 });
-    ValidateTexCoord(tex);
-    add_tex_coord.func(tex);
-    ++(*count);
-  }
-  else {
+  if (parsed.value_count < 2) {
     auto oss = std::ostringstream{};
-    oss << "texture coordinates must have 2 or 3 values";
+    oss << "texture coordinates must have 2 or 3 values (found " 
+      << parsed.value_count << ")";
     throw std::runtime_error(oss.str());
   }
+
+  // Third texture coordinate value defaults to 1.
+  const auto tex = TexCoord<ParseType, 3>(
+    parsed.values[0], 
+    parsed.values[1],
+    parsed.value_count == 3 ? parsed.values[2] : ParseType{ 1 });
+  ValidateTexCoord(tex);
+  add_tex_coord.func(tex);
+  ++(*count);
 }
 
 /// Dummy.
@@ -634,18 +633,17 @@ void ParseNormal(
   typedef typename AddNormalFuncT::ParseType ParseType;
 
   const auto parsed = ParseValues<ParseType, 3>(iss);
-  if (parsed.value_count == 3) {
-    add_normal.func(Normal<ParseType>(
-      parsed.values[0], 
-      parsed.values[1],
-      parsed.values[2]));
-    ++(*count);
-  }
-  else {
+  if (parsed.value_count != 3) {
     auto oss = std::ostringstream{};
-    oss << "normals must have 3 values";
+    oss << "normals must have 3 values (found " << parsed.value_count << ")";
     throw std::runtime_error(oss.str());
   }
+
+  add_normal.func(Normal<ParseType>(
+    parsed.values[0], 
+    parsed.values[1],
+    parsed.values[2]));
+  ++(*count);
 }
 
 /// Dummy.

@@ -14,8 +14,9 @@
 
 TEST_CASE("read", "[container]")
 {
-  const std::string input =
-    "# Written by https://github.com/thinks/obj-io\n"
+  const auto input = std::string(
+    "# comment\n"
+    "" // empty line
     "v 1 2 3\n"
     "v 4 5 6\n"
     "v 7 8 9\n"
@@ -26,17 +27,17 @@ TEST_CASE("read", "[container]")
     "vn 0 1 0\n"
     "vn 0 0 1\n"
     "f 1 2 3\n"
-    "f 3 2 1\n";
+    "f 3 2 1\n");
 
   SECTION("positions")
   {
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = false;
     auto iss = std::istringstream(input);
-    const auto mesh = utils::ReadMesh<utils::Mesh<>>(
-      iss, use_tex_coords, use_normals).mesh;
+    const auto result = utils::ReadMesh<utils::Mesh<>>(
+      iss, use_tex_coords, use_normals);
 
-    typedef decltype(mesh) MeshType;
+    typedef decltype(result.mesh) MeshType;
     typedef typename MeshType::VertexType VertexType;
     typedef typename MeshType::IndexType IndexType;
     typedef typename VertexType::PositionType PositionType;
@@ -49,7 +50,7 @@ TEST_CASE("read", "[container]")
     };
     expected_mesh.indices = std::vector<IndexType>{ 0, 1, 2, 2, 1, 0};
 
-    REQUIRE_THAT(mesh, utils::MeshMatcher<MeshType>(
+    REQUIRE_THAT(result.mesh, utils::MeshMatcher<MeshType>(
       expected_mesh, use_tex_coords, use_normals));
   }
 
@@ -164,5 +165,60 @@ TEST_CASE("read", "[container]")
 
     REQUIRE_THAT(mesh, utils::MeshMatcher<MeshType>(
       expected_mesh, use_tex_coords, use_normals));
+  }
+}
+
+TEST_CASE("read exceptions", "[container]")
+{
+  SECTION("unrecognized line prefix")
+  {
+    const auto input = std::string(
+      "bad 0 1 2");
+    auto iss = std::istringstream(input);
+    constexpr auto use_tex_coords = false;
+    constexpr auto use_normals = false;
+    REQUIRE_THROWS_MATCHES(
+      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
+      std::runtime_error,
+      utils::ExceptionContentMatcher{ "unrecognized line prefix 'bad'" });
+  }
+
+  SECTION("position value count < 3")
+  {
+    const auto input = std::string(
+      "v 0 1");
+    auto iss = std::istringstream(input);
+    constexpr auto use_tex_coords = false;
+    constexpr auto use_normals = false;
+    REQUIRE_THROWS_MATCHES(
+      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
+      std::runtime_error,
+      utils::ExceptionContentMatcher{ "positions must have 3 or 4 values (found 2)" });
+  }
+
+  SECTION("position value count > 4")
+  {
+    const auto input = std::string(
+      "v 0 1 2 3 4");
+    auto iss = std::istringstream(input);
+    constexpr auto use_tex_coords = false;
+    constexpr auto use_normals = false;
+    REQUIRE_THROWS_MATCHES(
+      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
+      std::runtime_error,
+      utils::ExceptionContentMatcher{ "expected to parse at most 4 values" });
+  }
+
+  SECTION("zero index")
+  {
+    const auto input = std::string(
+      "f 0 1 2");
+    auto iss = std::istringstream(input);
+    constexpr auto use_tex_coords = false;
+    constexpr auto use_normals = false;
+    REQUIRE_THROWS_MATCHES(
+      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
+      std::runtime_error,
+      utils::ExceptionContentMatcher{ "parsed index must be greater than zero" });
   }
 }

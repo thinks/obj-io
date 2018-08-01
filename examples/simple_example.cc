@@ -237,12 +237,12 @@ void SimpleExample()
         Vec2{ 1.f, 0.f },      // tex_coord
         Vec3{ 0.f, 0.f, 1.f }  // normal
       },
-        Vertex {
+      Vertex {
         Vec3{ 0.f, 1.f, 0.f },
         Vec2{ 0.f, 1.f },
         Vec3{ 0.f, 0.f, 1.f }
       },
-        Vertex {
+      Vertex {
         Vec3{ 1.f, 1.f, 0.f },
         Vec2{ 1.f, 1.f },
         Vec3{ 0.f, 0.f, 1.f }
