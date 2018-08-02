@@ -428,8 +428,8 @@ ParsedValues<ArithT, N> ParseValues(std::istringstream* const iss)
   while (ParseValue(iss, &value)) {
     if (parsed_values.value_count >= parsed_values.values.size()) {
       auto oss = std::ostringstream{};
-      oss << "expected to parse at most " 
-        << parsed_values.values.size() << " values";
+      oss << "expected to parse at most " << parsed_values.values.size() 
+        << " values";
       throw std::runtime_error(oss.str());
     }
 
@@ -481,58 +481,76 @@ Index<IntT> ParseIndex(const std::string& token)
 }
 
 
+inline
+std::vector<std::string> TokenizeIndexGroup(
+  const std::string& index_group_str, 
+  const char delimiter)
+{
+  auto tokens = std::vector<std::string>{};
+  auto prev = std::size_t{ 0 };
+  auto pos = std::size_t{ 0 };
+  while ((pos = index_group_str.find_first_of(delimiter, prev)) != std::string::npos) 
+  {
+    if (pos == prev) {
+      tokens.push_back(std::string{});
+    }
+    if (pos >= prev) {
+      tokens.push_back(index_group_str.substr(prev, pos - prev));
+    }
+    prev = pos + 1; // Skip delimiter.
+  }
+
+  // Characters after last delimiter.
+  if (prev == index_group_str.length()) {
+    tokens.push_back(std::string{});
+  }
+  if (prev < index_group_str.length()) {
+    tokens.push_back(index_group_str.substr(prev, std::string::npos));
+  }
+
+  return tokens;
+}
+
+
 template<typename IntT>
 IndexGroup<IntT> ParseIndexGroup(const std::string& index_group_str)
 {
-  if (index_group_str.empty()) {
-    throw std::runtime_error("empty index group");
+  const auto tokens = TokenizeIndexGroup(index_group_str, IndexGroupSeparator()[0]);
+
+  if (tokens.empty()) {
+    throw std::runtime_error("empty index group tokens");
+  }
+
+  if (tokens.size() > 3) {
+    auto oss = std::stringstream{};
+    oss << "index group can have at most 3 tokens ('" << index_group_str << "')";
+    throw std::runtime_error(oss.str());
   }
 
   auto index_group = IndexGroup<IntT>{};
-  auto pos = std::size_t{0};
-  auto sep = std::string::npos;
 
   // Position index.
-  sep = index_group_str.find(IndexGroupSeparator(), pos);
-  if (sep == std::string::npos) {
-    // No delimiter found, try to convert entire string into position index.
-    index_group.position_index = ParseIndex<IntT>(index_group_str);
-
-    // Not possible to have other indices without delimiter.
-    return index_group;
+  if (tokens[0].empty()) {
+    auto oss = std::stringstream{};
+    oss << "empty position index ('" << index_group_str << "')";
+    throw std::runtime_error(oss.str());
   }
-  else {
-    // Found delimiter.
-    if (sep == 0) {
-      // Index group cannot start with delimiter.
-      throw std::runtime_error("missing position index");
-    }
-    index_group.position_index = 
-      ParseIndex<IntT>(index_group_str.substr(pos, sep));
-    pos = sep + 1u; // Skip past delimiter.
-  }
+  index_group.position_index = ParseIndex<IntT>(tokens[0]);
 
-  // Texture coordinate index.
-  sep = index_group_str.find(IndexGroupSeparator(), pos);
-  if (sep == std::string::npos) {
-    index_group.tex_coord_index.first =
-      ParseIndex<IntT>(index_group_str.substr(pos));
+  // Texture coordinate index, may be empty.
+  if (tokens.size() > 1 && !tokens[1].empty()) {
+    index_group.tex_coord_index.first = ParseIndex<IntT>(tokens[1]);
     index_group.tex_coord_index.second = true;
-
-    // Not possible to have other indices without delimiter.
-    return index_group;
-  }
-  else if (sep - pos > 0) {
-    index_group.tex_coord_index.first =
-      ParseIndex<IntT>(index_group_str.substr(pos, sep - pos));
-    index_group.tex_coord_index.second = true;
-    pos = sep + 1u; // Skip past separator.
   }
 
   // Normal index.
-  if (pos < index_group_str.size()) {
-    index_group.normal_index.first =
-      ParseIndex<IntT>(index_group_str.substr(pos));
+  if (tokens.size() > 2) {
+    if (tokens[2].empty()) {
+      auto oss = std::stringstream{};
+      oss << "empty normal index ('" << index_group_str << "')";
+      throw std::runtime_error(oss.str());
+    }
+    index_group.normal_index.first = ParseIndex<IntT>(tokens[2]);
     index_group.normal_index.second = true;
   }
 
@@ -546,8 +564,7 @@ std::vector<IndexGroup<IntT>> ParseIndexGroups(std::istringstream* const iss)
   auto index_groups = std::vector<IndexGroup<IntT>>{};
   auto index_group_str = std::string{};
   while (*iss >> index_group_str) {
-    const auto index_group = ParseIndexGroup<IntT>(index_group_str);
-    index_groups.push_back(index_group);
+    index_groups.push_back(ParseIndexGroup<IntT>(index_group_str));
   }
 
   return index_groups;
@@ -566,7 +583,9 @@ void ParseFace(
   const auto index_groups = ParseIndexGroups<ParseType>(iss);
 
   if (index_groups.size() < 3) {
-    throw std::runtime_error("face must have at least three indices");
+    auto oss = std::ostringstream{};
+    oss << "face must have at least 3 index groups (found " << index_groups.size() << ")";
+    throw std::runtime_error(oss.str());
   }
   else if (index_groups.size() == 3) {
     add_face.func(TriangleFace<IndexGroupType>(
@@ -586,7 +605,6 @@ void ParseFace(
   else {
     add_face.func(PolygonFace<IndexGroupType>(index_groups));
     ++(*count);
-    // TODO - ValidatePolygonFace(...)
   }
 }
 

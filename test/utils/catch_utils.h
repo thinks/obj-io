@@ -29,7 +29,9 @@ struct ExceptionContentMatcher : Catch::MatcherBase<std::exception>
 
   std::string describe() const override
   {
-    return "exception message is:\"" + target_ + "\"";
+    auto oss = std::ostringstream{};
+    oss << "exception message is: '" << target_ << "'";
+    return oss.str();
   }
 
 private:
