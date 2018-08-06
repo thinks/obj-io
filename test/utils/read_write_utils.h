@@ -243,7 +243,11 @@ ReadResult<MeshT> ReadMesh(
   const bool read_tex_coords,
   const bool read_normals)
 {
+  using thinks::obj_io::Index;
   using thinks::obj_io::MakeAddFunc;
+  using thinks::obj_io::Normal;
+  using thinks::obj_io::Position;
+  using thinks::obj_io::TexCoord;
 
   typedef MeshT MeshType;
   typedef typename MeshType::VertexType VertexType;
@@ -255,50 +259,65 @@ ReadResult<MeshT> ReadMesh(
 
   // Positions.
   typedef typename VertexType::PositionType PositionType;
+  typedef Position<
+    typename PositionType::ValueType,
+    VecSize<PositionType>::value> ObjPositionType;
 
-  auto add_position = [&mesh, &pos_count](const auto& pos) {
-    if (mesh.vertices.size() <= pos_count) {
-      mesh.vertices.push_back(VertexType{});
-    }
-    mesh.vertices[pos_count++].pos = VecMaker<PositionType>::Make(pos.values);
-  };
-
-  // Texture coordinates.
-  typedef typename VertexType::TexCoordType TexCoordType;
-
-  auto add_tex_coord = [&mesh, &tex_count](const auto& tex) {
-    if (mesh.vertices.size() <= tex_count) {
-      mesh.vertices.push_back(VertexType{});
-    }
-    mesh.vertices[tex_count++].tex = VecMaker<TexCoordType>::Make(tex.values);
-  };
-
-  // Normals.
-  typedef typename VertexType::NormalType NormalType;
-
-  auto add_normal = [&mesh, &nml_count](const auto& nml) {
-    if (mesh.vertices.size() <= nml_count) {
-      mesh.vertices.push_back(VertexType{});
-    }
-    mesh.vertices[nml_count++].normal = VecMaker<NormalType>::Make(nml.values);
-  };
+  auto add_position = MakeAddFunc<ObjPositionType>(
+    [&mesh, &pos_count](const auto& pos) {
+      if (mesh.vertices.size() <= pos_count) {
+        mesh.vertices.push_back(VertexType{});
+      }
+      mesh.vertices[pos_count++].pos = VecMaker<PositionType>::Make(pos.values);
+    });
 
   // Faces.
-  auto add_face = [&mesh](const auto& face) {
-    if (face.values.size() != MeshType::IndicesPerFace) {
-      throw std::runtime_error("unexpected face index count");
-    }
-    for (const auto idx : face.values) {
-      mesh.indices.push_back(idx.position_index.value);
-    }
-  };
+  typedef typename detail::FaceSelector<
+    MeshType::IndicesPerFace, 
+    Index<typename MeshType::IndexType>>::Type ObjFaceType;
+
+  auto add_face = MakeAddFunc<ObjFaceType>(
+    [&mesh](const auto& face) {
+      if (face.values.size() != MeshType::IndicesPerFace) {
+        throw std::runtime_error("unexpected face index count");
+      }
+      for (const auto idx : face.values) {
+        mesh.indices.push_back(idx.value);
+      }
+  });
+
+  // Texture coordinates [optional].
+  typedef typename VertexType::TexCoordType TexCoordType;
+  typedef TexCoord<
+    typename TexCoordType::ValueType,
+    VecSize<TexCoordType>::value> ObjTexCoordType;
+
+  auto add_tex_coord = MakeAddFunc<ObjTexCoordType>(
+    [&mesh, &tex_count](const auto& tex) {
+      if (mesh.vertices.size() <= tex_count) {
+        mesh.vertices.push_back(VertexType{});
+      }
+      mesh.vertices[tex_count++].tex = VecMaker<TexCoordType>::Make(tex.values);
+    });
+
+  // Normals [optional].
+  typedef typename VertexType::NormalType NormalType;
+  typedef Normal<typename NormalType::ValueType> ObjNormalType;
+
+  auto add_normal = MakeAddFunc<ObjNormalType>(
+    [&mesh, &nml_count](const auto& nml) {
+      if (mesh.vertices.size() <= nml_count) {
+        mesh.vertices.push_back(VertexType{});
+      }
+      mesh.vertices[nml_count++].normal = VecMaker<NormalType>::Make(nml.values);
+    });
 
   const auto result = detail::ReadHelper(
     is,
-    MakeAddFunc<typename PositionType::ValueType>(add_position),
-    MakeAddFunc<typename MeshType::IndexType>(add_face),
-    MakeAddFunc<typename TexCoordType::ValueType>(add_tex_coord),
-    MakeAddFunc<typename NormalType::ValueType>(add_normal),
+    add_position,
+    add_face,
+    add_tex_coord,
+    add_normal,
     read_tex_coords,
     read_normals);
 
@@ -335,7 +354,11 @@ ReadResult<IndexedMeshT> ReadIndexedMesh(
   const bool read_tex_coords,
   const bool read_normals)
 {
+  using thinks::obj_io::IndexGroup;
   using thinks::obj_io::MakeAddFunc;
+  using thinks::obj_io::Normal;
+  using thinks::obj_io::Position;
+  using thinks::obj_io::TexCoord;
 
   typedef IndexedMeshT MeshType;
 
@@ -343,46 +366,55 @@ ReadResult<IndexedMeshT> ReadIndexedMesh(
 
   // Positions.
   typedef typename MeshType::PositionType PositionType;
+  typedef Position<
+    typename PositionType::ValueType,
+    VecSize<PositionType>::value> ObjPositionType;
 
-  auto add_position = MakeAddFunc<typename PositionType::ValueType>(
+  auto add_position = MakeAddFunc<ObjPositionType>(
     [&mesh](const auto& pos) {
       mesh.positions.push_back(VecMaker<PositionType>::Make(pos.values));
     });
 
-  // Texture coordinates.
-  typedef typename MeshType::TexCoordType TexCoordType;
+  // Faces.
+  typedef typename detail::FaceSelector<
+    MeshType::IndicesPerFace, 
+    IndexGroup<typename MeshType::IndexType>>::Type ObjFaceType;
 
-  auto add_tex_coord = MakeAddFunc<typename TexCoordType::ValueType>(
+  auto add_face = MakeAddFunc<ObjFaceType>(
+    [&mesh, read_tex_coords, read_normals](const auto& face) {
+    if (face.values.size() != MeshType::IndicesPerFace) {
+      throw std::runtime_error("unexpected face index count");
+    }
+    for (const auto idx : face.values) {
+      mesh.position_indices.push_back(idx.position_index.value);
+
+      if (read_tex_coords && idx.tex_coord_index.second) {
+        mesh.tex_coord_indices.push_back(idx.tex_coord_index.first.value);
+      }
+      if (read_normals && idx.normal_index.second) {
+        mesh.normal_indices.push_back(idx.normal_index.first.value);
+      }
+    }
+  });
+
+  // Texture coordinates [optional.
+  typedef typename MeshType::TexCoordType TexCoordType;
+  typedef TexCoord<
+    typename TexCoordType::ValueType,
+    VecSize<TexCoordType>::value> ObjTexCoordType;
+
+  auto add_tex_coord = MakeAddFunc<ObjTexCoordType>(
     [&mesh](const auto& tex) {
       mesh.tex_coords.push_back(VecMaker<TexCoordType>::Make(tex.values));
     });
 
-  // Normals.
+  // Normals [optional].
   typedef typename MeshType::NormalType NormalType;
+  typedef Normal<typename NormalType::ValueType> ObjNormalType;
 
-  auto add_normal = MakeAddFunc<typename NormalType::ValueType>(
+  auto add_normal = MakeAddFunc<ObjNormalType>(
     [&mesh](const auto& nml) {
-      mesh.normals.push_back(VecMaker<TexCoordType>::Make(nml.values));
-    });
-
-  // Faces.
-  typedef typename MeshType::IndexType IndexType;
-
-  auto add_face = MakeAddFunc<IndexType>(
-    [&mesh, read_tex_coords, read_normals](const auto& face) {
-      if (face.values.size() != MeshType::IndicesPerFace) {
-        throw std::runtime_error("unexpected face index count");
-      }
-      for (const auto idx : face.values) {
-        mesh.position_indices.push_back(idx.position_index.value);
-      
-        if (read_tex_coords && idx.tex_coord_index.second) {
-          mesh.tex_coord_indices.push_back(idx.tex_coord_index.first.value);
-        }
-        if (read_normals && idx.normal_index.second) {
-          mesh.normal_indices.push_back(idx.normal_index.first.value);
-        }
-      }
+      mesh.normals.push_back(VecMaker<NormalType>::Make(nml.values));
     });
 
   const auto result = detail::ReadHelper(

@@ -119,12 +119,12 @@ struct IndexedMeshMatcher : Catch::MatcherBase<MeshT>
 
   bool match(const MeshType& matchee) const override
   {
+    // Positions.
     if (matchee.positions.size() != target_.positions.size() ||
         matchee.position_indices.size() != target_.position_indices.size()) {
       return false;
     }
 
-    // Positions.
     for (auto i = std::size_t{ 0 }; i < matchee.positions.size(); ++i) {
       if (!Equals(matchee.positions[i], target_.positions[i])) {
         return false;

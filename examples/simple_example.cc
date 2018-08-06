@@ -56,56 +56,63 @@ Mesh ReadMesh(const std::string& filename)
   auto nml_count = uint32_t{ 0 };
 
   // Positions.
-  auto add_position = [&mesh, &pos_count](const auto& pos) {
-    // Check if we need a new vertex.
-    if (mesh.vertices.size() <= pos_count) {
-      mesh.vertices.push_back(Vertex{});
-    }
+  auto add_position = 
+    thinks::obj_io::MakeAddFunc<thinks::obj_io::Position<float, 3>>(
+      [&mesh, &pos_count](const auto& pos) {
+        // Check if we need a new vertex.
+        if (mesh.vertices.size() <= pos_count) {
+          mesh.vertices.push_back(Vertex{});
+        }
 
-    // Write the position property of current vertex and 
-    // set position index to next vertex. Values are translated
-    // from OBJ representation to our vector class.
-    mesh.vertices[pos_count++].position = Vec3{ pos.values[0], pos.values[1], pos.values[2] };
-  };
+        // Write the position property of current vertex and 
+        // set position index to next vertex. Values are translated
+        // from OBJ representation to our vector class.
+        mesh.vertices[pos_count++].position = 
+          Vec3{ pos.values[0], pos.values[1], pos.values[2] };
+      });
 
   // Faces.
-  auto add_face = [&mesh](const auto& face) {
-    assert(face.values.size() == 3 && "expecting only triangle faces");
-
-    // Add triangle indices into the linear storage of our mesh class.
-    for (const auto index : face.values) {
-      mesh.indices.push_back(index.position_index.value);
-    }
-  };
+  typedef thinks::obj_io::TriangleFace<thinks::obj_io::Index<uint16_t>> ObjFaceType;
+  auto add_face = thinks::obj_io::MakeAddFunc<ObjFaceType>(
+    [&mesh](const auto& face) {
+      // Add triangle indices into the linear storage of our mesh class.
+      mesh.indices.push_back(face.values[0].value);
+      mesh.indices.push_back(face.values[1].value);
+      mesh.indices.push_back(face.values[2].value);
+    });
 
   // Texture coordinates [optional].
-  auto add_tex_coord = [&mesh, &tex_count](const auto& tex) {
-    if (mesh.vertices.size() <= tex_count) {
-      mesh.vertices.push_back(Vertex{});
-    }
-    mesh.vertices[tex_count++].tex_coord = Vec2{ tex.values[0], tex.values[1] };
-  };
+  auto add_tex_coord = 
+    thinks::obj_io::MakeAddFunc<thinks::obj_io::TexCoord<float, 2>>(
+      [&mesh, &tex_count](const auto& tex) {
+        if (mesh.vertices.size() <= tex_count) {
+          mesh.vertices.push_back(Vertex{});
+        }
+        mesh.vertices[tex_count++].tex_coord = Vec2{ tex.values[0], tex.values[1] };
+      });
 
   // Normals [optional].
-  auto add_normal = [&mesh, &nml_count](const auto& nml) {
-    if (mesh.vertices.size() <= nml_count) {
-      mesh.vertices.push_back(Vertex{});
-    }
-    mesh.vertices[nml_count++].normal = Vec3{ nml.values[0], nml.values[1], nml.values[2] };
-  };
+  auto add_normal = 
+    thinks::obj_io::MakeAddFunc<thinks::obj_io::Normal<float>>(
+      [&mesh, &nml_count](const auto& nml) {
+        if (mesh.vertices.size() <= nml_count) {
+          mesh.vertices.push_back(Vertex{});
+        }
+        mesh.vertices[nml_count++].normal = 
+          Vec3{ nml.values[0], nml.values[1], nml.values[2] };
+      });
 
   // Open the OBJ file and populate the mesh while parsing it.
   // Note that we provide the MakeAddFunc with the type to use 
-  // while parsing. In this case the type is the same as that of 
-  // the storage in our mesh class.
+  // while parsing. 
   auto ifs = ifstream(filename);
   assert(ifs);
   const auto result = thinks::obj_io::Read(
     ifs,
-    thinks::obj_io::MakeAddFunc<float>(add_position),
-    thinks::obj_io::MakeAddFunc<uint16_t>(add_face),
-    thinks::obj_io::MakeAddFunc<float>(add_tex_coord),
-    thinks::obj_io::MakeAddFunc<float>(add_normal));
+    add_position,
+    add_face,
+    add_tex_coord,
+    add_normal);
   ifs.close();
 
   // Some sanity checks.

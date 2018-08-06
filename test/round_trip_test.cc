@@ -89,16 +89,16 @@ TEST_CASE("round trip indexed")
     2, 1, 0
   };
   imesh.tex_coords = std::vector<TexCoordType>{
-    TexCoordType{ 0.f, 0.f, .1f },
-    TexCoordType{ 1.f, 1.f, .2f }
+    TexCoordType{ .1f, .2f, .3f },
+    TexCoordType{ .4f, .5f, .6f }
   };
   imesh.tex_coord_indices = std::vector<IndexType>{
     0, 0, 0,
     1, 1, 1
   };
   imesh.normals = std::vector<NormalType>{
-    NormalType{ 0.f, 0.f, -1.f },
-    NormalType{ 0.f, 0.f, 1.f }
+    NormalType{ .6f, .5f, .4f },
+    NormalType{ .3f, .2f, .1f }
   };
   imesh.normal_indices = std::vector<IndexType>{
     1, 1, 1,

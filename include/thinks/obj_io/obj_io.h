@@ -58,6 +58,9 @@ public:
     N == 2 || N == 3,
     "texture coordinate value count must be 2 or 3");
 
+  typedef FloatT ValueType;
+  static constexpr std::size_t ValueCount = N;
+
   constexpr TexCoord() noexcept = default;
 
   constexpr TexCoord(const FloatT u, const FloatT v) noexcept
@@ -360,8 +363,10 @@ struct FuncTraits<std::nullptr_t>
 template<typename FloatT, std::size_t N>
 void ValidateTexCoord(const TexCoord<FloatT, N>& tex_coord)
 {
+  typedef typename decltype(tex_coord.values)::value_type ValueType;
+
   for (const auto v : tex_coord.values) {
-    if (!(FloatT{0} <= v && v <= FloatT{1})) {
+    if (!(ValueType{0} <= v && v <= ValueType{1})) {
       throw std::runtime_error(
         "texture coordinate values must be in range [0, 1]");
     }
@@ -373,8 +378,7 @@ template <typename FaceT>
 void ValidateFace(const FaceT& face, DynamicFaceTag)
 {
   if (!(face.values.size() >= 3)) {
-    throw std::runtime_error(
-      "face must have at least three indices");
+    throw std::runtime_error("face must have at least three indices");
   }
 }
 
@@ -394,22 +398,51 @@ constexpr inline const char* IndexGroupSeparator() { return "/"; }
 
 namespace read {
 
-template<typename ArithT, std::size_t N>
-struct ParsedValues
+inline
+std::vector<std::string> Tokenize(
+  const std::string& str, 
+  const char* const delimiters)
 {
-  std::array<ArithT, N> values;
-  std::size_t value_count = 0;
-};
+  auto tokens = std::vector<std::string>{};
+  auto prev = std::size_t{ 0 };
+  auto pos = std::size_t{ 0 };
+  while ((pos = str.find_first_of(delimiters, prev)) != std::string::npos) {
+    if (pos == prev) {
+      tokens.push_back(std::string{});
+    }
+    if (pos >= prev) {
+      tokens.push_back(str.substr(prev, pos - prev));
+    }
+    prev = pos + 1; // Skip delimiter.
+  }
+
+  // Characters after last delimiter.
+  if (prev == str.length()) {
+    tokens.push_back(std::string{});
+  }
+  if (prev < str.length()) {
+    tokens.push_back(str.substr(prev, std::string::npos));
+  }
+
+  return tokens;
+}
+
+
+inline
+std::vector<std::string> TokenizeIndexGroup(const std::string& index_group_str)
+{
+  return Tokenize(index_group_str, IndexGroupSeparator());
+}
 
 
 template<typename T>
-bool ParseValue(std::istringstream* const iss, T* const t)
+bool ParseValue(std::istream* const is, T* const value)
 {
-  if (*iss >> *t || !iss->eof()) {
-    if (iss->fail()) {
-      iss->clear(); // Clear status bits.
+  if (*is >> *value || !is->eof()) {
+    if (is->fail()) {
+      is->clear(); // Clear status bits.
       auto dummy = std::string{};
-      *iss >> dummy;
+      *is >> dummy;
       auto oss = std::ostringstream{};
       oss << "failed parsing '" << dummy << "'";
       throw std::runtime_error(oss.str());
@@ -420,102 +453,34 @@ bool ParseValue(std::istringstream* const iss, T* const t)
 }
 
 
-template<typename ArithT, std::size_t N>
-ParsedValues<ArithT, N> ParseValues(std::istringstream* const iss)
+template<typename IntT>
+std::istream& operator>>(std::istream& is, Index<IntT>& index)
 {
-  auto parsed_values = ParsedValues<ArithT, N>{};
-  auto value = typename decltype(parsed_values.values)::value_type{};
-  while (ParseValue(iss, &value)) {
-    if (parsed_values.value_count >= parsed_values.values.size()) {
-      auto oss = std::ostringstream{};
-      oss << "expected to parse at most " << parsed_values.values.size() 
-        << " values";
-      throw std::runtime_error(oss.str());
+  if (ParseValue(&is, &index.value)) {
+    // Check for underflow.
+    if (!(index.value > 0)) {
+      throw std::runtime_error("parsed index must be greater than zero");
     }
 
-    parsed_values.values[parsed_values.value_count++] = value;
+    // Convert to zero-based index.
+    --index.value;
   }
 
-  return parsed_values;
+  return is;
 }
-
-
-template<typename AddPositionFuncT>
-void ParsePosition(
-  std::istringstream* const iss,
-  AddPositionFuncT add_position,
-  std::uint32_t* const count)
-{
-  typedef typename AddPositionFuncT::ParseType ParseType;
-
-  const auto parsed = ParseValues<ParseType, 4>(iss);
-  if (parsed.value_count < 3) {
-    auto oss = std::ostringstream{};
-    oss << "positions must have 3 or 4 values (found " << parsed.value_count << ")";
-    throw std::runtime_error(oss.str());
-  }
-
-  // Fourth position value (w) defaults to 1.
-  add_position.func(Position<ParseType, 4>(
-    parsed.values[0], 
-    parsed.values[1], 
-    parsed.values[2],
-    parsed.value_count == 4 ? parsed.values[3] : ParseType{ 1 }));
-  ++(*count);
-}
-
 
 template<typename IntT>
-Index<IntT> ParseIndex(const std::string& token)
+std::istream& operator>>(std::istream& is, IndexGroup<IntT>& index_group)
 {
-  auto iss = std::istringstream(token);
-  auto value = IntT{0};
-  ParseValue(&iss, &value);
+  auto index_group_str = std::string{};
+  //std::getline(is, index_group_str, ' ');
+  is >> index_group_str;
 
-  if (!(value > 0)) {
-    throw std::runtime_error("parsed index must be greater than zero");
+  if (index_group_str.empty()) {
+    return is;
   }
 
-  // Convert to zero-based index.
-  return Index<IntT>(value - 1u);
-}
-
-
-inline
-std::vector<std::string> TokenizeIndexGroup(
-  const std::string& index_group_str, 
-  const char delimiter)
-{
-  auto tokens = std::vector<std::string>{};
-  auto prev = std::size_t{ 0 };
-  auto pos = std::size_t{ 0 };
-  while ((pos = index_group_str.find_first_of(delimiter, prev)) != std::string::npos) 
-  {
-    if (pos == prev) {
-      tokens.push_back(std::string{});
-    }
-    if (pos >= prev) {
-      tokens.push_back(index_group_str.substr(prev, pos - prev));
-    }
-    prev = pos + 1; // Skip delimiter.
-  }
-
-  // Characters after last delimiter.
-  if (prev == index_group_str.length()) {
-    tokens.push_back(std::string{});
-  }
-  if (prev < index_group_str.length()) {
-    tokens.push_back(index_group_str.substr(prev, std::string::npos));
-  }
-
-  return tokens;
-}
-
-
-template<typename IntT>
-IndexGroup<IntT> ParseIndexGroup(const std::string& index_group_str)
-{
-  const auto tokens = TokenizeIndexGroup(index_group_str, IndexGroupSeparator()[0]);
+  const auto tokens = TokenizeIndexGroup(index_group_str);
 
   if (tokens.empty()) {
     throw std::runtime_error("empty index group tokens");
@@ -527,19 +492,19 @@ IndexGroup<IntT> ParseIndexGroup(const std::string& index_group_str)
     throw std::runtime_error(oss.str());
   }
 
-  auto index_group = IndexGroup<IntT>{};
-
   // Position index.
   if (tokens[0].empty()) {
     auto oss = std::stringstream{};
     oss << "empty position index ('" << index_group_str << "')";
     throw std::runtime_error(oss.str());
   }
-  index_group.position_index = ParseIndex<IntT>(tokens[0]);
+  auto iss_pos = std::istringstream(tokens[0]);
+  iss_pos >> index_group.position_index;
 
   // Texture coordinate index, may be empty.
   if (tokens.size() > 1 && !tokens[1].empty()) {
-    index_group.tex_coord_index.first = ParseIndex<IntT>(tokens[1]);
+    auto iss_tex = std::istringstream(tokens[1]);
+    iss_tex >> index_group.tex_coord_index.first;
     index_group.tex_coord_index.second = true;
   }
 
@@ -550,24 +515,80 @@ IndexGroup<IntT> ParseIndexGroup(const std::string& index_group_str)
       oss << "empty normal index ('" << index_group_str << "')";
       throw std::runtime_error(oss.str());
     }
-    index_group.normal_index.first = ParseIndex<IntT>(tokens[2]);
+    auto iss_nml = std::istringstream(tokens[2]);
+    iss_nml >> index_group.normal_index.first;
     index_group.normal_index.second = true;
   }
 
-  return index_group;
+  return is;
 }
 
 
-template<typename IntT>
-std::vector<IndexGroup<IntT>> ParseIndexGroups(std::istringstream* const iss)
+template<typename T, std::size_t N>
+std::uint32_t ParseValues(
+  std::istringstream* const iss, 
+  std::array<T, N>* const values)
 {
-  auto index_groups = std::vector<IndexGroup<IntT>>{};
-  auto index_group_str = std::string{};
-  while (*iss >> index_group_str) {
-    index_groups.push_back(ParseIndexGroup<IntT>(index_group_str));
+  typedef typename std::remove_pointer<decltype(values)>::type ContainerType;
+  typedef typename ContainerType::value_type ValueType;
+  constexpr auto kValueCount = std::tuple_size<ContainerType>::value;
+  static_assert(kValueCount > 0, "empty array");
+
+  auto parse_count = std::uint32_t{ 0 };
+  auto value = ValueType{};
+  while (ParseValue(iss, &value)) {
+    if (parse_count >= kValueCount) {
+      auto oss = std::ostringstream{};
+      oss << "expected to parse at most " << kValueCount << " values";
+      throw std::runtime_error(oss.str());
+    }
+    (*values)[parse_count++] = value;
   }
 
-  return index_groups;
+  return parse_count;
+}
+
+template<typename T>
+std::uint32_t ParseValues(
+  std::istringstream* const iss, 
+  std::vector<T>* const values)
+{
+  auto value = typename decltype(values)::value_type{};
+  while (ParseValue(iss, &value)) {
+    values->push_back(value);
+  }
+
+  return values->size();
+}
+
+
+template<typename AddPositionFuncT>
+void ParsePosition(
+  std::istringstream* const iss,
+  AddPositionFuncT add_position,
+  std::uint32_t* const count)
+{
+  typedef typename AddPositionFuncT::ParseType ParseType;
+  static_assert(IsPosition<ParseType>::value, 
+    "parse type must be a Position type");
+
+  auto position = ParseType{};
+  const auto parse_count = ParseValues(iss, &position.values);
+
+  if (parse_count < 3) {
+    auto oss = std::ostringstream{};
+    oss << "positions must have 3 or 4 values (found " << parse_count << ")";
+    throw std::runtime_error(oss.str());
+  }
+
+  // Fourth position value (w) defaults to 1.
+  if (std::tuple_size<decltype(position.values)>::value == 4 && 
+      parse_count == 3) {
+    position.values[3] = typename decltype(position.values)::value_type{ 1 };
+  }
+
+  add_position.func(position);
+  ++(*count);
 }
 
 
@@ -578,34 +599,19 @@ void ParseFace(
   std::uint32_t* const count)
 {
   typedef typename AddFaceFuncT::ParseType ParseType;
-  typedef IndexGroup<ParseType> IndexGroupType;
+  static_assert(IsFace<ParseType>::value, 
+    "parse type must be a Face type");
 
-  const auto index_groups = ParseIndexGroups<ParseType>(iss);
+  auto face = ParseType{};
+  const auto parse_count = ParseValues(iss, &face.values);
 
-  if (index_groups.size() < 3) {
-    auto oss = std::ostringstream{};
-    oss << "face must have at least 3 index groups (found " << index_groups.size() << ")";
-    throw std::runtime_error(oss.str());
+  if (parse_count != face.values.size()) {
+    throw std::runtime_error("incomplete face");
   }
-  else if (index_groups.size() == 3) {
-    add_face.func(TriangleFace<IndexGroupType>(
-      index_groups[0],
-      index_groups[1],
-      index_groups[2]));
-    ++(*count);
-  }
-  else if (index_groups.size() == 4) {
-    add_face.func(QuadFace<IndexGroupType>(
-      index_groups[0],
-      index_groups[1],
-      index_groups[2],
-      index_groups[3]));
-    ++(*count);
-  }
-  else {
-    add_face.func(PolygonFace<IndexGroupType>(index_groups));
-    ++(*count);
-  }
+
+  ValidateFace(face, typename FaceTraits<ParseType>::FaceCategory{});
+  add_face.func(face);
+  ++(*count);
 }
 
 
@@ -617,22 +623,27 @@ void ParseTexCoord(
   FuncTag)
 {
   typedef typename AddTexCoordFuncT::ParseType ParseType;
+  static_assert(IsTexCoord<ParseType>::value, 
+    "parse type must be a TexCoord type");
 
-  const auto parsed = ParseValues<ParseType, 3>(iss);
-  if (parsed.value_count < 2) {
+  auto tex_coord = ParseType{};
+  const auto parse_count = ParseValues(iss, &tex_coord.values);
+
+  if (parse_count < 2) {
     auto oss = std::ostringstream{};
     oss << "texture coordinates must have 2 or 3 values (found " 
-      << parsed.value_count << ")";
+      << parse_count << ")";
     throw std::runtime_error(oss.str());
   }
 
   // Third texture coordinate value defaults to 1.
-  const auto tex = TexCoord<ParseType, 3>(
-    parsed.values[0], 
-    parsed.values[1],
-    parsed.value_count == 3 ? parsed.values[2] : ParseType{ 1 });
-  ValidateTexCoord(tex);
-  add_tex_coord.func(tex);
+  if (std::tuple_size<decltype(tex_coord.values)>::value == 3 && 
+      parse_count == 2) {
+    tex_coord.values[2] = typename decltype(tex_coord.values)::value_type{ 1 };
+  }
+
+  ValidateTexCoord(tex_coord);
+  add_tex_coord.func(tex_coord);
   ++(*count);
 }
 
@@ -649,18 +660,19 @@ void ParseNormal(
   FuncTag)
 {
   typedef typename AddNormalFuncT::ParseType ParseType;
+  static_assert(IsNormal<ParseType>::value, 
+    "parse type must be a Normal type");
 
-  const auto parsed = ParseValues<ParseType, 3>(iss);
-  if (parsed.value_count != 3) {
+  auto normal = ParseType{};
+  const auto parse_count = ParseValues(iss, &normal.values);
+
+  if (parse_count < 3) {
     auto oss = std::ostringstream{};
-    oss << "normals must have 3 values (found " << parsed.value_count << ")";
+    oss << "normals must have 3 values (found " << parse_count << ")";
     throw std::runtime_error(oss.str());
   }
 
-  add_normal.func(Normal<ParseType>(
-    parsed.values[0], 
-    parsed.values[1],
-    parsed.values[2]));
+  add_normal.func(normal);
   ++(*count);
 }
 

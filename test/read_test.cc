@@ -173,7 +173,7 @@ TEST_CASE("read exceptions", "[container]")
   SECTION("unrecognized line prefix")
   {
     const auto input = std::string(
-      "bad 0 1 2");
+      "bad 0 1 2\n");
     auto iss = std::istringstream(input);
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = false;
@@ -187,7 +187,7 @@ TEST_CASE("read exceptions", "[container]")
   {
     // Note - Not testing this for all types of attributes.
     const auto input = std::string(
-      "v 1 2 xxx");
+      "v 1 2 xxx\n");
     auto iss = std::istringstream(input);
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = false;
@@ -221,7 +221,7 @@ TEST_CASE("read exceptions", "[container]")
     REQUIRE_THROWS_MATCHES(
       utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
       std::runtime_error,
-      utils::ExceptionContentMatcher{ "expected to parse at most 4 values" });
+      utils::ExceptionContentMatcher{ "expected to parse at most 3 values" });
   }
 
   SECTION("tex coord value count < 2")
@@ -238,23 +238,23 @@ TEST_CASE("read exceptions", "[container]")
         "texture coordinates must have 2 or 3 values (found 1)" });
   }
 
-  SECTION("tex coord value count > 3")
+  SECTION("too many tex coord values")
   {
     const auto input = std::string(
-      "vt 0 1 2 3");
+      "vt 0.0 0.5 1.0\n");
     auto iss = std::istringstream(input);
     constexpr auto use_tex_coords = true;
     constexpr auto use_normals = false;
     REQUIRE_THROWS_MATCHES(
       utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
       std::runtime_error,
-      utils::ExceptionContentMatcher{ "expected to parse at most 3 values" });
+      utils::ExceptionContentMatcher{ "expected to parse at most 2 values" });
   }
 
   SECTION("normal value count < 3")
   {
     const auto input = std::string(
-      "vn 0 1");
+      "vn 0 1\n");
     auto iss = std::istringstream(input);
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = true;
@@ -291,29 +291,28 @@ TEST_CASE("read exceptions", "[container]")
       utils::ExceptionContentMatcher{ "parsed index must be greater than zero" });
   }
 
-  SECTION("face index count < 3")
+  SECTION("incomplete face")
   {
     const auto input = std::string(
-      "f 1 2");
+      "f 1 2\n");
     auto iss = std::istringstream(input);
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = false;
     REQUIRE_THROWS_MATCHES(
       utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
       std::runtime_error,
-      utils::ExceptionContentMatcher{ 
-        "face must have at least 3 index groups (found 2)" });
+      utils::ExceptionContentMatcher{ "incomplete face" });
   }
 
   SECTION("empty position index")
   {
     const auto input = std::string(
-      "f 1 2 /3");
+      "f 1 2 /3\n");
     auto iss = std::istringstream(input);
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = false;
     REQUIRE_THROWS_MATCHES(
-      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
+      utils::ReadIndexedMesh<utils::IndexedMesh<>>(iss, use_tex_coords, use_normals),
       std::runtime_error,
       utils::ExceptionContentMatcher{ "empty position index ('/3')" });
   }
@@ -321,12 +320,12 @@ TEST_CASE("read exceptions", "[container]")
   SECTION("empty normal index")
   {
     const auto input = std::string(
-      "f 1 2 3/3/");
+      "f 1 2 3/3/\n");
     auto iss = std::istringstream(input);
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = false;
     REQUIRE_THROWS_MATCHES(
-      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
+      utils::ReadIndexedMesh<utils::IndexedMesh<>>(iss, use_tex_coords, use_normals),
       std::runtime_error,
       utils::ExceptionContentMatcher{ "empty normal index ('3/3/')" });
   }
@@ -334,14 +333,14 @@ TEST_CASE("read exceptions", "[container]")
   SECTION("token count > 3")
   {
     const auto input = std::string(
-      "f 1 2 3/3/3/3");
+      "f 1 2 1/2/3/4\n");
     auto iss = std::istringstream(input);
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = false;
     REQUIRE_THROWS_MATCHES(
-      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
+      utils::ReadIndexedMesh<utils::IndexedMesh<>>(iss, use_tex_coords, use_normals),
       std::runtime_error,
       utils::ExceptionContentMatcher{ 
-        "index group can have at most 3 tokens ('3/3/3/3')" });
+        "index group can have at most 3 tokens ('1/2/3/4')" });
   }
 }
