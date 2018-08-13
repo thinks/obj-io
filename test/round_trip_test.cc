@@ -65,9 +65,9 @@ TEST_CASE("round trip")
 }
 
 
-TEST_CASE("round trip indexed")
+TEST_CASE("round trip index groups")
 {
-  typedef utils::IndexedMesh<
+  typedef utils::IndexGroupMesh<
     utils::Vec4<float>,
     utils::Vec3<float>,
     utils::Vec3<float>,
@@ -110,12 +110,12 @@ TEST_CASE("round trip indexed")
 
   // Write.
   const auto write_result = 
-    utils::WriteIndexedMesh(imesh, use_tex_coords, use_normals);
+    utils::WriteIndexGroupMesh(imesh, use_tex_coords, use_normals);
 
   // Read.
   auto iss = std::istringstream(write_result.mesh_str);
   const auto read_result = 
-    utils::ReadIndexedMesh<MeshType>(iss, use_tex_coords, use_normals);
+    utils::ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals);
 
   REQUIRE_THAT(read_result.mesh, utils::IndexedMeshMatcher<MeshType>(
     imesh, use_tex_coords, use_normals));

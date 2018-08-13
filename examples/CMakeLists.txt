@@ -3,6 +3,8 @@
 # found in the top-level directory of this distribution.
 
 set(examples
+	index_group_example.cc
+	polygon_example.cc
 	simple_example.cc
 )
 

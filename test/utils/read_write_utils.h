@@ -349,7 +349,7 @@ ReadResult<MeshT> ReadMesh(
 
 
 template <typename IndexedMeshT>
-ReadResult<IndexedMeshT> ReadIndexedMesh(
+ReadResult<IndexedMeshT> ReadIndexGroupMesh(
   std::istream& is,
   const bool read_tex_coords,
   const bool read_normals)
@@ -560,7 +560,7 @@ WriteResult WriteMesh(
 
 
 template<typename IndexedMeshT>
-WriteResult WriteIndexedMesh(
+WriteResult WriteIndexGroupMesh(
   const IndexedMeshT& imesh,
   const bool write_tex_coords,
   const bool write_normals)

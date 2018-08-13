@@ -7,7 +7,6 @@
 #include <cassert>
 #include <cstdint>
 #include <fstream>
-#include <string>
 #include <vector>
 
 #include <thinks/obj_io/obj_io.h>
@@ -161,8 +160,8 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
   };
 
   // Faces.
-  auto idx_iter = mesh.indices.begin();
-  const auto idx_iend = mesh.indices.end();
+  auto idx_iter = begin(mesh.indices);
+  const auto idx_iend = end(mesh.indices);
   auto face_mapper = [&idx_iter, idx_iend]() {
     typedef thinks::obj_io::Index<uint16_t> ObjIndexType;
     typedef thinks::obj_io::TriangleFace<ObjIndexType> ObjFaceType;
@@ -233,7 +232,7 @@ void WriteMesh(const std::string& filename, const Mesh& mesh)
 
 namespace examples {
 
-void SimpleExample()
+void SimpleExample(const std::string& filename)
 {
   using namespace std;
 
@@ -257,9 +256,9 @@ void SimpleExample()
     },
     vector<uint16_t>{ 0, 1, 2 }
   };
-  const auto filename = "D:/tmp/simple_example.obj";
+
   WriteMesh(filename, mesh);
-  auto mesh2 = ReadMesh(filename);
+  const auto mesh2 = ReadMesh(filename);
 }
 
 } // namespace examples

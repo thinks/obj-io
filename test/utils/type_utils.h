@@ -166,7 +166,7 @@ template<
   typename NormalT = Vec3<float>,
   typename IntT = std::uint32_t,
   std::size_t IndicesPerFaceT = 3>
-struct IndexedMesh
+struct IndexGroupMesh
 {
   typedef PositionT PositionType;
   typedef TexCoordT TexCoordType;
@@ -181,6 +181,20 @@ struct IndexedMesh
   std::vector<IndexType> tex_coord_indices;
   std::vector<IndexType> normal_indices;
 };
+
+template<
+  typename PositionT = Vec3<float>, 
+  typename TexCoordT = Vec2<float>,
+  typename NormalT = Vec3<float>,
+  typename IntT = std::uint32_t>
+using IndexGroupTriangleMesh = IndexGroupMesh<PositionT, TexCoordT, NormalT, IntT, 3>;
+
+template<
+  typename PositionT = Vec3<float>, 
+  typename TexCoordT = Vec2<float>,
+  typename NormalT = Vec3<float>,
+  typename IntT = std::uint32_t>
+using IndexGroupQuadMesh = IndexGroupMesh<PositionT, TexCoordT, NormalT, IntT, 4>;
 
 } // namespace utils
 

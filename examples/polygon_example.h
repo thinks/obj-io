@@ -2,16 +2,16 @@
 // This file is subject to the license terms in the LICENSE file
 // found in the top-level directory of this distribution.
 
-#ifndef THINKS_OBJ_IO_EXAMPLES_SIMPLE_EXAMPLE_H_INCLUDED
-#define THINKS_OBJ_IO_EXAMPLES_SIMPLE_EXAMPLE_H_INCLUDED
+#ifndef THINKS_OBJ_IO_EXAMPLES_POLYGON_EXAMPLE_H_INCLUDED
+#define THINKS_OBJ_IO_EXAMPLES_POLYGON_EXAMPLE_H_INCLUDED
 
 #include <string>
 
 
 namespace examples {
 
-void SimpleExample(const std::string& filename);
+void PolygonExample(const std::string& filename);
 
 } // namespace examples
 
-#endif // THINKS_OBJ_IO_EXAMPLES_SIMPLE_EXAMPLE_H_INCLUDED
+#endif // THINKS_OBJ_IO_EXAMPLES_POLYGON_EXAMPLE_H_INCLUDED

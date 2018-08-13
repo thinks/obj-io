@@ -58,9 +58,6 @@ public:
     N == 2 || N == 3,
     "texture coordinate value count must be 2 or 3");
 
-  typedef FloatT ValueType;
-  static constexpr std::size_t ValueCount = N;
-
   constexpr TexCoord() noexcept = default;
 
   constexpr TexCoord(const FloatT u, const FloatT v) noexcept
@@ -126,30 +123,34 @@ public:
   {
   }
 
-  constexpr IndexGroup(const IntT pos_idx) noexcept
-    : position_index(pos_idx)
+  constexpr IndexGroup(const IntT position_index_value) noexcept
+    : position_index(position_index_value)
     , tex_coord_index(Index<IntT>{}, false)
     , normal_index(Index<IntT>{}, false)
   {
   }
 
   constexpr IndexGroup(
-    const IntT pos_idx,
-    const IntT tex_idx,
-    const IntT nml_idx) noexcept
-    : position_index(pos_idx)
-    , tex_coord_index(tex_idx, true)
-    , normal_index(nml_idx, true)
+    const IntT position_index_value,
+    const IntT tex_coord_index_value,
+    const IntT normal_index_value) noexcept
+    : position_index(position_index_value)
+    , tex_coord_index(tex_coord_index_value, true)
+    , normal_index(normal_index_value, true)
   {
   }
 
   constexpr IndexGroup(
-    const Index<IntT> position_index,
-    const std::pair<Index<IntT>, bool>& tex_coord_index,
-    const std::pair<Index<IntT>, bool>& normal_index) noexcept
-    : position_index(position_index)
-    , tex_coord_index(tex_coord_index)
-    , normal_index(normal_index)
+    const IntT position_index_value,
+    const std::pair<IntT, bool>& tex_coord_index_value,
+    const std::pair<IntT, bool>& normal_index_value) noexcept
+    : position_index(Index<IntT>(position_index_value))
+    , tex_coord_index(std::make_pair(
+        Index<IntT>(tex_coord_index_value.first), 
+        tex_coord_index_value.second))
+    , normal_index(std::make_pair(
+        Index<IntT>(normal_index_value.first), 
+        normal_index_value.second))
   {
   }
 
@@ -410,7 +411,7 @@ std::vector<std::string> Tokenize(
     if (pos == prev) {
       tokens.push_back(std::string{});
     }
-    if (pos >= prev) {
+    else if (pos > prev) {
       tokens.push_back(str.substr(prev, pos - prev));
     }
     prev = pos + 1; // Skip delimiter.
@@ -420,7 +421,7 @@ std::vector<std::string> Tokenize(
   if (prev == str.length()) {
     tokens.push_back(std::string{});
   }
-  if (prev < str.length()) {
+  else if (prev < str.length()) {
     tokens.push_back(str.substr(prev, std::string::npos));
   }
 
@@ -472,16 +473,14 @@ std::istream& operator>>(std::istream& is, Index<IntT>& index)
 template<typename IntT>
 std::istream& operator>>(std::istream& is, IndexGroup<IntT>& index_group)
 {
+  // Read index group as the string leading up to the 
+  // following whitespace/newline.
   auto index_group_str = std::string{};
-  //std::getline(is, index_group_str, ' ');
-  is >> index_group_str;
-
-  if (index_group_str.empty()) {
+  if (!ParseValue(&is, &index_group_str)) {
     return is;
   }
 
   const auto tokens = TokenizeIndexGroup(index_group_str);
-
   if (tokens.empty()) {
     throw std::runtime_error("empty index group tokens");
   }
@@ -553,7 +552,10 @@ std::uint32_t ParseValues(
   std::istringstream* const iss, 
   std::vector<T>* const values)
 {
-  auto value = typename decltype(values)::value_type{};
+  typedef typename std::remove_pointer<decltype(values)>::type ContainerType;
+  typedef typename ContainerType::value_type ValueType;
+
+  auto value = ValueType{};
   while (ParseValue(iss, &value)) {
     values->push_back(value);
   }
@@ -582,9 +584,10 @@ void ParsePosition(
   }
 
   // Fourth position value (w) defaults to 1.
-  if (std::tuple_size<decltype(position.values)>::value == 4 && 
+  typedef decltype(position.values) ArrayType;
+  if (std::tuple_size<ArrayType>::value == 4 && 
       parse_count == 3) {
-    position.values[3] = typename decltype(position.values)::value_type{ 1 };
+    position.values[3] = typename ArrayType::value_type{ 1 };
   }
 
   add_position.func(position);
@@ -605,8 +608,13 @@ void ParseFace(
   auto face = ParseType{};
   const auto parse_count = ParseValues(iss, &face.values);
 
+  // Works for both std::array and std::vector.
+  // This is never an issue for polygons.
   if (parse_count != face.values.size()) {
-    throw std::runtime_error("incomplete face");
+    auto oss = std::ostringstream{};
+    oss << "expected " << face.values.size() << " face indices (found "
+      << parse_count << ")";
+    throw std::runtime_error(oss.str());
   }
 
   ValidateFace(face, typename FaceTraits<ParseType>::FaceCategory{});
@@ -637,9 +645,10 @@ void ParseTexCoord(
   }
 
   // Third texture coordinate value defaults to 1.
-  if (std::tuple_size<decltype(tex_coord.values)>::value == 3 && 
+  typedef decltype(tex_coord.values) ArrayType;
+  if (std::tuple_size<ArrayType>::value == 3 && 
       parse_count == 2) {
-    tex_coord.values[2] = typename decltype(tex_coord.values)::value_type{ 1 };
+    tex_coord.values[2] = typename ArrayType::value_type{ 1 };
   }
 
   ValidateTexCoord(tex_coord);
@@ -772,7 +781,7 @@ std::ostream& operator<<(std::ostream& os, const Index<IntT>& index)
 
   // Input indices are assumed to be zero-based.
   // OBJ format uses one-based indexing. 
-  os << index.value + 1u;
+  os << index.value + 1;
   return os;
 }
 

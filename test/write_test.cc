@@ -139,7 +139,7 @@ TEST_CASE("write", "[container]")
 
 TEST_CASE("write indexed", "[container]")
 {
-  typedef utils::IndexedMesh<> MeshType;
+  typedef utils::IndexGroupMesh<> MeshType;
   typedef typename MeshType::PositionType PositionType;
   typedef typename MeshType::TexCoordType TexCoordType;
   typedef typename MeshType::NormalType NormalType;
@@ -188,7 +188,7 @@ TEST_CASE("write indexed", "[container]")
     constexpr auto write_tex = false;
     constexpr auto write_nml = false;
     const auto mesh_string = 
-      utils::WriteIndexedMesh(imesh, write_tex, write_nml).mesh_str;
+      utils::WriteIndexGroupMesh(imesh, write_tex, write_nml).mesh_str;
 
     // Assert.
     REQUIRE(expected_string == mesh_string);
@@ -211,7 +211,7 @@ TEST_CASE("write indexed", "[container]")
     constexpr auto write_tex = true;
     constexpr auto write_nml = false;
     const auto mesh_string = 
-      utils::WriteIndexedMesh(imesh, write_tex, write_nml).mesh_str;
+      utils::WriteIndexGroupMesh(imesh, write_tex, write_nml).mesh_str;
 
     // Assert.
     REQUIRE(expected_string == mesh_string);
@@ -234,7 +234,7 @@ TEST_CASE("write indexed", "[container]")
     constexpr auto write_tex = false;
     constexpr auto write_nml = true;
     const auto mesh_string = 
-      utils::WriteIndexedMesh(imesh, write_tex, write_nml).mesh_str;
+      utils::WriteIndexGroupMesh(imesh, write_tex, write_nml).mesh_str;
     
     // Assert.
     REQUIRE(expected_string == mesh_string);
@@ -259,7 +259,7 @@ TEST_CASE("write indexed", "[container]")
     constexpr auto write_tex = true;
     constexpr auto write_nml = true;
     const auto mesh_string = 
-      utils::WriteIndexedMesh(imesh, write_tex, write_nml).mesh_str;
+      utils::WriteIndexGroupMesh(imesh, write_tex, write_nml).mesh_str;
     
     // Assert.
     REQUIRE(expected_string == mesh_string);
@@ -269,7 +269,7 @@ TEST_CASE("write indexed", "[container]")
 
 TEST_CASE("write quads")
 {
-  typedef utils::IndexedMesh<
+  typedef utils::IndexGroupMesh<
     utils::Vec4<float>,
     utils::Vec3<float>,
     utils::Vec3<float>,
@@ -332,7 +332,7 @@ TEST_CASE("write quads")
   constexpr auto write_tex = true;
   constexpr auto write_nml = true;
   const auto mesh_string = 
-    utils::WriteIndexedMesh(imesh, write_tex, write_nml).mesh_str;
+    utils::WriteIndexGroupMesh(imesh, write_tex, write_nml).mesh_str;
 
   REQUIRE(expected_string == mesh_string);
 }
@@ -341,7 +341,7 @@ TEST_CASE("write quads")
 TEST_CASE("write polygons")
 {
   // Five indices per face!
-  typedef utils::IndexedMesh<
+  typedef utils::IndexGroupMesh<
     utils::Vec4<float>,
     utils::Vec3<float>,
     utils::Vec3<float>,
@@ -410,7 +410,7 @@ TEST_CASE("write polygons")
   constexpr auto write_tex = true;
   constexpr auto write_nml = true;
   const auto mesh_string = 
-    utils::WriteIndexedMesh(imesh, write_tex, write_nml).mesh_str;
+    utils::WriteIndexGroupMesh(imesh, write_tex, write_nml).mesh_str;
 
   REQUIRE(expected_string == mesh_string);
 }

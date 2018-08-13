@@ -312,7 +312,7 @@ TEST_CASE("read exceptions", "[container]")
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = false;
     REQUIRE_THROWS_MATCHES(
-      utils::ReadIndexedMesh<utils::IndexedMesh<>>(iss, use_tex_coords, use_normals),
+      utils::ReadIndexGroupMesh<utils::IndexGroupMesh<>>(iss, use_tex_coords, use_normals),
       std::runtime_error,
       utils::ExceptionContentMatcher{ "empty position index ('/3')" });
   }
@@ -325,7 +325,7 @@ TEST_CASE("read exceptions", "[container]")
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = false;
     REQUIRE_THROWS_MATCHES(
-      utils::ReadIndexedMesh<utils::IndexedMesh<>>(iss, use_tex_coords, use_normals),
+      utils::ReadIndexGroupMesh<utils::IndexGroupMesh<>>(iss, use_tex_coords, use_normals),
       std::runtime_error,
       utils::ExceptionContentMatcher{ "empty normal index ('3/3/')" });
   }
@@ -338,7 +338,7 @@ TEST_CASE("read exceptions", "[container]")
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = false;
     REQUIRE_THROWS_MATCHES(
-      utils::ReadIndexedMesh<utils::IndexedMesh<>>(iss, use_tex_coords, use_normals),
+      utils::ReadIndexGroupMesh<utils::IndexGroupMesh<>>(iss, use_tex_coords, use_normals),
       std::runtime_error,
       utils::ExceptionContentMatcher{ 
         "index group can have at most 3 tokens ('1/2/3/4')" });
