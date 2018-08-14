@@ -57,10 +57,10 @@ TEST_CASE("write", "[container]")
     // Act.
     constexpr auto write_tex = false;
     constexpr auto write_nml = false;
-    const auto mesh_string = utils::WriteMesh(mesh, write_tex, write_nml).mesh_str;
+    const auto write_result = utils::WriteMesh(mesh, write_tex, write_nml);
 
     // Assert.
-    REQUIRE(expected_string == mesh_string);
+    REQUIRE(expected_string == write_result.mesh_str);
   }
 
   SECTION("positions and tex coords")
@@ -80,10 +80,10 @@ TEST_CASE("write", "[container]")
     // Act.
     constexpr auto write_tex = true;
     constexpr auto write_nml = false;
-    const auto mesh_string = utils::WriteMesh(mesh, write_tex, write_nml).mesh_str;
+    const auto write_result = utils::WriteMesh(mesh, write_tex, write_nml);
 
     // Assert.
-    REQUIRE(expected_string == mesh_string);
+    REQUIRE(expected_string == write_result.mesh_str);
   }
 
   SECTION("positions and normals")
@@ -103,10 +103,10 @@ TEST_CASE("write", "[container]")
     // Act.
     constexpr auto write_tex = false;
     constexpr auto write_nml = true;
-    const auto mesh_string = utils::WriteMesh(mesh, write_tex, write_nml).mesh_str;
-    
+    const auto write_result = utils::WriteMesh(mesh, write_tex, write_nml);
+
     // Assert.
-    REQUIRE(expected_string == mesh_string);
+    REQUIRE(expected_string == write_result.mesh_str);
   }
 
   SECTION("positions and tex coords and normals") 
@@ -129,15 +129,15 @@ TEST_CASE("write", "[container]")
     // Act.
     constexpr auto write_tex = true;
     constexpr auto write_nml = true;
-    const auto mesh_string = utils::WriteMesh(mesh, write_tex, write_nml).mesh_str;
+    const auto write_result = utils::WriteMesh(mesh, write_tex, write_nml);
 
     // Assert.
-    REQUIRE(expected_string == mesh_string);
+    REQUIRE(expected_string == write_result.mesh_str);
   }
 }
 
 
-TEST_CASE("write indexed", "[container]")
+TEST_CASE("write group index", "[container]")
 {
   typedef utils::IndexGroupMesh<> MeshType;
   typedef typename MeshType::PositionType PositionType;
@@ -187,14 +187,13 @@ TEST_CASE("write indexed", "[container]")
     // Act.
     constexpr auto write_tex = false;
     constexpr auto write_nml = false;
-    const auto mesh_string = 
-      utils::WriteIndexGroupMesh(imesh, write_tex, write_nml).mesh_str;
+    const auto write_result = utils::WriteIndexGroupMesh(imesh, write_tex, write_nml);
 
     // Assert.
-    REQUIRE(expected_string == mesh_string);
+    REQUIRE(expected_string == write_result.mesh_str);
   }
 
-  SECTION("positions and indexed tex coords")
+  SECTION("positions and tex coords")
   {
     // Arrange.
     const auto expected_string = std::string(
@@ -210,14 +209,13 @@ TEST_CASE("write indexed", "[container]")
     // Act.
     constexpr auto write_tex = true;
     constexpr auto write_nml = false;
-    const auto mesh_string = 
-      utils::WriteIndexGroupMesh(imesh, write_tex, write_nml).mesh_str;
+    const auto write_result = utils::WriteIndexGroupMesh(imesh, write_tex, write_nml);
 
     // Assert.
-    REQUIRE(expected_string == mesh_string);
+    REQUIRE(expected_string == write_result.mesh_str);
   }
 
-  SECTION("positions and indexed normals")
+  SECTION("positions and normals")
   {
     // Arrange.
     const auto expected_string = std::string(
@@ -233,14 +231,13 @@ TEST_CASE("write indexed", "[container]")
     // Act.
     constexpr auto write_tex = false;
     constexpr auto write_nml = true;
-    const auto mesh_string = 
-      utils::WriteIndexGroupMesh(imesh, write_tex, write_nml).mesh_str;
-    
+    const auto write_result = utils::WriteIndexGroupMesh(imesh, write_tex, write_nml);
+
     // Assert.
-    REQUIRE(expected_string == mesh_string);
+    REQUIRE(expected_string == write_result.mesh_str);
   }
 
-  SECTION("positions and indexed tex coords and indexed normals")
+  SECTION("positions and tex coords and normals")
   {
     // Arrange.
     const auto expected_string = std::string(
@@ -258,17 +255,17 @@ TEST_CASE("write indexed", "[container]")
     // Act.
     constexpr auto write_tex = true;
     constexpr auto write_nml = true;
-    const auto mesh_string = 
-      utils::WriteIndexGroupMesh(imesh, write_tex, write_nml).mesh_str;
-    
+    const auto write_result = utils::WriteIndexGroupMesh(imesh, write_tex, write_nml);
+
     // Assert.
-    REQUIRE(expected_string == mesh_string);
+    REQUIRE(expected_string == write_result.mesh_str);
   }
 }
 
 
 TEST_CASE("write quads")
 {
+  // Four indices per face.
   typedef utils::IndexGroupMesh<
     utils::Vec4<float>,
     utils::Vec3<float>,
@@ -331,16 +328,15 @@ TEST_CASE("write quads")
 
   constexpr auto write_tex = true;
   constexpr auto write_nml = true;
-  const auto mesh_string = 
-    utils::WriteIndexGroupMesh(imesh, write_tex, write_nml).mesh_str;
+  const auto write_result = utils::WriteIndexGroupMesh(imesh, write_tex, write_nml);
 
-  REQUIRE(expected_string == mesh_string);
+  REQUIRE(expected_string == write_result.mesh_str);
 }
 
 
 TEST_CASE("write polygons")
 {
-  // Five indices per face!
+  // Five indices per face.
   typedef utils::IndexGroupMesh<
     utils::Vec4<float>,
     utils::Vec3<float>,
@@ -409,16 +405,67 @@ TEST_CASE("write polygons")
 
   constexpr auto write_tex = true;
   constexpr auto write_nml = true;
-  const auto mesh_string = 
-    utils::WriteIndexGroupMesh(imesh, write_tex, write_nml).mesh_str;
+  const auto write_result = utils::WriteIndexGroupMesh(imesh, write_tex, write_nml);
 
-  REQUIRE(expected_string == mesh_string);
+  REQUIRE(expected_string == write_result.mesh_str);
 }
 
 
-TEST_CASE("write exceptions", "[container]")
+TEST_CASE("write texture coordinate range", "[container]")
 {
-  // Small (signed) index type.
+  typedef utils::Mesh<> MeshType;
+  typedef typename MeshType::VertexType VertexType;
+  typedef typename MeshType::IndexType IndexType;
+  typedef typename VertexType::PositionType PositionType;
+  typedef typename VertexType::TexCoordType TexCoordType;
+  typedef typename VertexType::NormalType NormalType;
+
+  constexpr auto write_tex = true;
+  constexpr auto write_nml = false;
+
+  SECTION("texture coordinate range < 0")
+  {
+    auto mesh = MeshType{};
+    mesh.vertices = std::vector<VertexType>{
+      VertexType{
+        PositionType{},
+        TexCoordType{ -0.1f, 0.f },
+        NormalType{}
+      }
+    };
+    mesh.indices = std::vector<IndexType>{ 0, 0, 0 };
+
+    REQUIRE_THROWS_MATCHES(
+      utils::WriteMesh(mesh, write_tex, write_nml),
+      std::runtime_error,
+      utils::ExceptionContentMatcher{
+        "texture coordinate values must be in range [0, 1] (found -0.1)" });
+  }
+
+  SECTION("texture coordinate range > 1")
+  {
+    auto mesh = MeshType{};
+    mesh.vertices = std::vector<VertexType>{
+      VertexType{
+        PositionType{},
+        TexCoordType{ 0.f, 1.1f },
+        NormalType{}
+      }
+    };
+    mesh.indices = std::vector<IndexType>{ 0, 0, 0 };
+
+    REQUIRE_THROWS_MATCHES(
+      utils::WriteMesh(mesh, write_tex, write_nml),
+      std::runtime_error,
+      utils::ExceptionContentMatcher{
+        "texture coordinate values must be in range [0, 1] (found 1.1)" });
+  }
+}
+
+
+TEST_CASE("write index range", "[container]")
+{
+  // Signed index type.
   typedef utils::Mesh<utils::Vertex<>, std::int8_t, 3> MeshType;
   typedef typename MeshType::VertexType VertexType;
   typedef typename MeshType::IndexType IndexType;
@@ -426,13 +473,14 @@ TEST_CASE("write exceptions", "[container]")
   typedef typename VertexType::TexCoordType TexCoordType;
   typedef typename VertexType::NormalType NormalType;
 
+  constexpr auto write_tex = false;
+  constexpr auto write_nml = false;
+
   SECTION("negative index")
   {
     auto mesh = MeshType{};
     mesh.indices = std::vector<IndexType>{ 0, 1, -1 };
 
-    constexpr auto write_tex = false;
-    constexpr auto write_nml = false;
     REQUIRE_THROWS_MATCHES(
       utils::WriteMesh(mesh, write_tex, write_nml),
       std::runtime_error,
@@ -444,66 +492,28 @@ TEST_CASE("write exceptions", "[container]")
     auto mesh = MeshType{};
     mesh.indices = std::vector<IndexType>{ 0, 1, 127 };
 
-    constexpr auto write_tex = false;
-    constexpr auto write_nml = false;
     REQUIRE_THROWS_MATCHES(
       utils::WriteMesh(mesh, write_tex, write_nml),
       std::runtime_error,
       utils::ExceptionContentMatcher{ "invalid index: 127" });
   }
+}
 
-  SECTION("less than three indices per face")
-  {
-    auto mesh = utils::Mesh<utils::Vertex<>, std::uint8_t, 2>{};
-    mesh.indices = std::vector<std::uint8_t>{ 0, 1 };
 
-    constexpr auto write_tex = false;
-    constexpr auto write_nml = false;
-    REQUIRE_THROWS_MATCHES(
-      utils::WriteMesh(mesh, write_tex, write_nml),
-      std::runtime_error,
-      utils::ExceptionContentMatcher{ "face must have at least three indices" });
-  }
+TEST_CASE("write polygon index count")
+{
+  // Only two indices per face.
+  typedef utils::Mesh<utils::Vertex<>, std::uint16_t, 2> MeshType;
+  typedef typename MeshType::IndexType IndexType;
 
-  SECTION("texture coordinate range [< 0]")
-  {
-    auto mesh = MeshType{};
-    mesh.vertices = std::vector<VertexType>{
-      VertexType{
-        PositionType{ 1.f, 2.f, 3.f },
-        TexCoordType{ -0.1f, 0.f },
-        NormalType{ 1.f, 0.f, 0.f }
-      },
-    };
-    mesh.indices = std::vector<IndexType>{ 0, 0, 0 };
+  constexpr auto write_tex = false;
+  constexpr auto write_nml = false;
 
-    constexpr auto write_tex = true;
-    constexpr auto write_nml = false;
-    REQUIRE_THROWS_MATCHES(
-      utils::WriteMesh(mesh, write_tex, write_nml),
-      std::runtime_error,
-      utils::ExceptionContentMatcher{
-        "texture coordinate values must be in range [0, 1]" });
-  }
+  auto mesh = MeshType{};
+  mesh.indices = std::vector<IndexType>{ 0, 1 };
 
-  SECTION("texture coordinate range [> 1]")
-  {
-    auto mesh = MeshType{};
-    mesh.vertices = std::vector<VertexType>{
-      VertexType{
-        PositionType{ 1.f, 2.f, 3.f },
-        TexCoordType{ 0.f, 1.1f },
-        NormalType{ 1.f, 0.f, 0.f }
-      },
-    };
-    mesh.indices = std::vector<IndexType>{ 0, 0, 0 };
-
-    constexpr auto write_tex = true;
-    constexpr auto write_nml = false;
-    REQUIRE_THROWS_MATCHES(
-      utils::WriteMesh(mesh, write_tex, write_nml),
-      std::runtime_error,
-      utils::ExceptionContentMatcher{
-        "texture coordinate values must be in range [0, 1]" });
-  }
+  REQUIRE_THROWS_MATCHES(
+    utils::WriteMesh(mesh, write_tex, write_nml),
+    std::runtime_error,
+    utils::ExceptionContentMatcher{ "faces must have at least 3 indices (found 2)" });
 }

@@ -368,8 +368,10 @@ void ValidateTexCoord(const TexCoord<FloatT, N>& tex_coord)
 
   for (const auto v : tex_coord.values) {
     if (!(ValueType{0} <= v && v <= ValueType{1})) {
-      throw std::runtime_error(
-        "texture coordinate values must be in range [0, 1]");
+      auto oss = std::ostringstream{};
+      oss << "texture coordinate values must be in range [0, 1] (found "
+        << v << ")";
+      throw std::runtime_error(oss.str());
     }
   }
 }
@@ -379,7 +381,10 @@ template <typename FaceT>
 void ValidateFace(const FaceT& face, DynamicFaceTag)
 {
   if (!(face.values.size() >= 3)) {
-    throw std::runtime_error("face must have at least three indices");
+    auto oss = std::ostringstream{};
+    oss << "faces must have at least 3 indices (found " <<
+      face.values.size() << ")";
+    throw std::runtime_error(oss.str());
   }
 }
 
@@ -560,7 +565,7 @@ std::uint32_t ParseValues(
     values->push_back(value);
   }
 
-  return values->size();
+  return static_cast<std::uint32_t>(values->size());
 }
 
 
@@ -585,8 +590,7 @@ void ParsePosition(
 
   // Fourth position value (w) defaults to 1.
   typedef decltype(position.values) ArrayType;
-  if (std::tuple_size<ArrayType>::value == 4 && 
-      parse_count == 3) {
+  if (std::tuple_size<ArrayType>::value == 4 && parse_count == 3) {
     position.values[3] = typename ArrayType::value_type{ 1 };
   }
 
@@ -646,8 +650,7 @@ void ParseTexCoord(
 
   // Third texture coordinate value defaults to 1.
   typedef decltype(tex_coord.values) ArrayType;
-  if (std::tuple_size<ArrayType>::value == 3 && 
-      parse_count == 2) {
+  if (std::tuple_size<ArrayType>::value == 3 && parse_count == 2) {
     tex_coord.values[2] = typename ArrayType::value_type{ 1 };
   }
 
@@ -790,7 +793,7 @@ std::ostream& operator<<(std::ostream& os, const IndexGroup<IntT>& index_group)
 {
   os << index_group.position_index;
   if (index_group.tex_coord_index.second &&
-    index_group.normal_index.second) {
+      index_group.normal_index.second) {
     os << IndexGroupSeparator() << index_group.tex_coord_index.first
       << IndexGroupSeparator() << index_group.normal_index.first;
   }
@@ -839,8 +842,8 @@ std::uint32_t WriteMappedLines(
       os << " " << element;
     }
     os << newline;
-    count++;
 
+    ++count;
     map_result = mapper();
   }
   return count;
@@ -873,7 +876,7 @@ std::uint32_t WriteTexCoords(
     os,
     TexCoordPrefix(),
     mapper,
-    [](const auto& tex) { ValidateTexCoord(tex); },  
+    [](const auto& tex_coord) { ValidateTexCoord(tex_coord); },  
     newline);
 }
 
@@ -990,11 +993,12 @@ WriteResult Write(
   detail::write::WriteHeader(os, newline);
   result.position_count += 
     detail::write::WritePositions(os, position_mapper, newline);
-  result.tex_coord_count += detail::write::WriteTexCoords(os, tex_coord_mapper, newline,
-    typename detail::FuncTraits<TexCoordMapperT>::FuncCategory{});
+  result.tex_coord_count += 
+    detail::write::WriteTexCoords(os, tex_coord_mapper, newline,
+      typename detail::FuncTraits<TexCoordMapperT>::FuncCategory{});
   result.normal_count += 
     detail::write::WriteNormals(os, normal_mapper, newline,
-    typename detail::FuncTraits<NormalMapperT>::FuncCategory{});
+      typename detail::FuncTraits<NormalMapperT>::FuncCategory{});
   result.face_count += 
     detail::write::WriteFaces(os, face_mapper, newline);
   return result;

@@ -12,8 +12,15 @@
 #include <utils/type_utils.h>
 
 
-TEST_CASE("read", "[container]")
+TEST_CASE("READ", "[container]")
 {
+  typedef utils::Mesh<> MeshType;
+  typedef typename MeshType::IndexType IndexType;
+  typedef typename MeshType::VertexType VertexType;
+  typedef typename VertexType::PositionType PositionType;
+  typedef typename VertexType::TexCoordType TexCoordType;
+  typedef typename VertexType::NormalType NormalType;
+
   const auto input = std::string(
     "# comment\n"
     "" // empty line
@@ -33,14 +40,12 @@ TEST_CASE("read", "[container]")
   {
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = false;
-    auto iss = std::istringstream(input);
-    const auto result = utils::ReadMesh<utils::Mesh<>>(
-      iss, use_tex_coords, use_normals);
 
-    typedef decltype(result.mesh) MeshType;
-    typedef typename MeshType::VertexType VertexType;
-    typedef typename MeshType::IndexType IndexType;
-    typedef typename VertexType::PositionType PositionType;
+    auto iss = std::istringstream(input);
+    const auto read_result = utils::ReadMesh<MeshType>(
+      iss, use_tex_coords, use_normals);
+    const auto mesh = read_result.mesh;
+
 
     auto expected_mesh = MeshType{};
     expected_mesh.vertices = std::vector<VertexType>{
@@ -50,7 +55,7 @@ TEST_CASE("read", "[container]")
     };
     expected_mesh.indices = std::vector<IndexType>{ 0, 1, 2, 2, 1, 0};
 
-    REQUIRE_THAT(result.mesh, utils::MeshMatcher<MeshType>(
+    REQUIRE_THAT(mesh, utils::MeshMatcher<MeshType>(
       expected_mesh, use_tex_coords, use_normals));
   }
 
@@ -58,15 +63,11 @@ TEST_CASE("read", "[container]")
   {
     constexpr auto use_tex_coords = true;
     constexpr auto use_normals = false;
-    auto iss = std::istringstream(input);
-    const auto mesh = utils::ReadMesh<utils::Mesh<>>(
-      iss, use_tex_coords, use_normals).mesh;
 
-    typedef decltype(mesh) MeshType;
-    typedef typename MeshType::VertexType VertexType;
-    typedef typename MeshType::IndexType IndexType;
-    typedef typename VertexType::PositionType PositionType;
-    typedef typename VertexType::TexCoordType TexCoordType;
+    auto iss = std::istringstream(input);
+    const auto read_result = utils::ReadMesh<MeshType>(
+      iss, use_tex_coords, use_normals);
+    const auto mesh = read_result.mesh;
 
     auto expected_mesh = MeshType{};
     expected_mesh.vertices = std::vector<VertexType>{
@@ -93,16 +94,11 @@ TEST_CASE("read", "[container]")
   {
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = true;
-    auto iss = std::istringstream(input);
-    const auto mesh = utils::ReadMesh<utils::Mesh<>>(
-      iss, use_tex_coords, use_normals).mesh;
 
-    typedef decltype(mesh) MeshType;
-    typedef typename MeshType::VertexType VertexType;
-    typedef typename MeshType::IndexType IndexType;
-    typedef typename VertexType::PositionType PositionType;
-    typedef typename VertexType::TexCoordType TexCoordType;
-    typedef typename VertexType::NormalType NormalType;
+    auto iss = std::istringstream(input);
+    const auto read_result = utils::ReadMesh<MeshType>(
+      iss, use_tex_coords, use_normals);
+    const auto mesh = read_result.mesh;
 
     auto expected_mesh = MeshType{};
     expected_mesh.vertices = std::vector<VertexType>{
@@ -132,34 +128,29 @@ TEST_CASE("read", "[container]")
   {
     constexpr auto use_tex_coords = true;
     constexpr auto use_normals = true;
-    auto iss = std::istringstream(input);
-    const auto mesh = utils::ReadMesh<utils::Mesh<>>(
-      iss, use_tex_coords, use_normals).mesh;
 
-    typedef decltype(mesh) MeshType;
-    typedef typename MeshType::VertexType VertexType;
-    typedef typename MeshType::IndexType IndexType;
-    typedef typename VertexType::PositionType PositionType;
-    typedef typename VertexType::TexCoordType TexCoordType;
-    typedef typename VertexType::NormalType NormalType;
+    auto iss = std::istringstream(input);
+    const auto read_result = utils::ReadMesh<utils::Mesh<>>(
+      iss, use_tex_coords, use_normals);
+    const auto mesh = read_result.mesh;
 
     auto expected_mesh = MeshType{};
     expected_mesh.vertices = std::vector<VertexType>{
       VertexType{
-      PositionType{ 1.f, 2.f, 3.f },
-      TexCoordType{ 0.f, 0.f},
-      NormalType{ 1.f, 0.f, 0.f }
-    },
-      VertexType{
-      PositionType{ 4.f, 5.f, 6.f },
-      TexCoordType{ 0.f, 1.f },
-      NormalType{ 0.f, 1.f, 0.f }
-    },
-      VertexType{
-      PositionType{ 7.f, 8.f, 9.f },
-      TexCoordType{ 1.f, 1.f},
-      NormalType{ 0.f, 0.f, 1.f }
-    }
+        PositionType{ 1.f, 2.f, 3.f },
+        TexCoordType{ 0.f, 0.f},
+        NormalType{ 1.f, 0.f, 0.f }
+      },
+        VertexType{
+        PositionType{ 4.f, 5.f, 6.f },
+        TexCoordType{ 0.f, 1.f },
+        NormalType{ 0.f, 1.f, 0.f }
+      },
+        VertexType{
+        PositionType{ 7.f, 8.f, 9.f },
+        TexCoordType{ 1.f, 1.f},
+        NormalType{ 0.f, 0.f, 1.f }
+      }
     };
     expected_mesh.indices = std::vector<IndexType>{ 0, 1, 2, 2, 1, 0 };
 
@@ -168,98 +159,151 @@ TEST_CASE("read", "[container]")
   }
 }
 
-TEST_CASE("read exceptions", "[container]")
-{
-  SECTION("unrecognized line prefix")
-  {
-    const auto input = std::string(
-      "bad 0 1 2\n");
-    auto iss = std::istringstream(input);
-    constexpr auto use_tex_coords = false;
-    constexpr auto use_normals = false;
-    REQUIRE_THROWS_MATCHES(
-      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
-      std::runtime_error,
-      utils::ExceptionContentMatcher{ "unrecognized line prefix 'bad'" });
-  }
 
-  SECTION("parse failure")
-  {
-    // Note - Not testing this for all types of attributes.
-    const auto input = std::string(
-      "v 1 2 xxx\n");
-    auto iss = std::istringstream(input);
-    constexpr auto use_tex_coords = false;
-    constexpr auto use_normals = false;
-    REQUIRE_THROWS_MATCHES(
-      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
-      std::runtime_error,
-      utils::ExceptionContentMatcher{ "failed parsing 'xxx'" });
-  }
+TEST_CASE("READ - index group", "[container]")
+{
+  //asdf
+}
+
+
+TEST_CASE("READ - unrecognized line prefix")
+{
+  typedef utils::Mesh<> MeshType;
+
+  const auto input = std::string(
+    "bad 0 1 2\n");
+  auto iss = std::istringstream(input);
+
+  constexpr auto use_tex_coords = false;
+  constexpr auto use_normals = false;
+  REQUIRE_THROWS_MATCHES(
+    utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+    std::runtime_error,
+    utils::ExceptionContentMatcher{ "unrecognized line prefix 'bad'" });
+}
+
+
+TEST_CASE("READ - position errors", "[container]")
+{
+  typedef utils::Mesh<> MeshType;
+  typedef typename MeshType::VertexType VertexType;
+  typedef typename VertexType::PositionType PositionType;
+
+  constexpr auto use_tex_coords = false;
+  constexpr auto use_normals = false;
 
   SECTION("position value count < 3")
   {
     const auto input = std::string(
-      "v 0 1");
+      "v 0 1\n");
     auto iss = std::istringstream(input);
-    constexpr auto use_tex_coords = false;
-    constexpr auto use_normals = false;
     REQUIRE_THROWS_MATCHES(
-      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
+      utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
       std::runtime_error,
       utils::ExceptionContentMatcher{ 
         "positions must have 3 or 4 values (found 2)" });
   }
 
-  SECTION("position value count > 4")
+  SECTION("position value count > size")
   {
     const auto input = std::string(
-      "v 0 1 2 3 4");
+      "v 0 1 2 3\n");
     auto iss = std::istringstream(input);
-    constexpr auto use_tex_coords = false;
-    constexpr auto use_normals = false;
-    REQUIRE_THROWS_MATCHES(
-      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
-      std::runtime_error,
-      utils::ExceptionContentMatcher{ "expected to parse at most 3 values" });
-  }
 
-  SECTION("tex coord value count < 2")
+    auto oss = std::ostringstream{};
+    oss << "expected to parse at most " << utils::VecSize<PositionType>::value 
+      << " values";
+
+    REQUIRE_THROWS_MATCHES(
+      utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+      std::runtime_error,
+      utils::ExceptionContentMatcher{ oss.str() });
+  }
+}
+
+
+TEST_CASE("READ - texture coordinate errors", "[container]")
+{
+  typedef utils::Mesh<> MeshType;
+  typedef typename MeshType::VertexType VertexType;
+  typedef typename VertexType::TexCoordType TexCoordType;
+
+  constexpr auto use_tex_coords = true;
+  constexpr auto use_normals = false;
+
+  SECTION("texture coordinate value count < 2")
   {
     const auto input = std::string(
-      "vt 0");
+      "vt 0\n");
     auto iss = std::istringstream(input);
-    constexpr auto use_tex_coords = true;
-    constexpr auto use_normals = false;
     REQUIRE_THROWS_MATCHES(
-      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
+      utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
       std::runtime_error,
       utils::ExceptionContentMatcher{ 
         "texture coordinates must have 2 or 3 values (found 1)" });
   }
 
-  SECTION("too many tex coord values")
+  SECTION("texture coordinate value count > size")
   {
     const auto input = std::string(
       "vt 0.0 0.5 1.0\n");
     auto iss = std::istringstream(input);
-    constexpr auto use_tex_coords = true;
-    constexpr auto use_normals = false;
+
+    auto oss = std::ostringstream{};
+    oss << "expected to parse at most " << utils::VecSize<TexCoordType>::value 
+      << " values";
+
     REQUIRE_THROWS_MATCHES(
-      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
+      utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
       std::runtime_error,
-      utils::ExceptionContentMatcher{ "expected to parse at most 2 values" });
+      utils::ExceptionContentMatcher{ oss.str() });
   }
+
+  SECTION("texture coordinate range < 0")
+  {
+    const auto input = std::string(
+      "vt -0.1 0.0\n");
+    auto iss = std::istringstream(input);
+
+    REQUIRE_THROWS_MATCHES(
+      utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+      std::runtime_error,
+      utils::ExceptionContentMatcher{ 
+        "texture coordinate values must be in range [0, 1] (found -0.1)" });
+  }
+
+  SECTION("texture coordinate range > 1")
+  {
+    const auto input = std::string(
+      "vt 0.0 1.1\n");
+    auto iss = std::istringstream(input);
+
+    REQUIRE_THROWS_MATCHES(
+      utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+      std::runtime_error,
+      utils::ExceptionContentMatcher{ 
+        "texture coordinate values must be in range [0, 1] (found 1.1)" });
+  }
+}
+
+
+TEST_CASE("READ - normal errors", "[container]")
+{
+  typedef utils::Mesh<> MeshType;
+  typedef typename MeshType::VertexType VertexType;
+  typedef typename VertexType::NormalType NormalType;
+
+  constexpr auto use_tex_coords = false;
+  constexpr auto use_normals = true;
 
   SECTION("normal value count < 3")
   {
     const auto input = std::string(
       "vn 0 1\n");
     auto iss = std::istringstream(input);
-    constexpr auto use_tex_coords = false;
-    constexpr auto use_normals = true;
+
     REQUIRE_THROWS_MATCHES(
-      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
+      utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
       std::runtime_error,
       utils::ExceptionContentMatcher{ 
         "normals must have 3 values (found 2)" });
@@ -268,20 +312,136 @@ TEST_CASE("read exceptions", "[container]")
   SECTION("normal value count > 3")
   {
     const auto input = std::string(
-      "vn 0 1 2 3");
+      "vn 0 1 2 3\n");
     auto iss = std::istringstream(input);
-    constexpr auto use_tex_coords = false;
-    constexpr auto use_normals = true;
+
     REQUIRE_THROWS_MATCHES(
-      utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals),
+      utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
       std::runtime_error,
       utils::ExceptionContentMatcher{ "expected to parse at most 3 values" });
   }
+}
+
+
+TEST_CASE("READ - default values", "[container]")
+{
+  typedef utils::Mesh<
+    utils::Vertex<
+      utils::Vec4<float>, // Position.
+      utils::Vec3<float>> // Texture coordinate.
+    > MeshType;
+  typedef typename MeshType::VertexType VertexType;
+  typedef typename VertexType::PositionType PositionType;
+  typedef typename VertexType::TexCoordType TexCoordType;
+
+  SECTION("position w defaults to 1")
+  {
+    const auto input = std::string(
+      "v 0.1 0.2 0.3\n");
+    auto iss = std::istringstream(input);
+
+    constexpr auto use_tex_coords = false;
+    constexpr auto use_normals = false;
+    const auto read_result =
+      utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
+    const auto mesh = read_result.mesh;
+
+    REQUIRE(utils::Equals(mesh.vertices[0].pos, PositionType{ 0.1f, 0.2f, 0.3f, 1.f }));
+  }
+
+  SECTION("texture coordinate w defaults to 1")
+  {
+    const auto input = std::string(
+      "v 0.1 0.2 0.3\n"
+      "vt 0.1 0.2\n");
+    auto iss = std::istringstream(input);
+
+    constexpr auto use_tex_coords = true;
+    constexpr auto use_normals = false;
+    const auto read_result =
+      utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
+    const auto mesh = read_result.mesh;
+
+    REQUIRE(utils::Equals(mesh.vertices[0].tex, TexCoordType{ 0.1f, 0.2f, 1.f }));
+  }
+}
+
+
+TEST_CASE("READ - parse value error")
+{
+  typedef utils::Mesh<> MeshType;
+
+  // Note - Not testing this for all types of attributes.
+  const auto input = std::string(
+    "v 1 2 xxx\n");
+  auto iss = std::istringstream(input);
+  constexpr auto use_tex_coords = false;
+  constexpr auto use_normals = false;
+  REQUIRE_THROWS_MATCHES(
+    utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+    std::runtime_error,
+    utils::ExceptionContentMatcher{ "failed parsing 'xxx'" });
+}
+
+
+TEST_CASE("READ - index group errors", "[container]")
+{
+  typedef utils::IndexGroupMesh<> MeshType;
+
+  constexpr auto use_tex_coords = false;
+  constexpr auto use_normals = false;
+
+  SECTION("empty position index")
+  {
+    const auto input = std::string(
+      "f 1 2 /3\n");
+    auto iss = std::istringstream(input);
+    REQUIRE_THROWS_MATCHES(
+      utils::ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals),
+      std::runtime_error,
+      utils::ExceptionContentMatcher{ "empty position index ('/3')" });
+  }
+
+  SECTION("empty normal index")
+  {
+    const auto input = std::string(
+      "f 1 2 3/3/\n");
+    auto iss = std::istringstream(input);
+    REQUIRE_THROWS_MATCHES(
+      utils::ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals),
+      std::runtime_error,
+      utils::ExceptionContentMatcher{ "empty normal index ('3/3/')" });
+  }
+
+  SECTION("token count > 3")
+  {
+    const auto input = std::string(
+      "f 1 2 1/2/3/4\n");
+    auto iss = std::istringstream(input);
+    REQUIRE_THROWS_MATCHES(
+      utils::ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals),
+      std::runtime_error,
+      utils::ExceptionContentMatcher{ 
+        "index group can have at most 3 tokens ('1/2/3/4')" });
+  }
+}
+
+
+
+
+
+
+TEST_CASE("read exceptions", "[container]")
+{
+
+
+
+
 
   SECTION("zero index")
   {
     const auto input = std::string(
-      "f 0 1 2");
+      "f 0 1 2\n");
     auto iss = std::istringstream(input);
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = false;
