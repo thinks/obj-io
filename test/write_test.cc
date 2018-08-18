@@ -13,7 +13,7 @@
 #include <utils/type_utils.h>
 
 
-TEST_CASE("write", "[container]")
+TEST_CASE("WRITE", "[container]")
 {
   typedef utils::TriangleMesh<> MeshType;
   typedef typename MeshType::IndexType IndexType;
@@ -41,7 +41,10 @@ TEST_CASE("write", "[container]")
       NormalType{ 0.f, 0.f, 1.f }
     }
   };
-  mesh.indices = std::vector<IndexType>{ 0, 1, 2, 2, 1, 0 };
+  mesh.indices = std::vector<IndexType>{ 
+    0, 1, 2, 
+    2, 1, 0 
+  };
 
   SECTION("positions")
   {
@@ -137,7 +140,7 @@ TEST_CASE("write", "[container]")
 }
 
 
-TEST_CASE("write group index", "[container]")
+TEST_CASE("WRITE - index groups", "[container]")
 {
   typedef utils::IndexGroupMesh<> MeshType;
   typedef typename MeshType::PositionType PositionType;
@@ -263,18 +266,21 @@ TEST_CASE("write group index", "[container]")
 }
 
 
-TEST_CASE("write quads")
+TEST_CASE("WRITE - quads")
 {
-  // Four indices per face.
+  // Note: Only testing WITH tex coords and normals.
+
+  typedef utils::Vec4<float> PositionType;
+  typedef utils::Vec3<float> TexCoordType;
+  typedef utils::Vec3<float> NormalType;
+  typedef std::uint16_t IndexType;
+  constexpr auto kIndicesPerFace = std::size_t{ 4 };
   typedef utils::IndexGroupMesh<
-    utils::Vec4<float>,
-    utils::Vec3<float>,
-    utils::Vec3<float>,
-    std::uint16_t, 4> MeshType;
-  typedef typename MeshType::IndexType IndexType;
-  typedef typename MeshType::PositionType PositionType;
-  typedef typename MeshType::TexCoordType TexCoordType;
-  typedef typename MeshType::NormalType NormalType;
+    PositionType,
+    TexCoordType,
+    NormalType,
+    IndexType, 
+    kIndicesPerFace> MeshType;
 
   // Setup.
   auto imesh = MeshType{};
@@ -334,18 +340,21 @@ TEST_CASE("write quads")
 }
 
 
-TEST_CASE("write polygons")
+TEST_CASE("WRITE - polygons")
 {
-  // Five indices per face.
+  // Note: Only testing WITH tex coords and normals.
+
+  typedef utils::Vec4<float> PositionType;
+  typedef utils::Vec3<float> TexCoordType;
+  typedef utils::Vec3<float> NormalType;
+  typedef std::uint16_t IndexType;
+  constexpr auto kIndicesPerFace = std::size_t{ 5 };
   typedef utils::IndexGroupMesh<
-    utils::Vec4<float>,
-    utils::Vec3<float>,
-    utils::Vec3<float>,
-    std::uint16_t, 5> MeshType;
-  typedef typename MeshType::IndexType IndexType;
-  typedef typename MeshType::PositionType PositionType;
-  typedef typename MeshType::TexCoordType TexCoordType;
-  typedef typename MeshType::NormalType NormalType;
+    PositionType,
+    TexCoordType,
+    NormalType,
+    IndexType, 
+    kIndicesPerFace> MeshType;
 
   // Setup.
   auto imesh = MeshType{};
@@ -411,7 +420,7 @@ TEST_CASE("write polygons")
 }
 
 
-TEST_CASE("write texture coordinate range", "[container]")
+TEST_CASE("WRITE - texture coordinate range", "[container]")
 {
   typedef utils::Mesh<> MeshType;
   typedef typename MeshType::VertexType VertexType;
@@ -423,7 +432,7 @@ TEST_CASE("write texture coordinate range", "[container]")
   constexpr auto write_tex = true;
   constexpr auto write_nml = false;
 
-  SECTION("texture coordinate range < 0")
+  SECTION("texture coordinate value < 0")
   {
     auto mesh = MeshType{};
     mesh.vertices = std::vector<VertexType>{
@@ -442,7 +451,7 @@ TEST_CASE("write texture coordinate range", "[container]")
         "texture coordinate values must be in range [0, 1] (found -0.1)" });
   }
 
-  SECTION("texture coordinate range > 1")
+  SECTION("texture coordinate value > 1")
   {
     auto mesh = MeshType{};
     mesh.vertices = std::vector<VertexType>{
@@ -463,12 +472,13 @@ TEST_CASE("write texture coordinate range", "[container]")
 }
 
 
-TEST_CASE("write index range", "[container]")
+TEST_CASE("WRITE - index range", "[container]")
 {
-  // Signed index type.
-  typedef utils::Mesh<utils::Vertex<>, std::int8_t, 3> MeshType;
+  // Note: Signed index type.
+  typedef std::int8_t IndexType;
+  constexpr auto kIndicesPerFace = std::size_t{ 3 };
+  typedef utils::Mesh<utils::Vertex<>, IndexType, kIndicesPerFace> MeshType;
   typedef typename MeshType::VertexType VertexType;
-  typedef typename MeshType::IndexType IndexType;
   typedef typename VertexType::PositionType PositionType;
   typedef typename VertexType::TexCoordType TexCoordType;
   typedef typename VertexType::NormalType NormalType;
@@ -500,11 +510,11 @@ TEST_CASE("write index range", "[container]")
 }
 
 
-TEST_CASE("write polygon index count")
+TEST_CASE("WRITE - face index count")
 {
-  // Only two indices per face.
-  typedef utils::Mesh<utils::Vertex<>, std::uint16_t, 2> MeshType;
-  typedef typename MeshType::IndexType IndexType;
+  typedef std::int8_t IndexType;
+  constexpr auto kIndicesPerFace = std::size_t{ 2 };
+  typedef utils::Mesh<utils::Vertex<>, IndexType, kIndicesPerFace> MeshType;
 
   constexpr auto write_tex = false;
   constexpr auto write_nml = false;

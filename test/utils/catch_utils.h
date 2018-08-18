@@ -103,11 +103,11 @@ private:
 };
 
 template<typename MeshT>
-struct IndexedMeshMatcher : Catch::MatcherBase<MeshT>
+struct IndexGroupMeshMatcher : Catch::MatcherBase<MeshT>
 {
   typedef MeshT MeshType;
 
-  IndexedMeshMatcher(
+  IndexGroupMeshMatcher(
     const MeshType& target,
     const bool match_tex_coords,
     const bool match_normals)

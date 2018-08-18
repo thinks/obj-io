@@ -416,17 +416,17 @@ std::vector<std::string> Tokenize(
     if (pos == prev) {
       tokens.push_back(std::string{});
     }
-    else if (pos > prev) {
+    if (pos > prev) {
       tokens.push_back(str.substr(prev, pos - prev));
     }
     prev = pos + 1; // Skip delimiter.
   }
 
-  // Characters after last delimiter.
+  // Check for characters after last delimiter.
   if (prev == str.length()) {
     tokens.push_back(std::string{});
   }
-  else if (prev < str.length()) {
+  if (prev < str.length()) {
     tokens.push_back(str.substr(prev, std::string::npos));
   }
 
@@ -588,7 +588,7 @@ void ParsePosition(
     throw std::runtime_error(oss.str());
   }
 
-  // Fourth position value (w) defaults to 1.
+  // Fourth position value (if any) defaults to 1.
   typedef decltype(position.values) ArrayType;
   if (std::tuple_size<ArrayType>::value == 4 && parse_count == 3) {
     position.values[3] = typename ArrayType::value_type{ 1 };
@@ -648,7 +648,7 @@ void ParseTexCoord(
     throw std::runtime_error(oss.str());
   }
 
-  // Third texture coordinate value defaults to 1.
+  // Third texture coordinate value (if any) defaults to 1.
   typedef decltype(tex_coord.values) ArrayType;
   if (std::tuple_size<ArrayType>::value == 3 && parse_count == 2) {
     tex_coord.values[2] = typename ArrayType::value_type{ 1 };
