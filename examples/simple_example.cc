@@ -55,6 +55,8 @@ Mesh ReadMesh(const std::string& filename)
   auto nml_count = uint32_t{ 0 };
 
   // Positions.
+  // Wrap a lambda expression and set expectations on position data.
+  // In this case we expect each position to be 3 floating point values.
   auto add_position = 
     thinks::obj_io::MakeAddFunc<thinks::obj_io::Position<float, 3>>(
       [&mesh, &pos_count](const auto& pos) {
@@ -71,6 +73,8 @@ Mesh ReadMesh(const std::string& filename)
       });
 
   // Faces.
+  // We expect each face in the OBJ file to be a triangle, i.e. have three indices.
+  // Also, we expect each index to have only one value.
   typedef thinks::obj_io::TriangleFace<thinks::obj_io::Index<uint16_t>> ObjFaceType;
   auto add_face = thinks::obj_io::MakeAddFunc<ObjFaceType>(
     [&mesh](const auto& face) {
@@ -91,6 +95,7 @@ Mesh ReadMesh(const std::string& filename)
       });
 
   // Normals [optional].
+  // Note: Normals must always have 3 components.
   auto add_normal = 
     thinks::obj_io::MakeAddFunc<thinks::obj_io::Normal<float>>(
       [&mesh, &nml_count](const auto& nml) {
@@ -102,8 +107,6 @@ Mesh ReadMesh(const std::string& filename)
       });
 
   // Open the OBJ file and populate the mesh while parsing it.
-  // Note that we provide the MakeAddFunc with the type to use 
-  // while parsing. 
   auto ifs = ifstream(filename);
   assert(ifs);
   const auto result = thinks::obj_io::Read(
