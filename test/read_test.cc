@@ -5,15 +5,20 @@
 #include <sstream>
 #include <string>
 
-#include <catch.hpp>
+#include "catch.hpp"
 
-#include <utils/catch_utils.h>
-#include <utils/read_write_utils.h>
-#include <utils/type_utils.h>
+#include "utils/catch_utils.h"
+#include "utils/read_write_utils.h"
+#include "utils/type_utils.h"
 
+TEST_CASE("READ", "[container]") {
+  using MeshType = utils::Mesh<>;
+  using IndexType = MeshType::IndexType; 
+  using VertexType = typename MeshType::VertexType;
+  using PositionType = typename VertexType::PositionType;
+  using TexCoordType = typename VertexType::TexCoordType;
+  using NormalType = typename VertexType::NormalType;
 
-TEST_CASE("READ", "[container]")
-{
   typedef utils::Mesh<> MeshType;
   typedef typename MeshType::IndexType IndexType;
   typedef typename MeshType::VertexType VertexType;
@@ -22,39 +27,34 @@ TEST_CASE("READ", "[container]")
   typedef typename VertexType::NormalType NormalType;
 
   const auto input = std::string(
-    "# comment\n"
-    "" // empty line
-    "v 1 2 3\n"
-    "v 4 5 6\n"
-    "v 7 8 9\n"
-    "vt 0 0\n"
-    "vt 0 1\n"
-    "vt 1 1\n"
-    "vn 1 0 0\n"
-    "vn 0 1 0\n"
-    "vn 0 0 1\n"
-    "f 1 2 3\n"
-    "f 3 2 1\n");
+      "# comment\n"
+      ""  // empty line
+      "v 1 2 3\n"
+      "v 4 5 6\n"
+      "v 7 8 9\n"
+      "vt 0 0\n"
+      "vt 0 1\n"
+      "vt 1 1\n"
+      "vn 1 0 0\n"
+      "vn 0 1 0\n"
+      "vn 0 0 1\n"
+      "f 1 2 3\n"
+      "f 3 2 1\n");
 
-  SECTION("positions")
-  {
+  SECTION("positions") {
     constexpr auto use_tex_coords = false;
     constexpr auto use_normals = false;
 
     auto iss = std::istringstream(input);
-    const auto read_result = utils::ReadMesh<MeshType>(
-      iss, use_tex_coords, use_normals);
+    const auto read_result =
+        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
 
     auto expected_mesh = MeshType{};
-    expected_mesh.vertices = std::vector<VertexType>{
-      VertexType{ PositionType{ 1.f, 2.f, 3.f } },
-      VertexType{ PositionType{ 4.f, 5.f, 6.f } },
-      VertexType{ PositionType{ 7.f, 8.f, 9.f } }
-    };
-    expected_mesh.indices = std::vector<IndexType>{ 
-      0, 1, 2, 
-      2, 1, 0
-    };
+    expected_mesh.vertices =
+        std::vector<VertexType>{VertexType{PositionType{1.f, 2.f, 3.f}},
+                                VertexType{PositionType{4.f, 5.f, 6.f}},
+                                VertexType{PositionType{7.f, 8.f, 9.f}}};
+    expected_mesh.indices = std::vector<IndexType>{0, 1, 2, 2, 1, 0};
 
     REQUIRE_THAT(read_result.mesh, utils::MeshMatcher<MeshType>(
       expected_mesh, use_tex_coords, use_normals));

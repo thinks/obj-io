@@ -2,8 +2,7 @@
 // This file is subject to the license terms in the LICENSE file
 // found in the top-level directory of this distribution.
 
-#ifndef THINKS_OBJ_IO_OBJ_IO_H_INCLUDED
-#define THINKS_OBJ_IO_OBJ_IO_H_INCLUDED
+#pragma once
 
 #include <array>
 #include <exception>
@@ -13,146 +12,103 @@
 #include <utility>
 #include <vector>
 
-
 namespace thinks {
 namespace obj_io {
 
-template<typename ArithT, std::size_t N>
-class Position
-{
-public:
-  static_assert(
-    std::is_arithmetic<ArithT>::value,
-    "position values must be arithmetic");
-  static_assert(
-    N == 3 || N == 4,
-    "position value count must be 3 or 4");
+template <typename ArithT, std::size_t N>
+struct Position {
+  static_assert(std::is_arithmetic<ArithT>::value,
+                "position values must be arithmetic");
+  static_assert(N == 3 || N == 4, "position value count must be 3 or 4");
 
   constexpr Position() noexcept = default;
 
   constexpr Position(const ArithT x, const ArithT y, const ArithT z) noexcept
-    : values{ x, y, z }
-  {
+      : values{x, y, z} {
     static_assert(N == 3, "position value count must be 3");
   }
 
-  constexpr Position(
-    const ArithT x, const ArithT y, const ArithT z, const ArithT w) noexcept
-    : values{ x, y, z, w }
-  {
+  constexpr Position(const ArithT x, const ArithT y, const ArithT z,
+                     const ArithT w) noexcept
+      : values{x, y, z, w} {
     static_assert(N == 4, "position value count must be 4");
   }
 
   std::array<ArithT, N> values;
 };
 
-
-template<typename FloatT, std::size_t N>
-class TexCoord
-{
-public:
-  static_assert(
-    std::is_floating_point<FloatT>::value,
-    "texture coordinate values must be floating point");
-  static_assert(
-    N == 2 || N == 3,
-    "texture coordinate value count must be 2 or 3");
+template <typename FloatT, std::size_t N>
+struct TexCoord {
+  static_assert(std::is_floating_point<FloatT>::value,
+                "texture coordinate values must be floating point");
+  static_assert(N == 2 || N == 3,
+                "texture coordinate value count must be 2 or 3");
 
   constexpr TexCoord() noexcept = default;
 
-  constexpr TexCoord(const FloatT u, const FloatT v) noexcept
-    : values{ u, v }
-  {
+  constexpr TexCoord(const FloatT u, const FloatT v) noexcept : values{u, v} {
     static_assert(N == 2, "texture coordinate value count must be 2");
   }
 
   constexpr TexCoord(const FloatT u, const FloatT v, const FloatT w) noexcept
-    : values{ u, v, w }
-  {
+      : values{u, v, w} {
     static_assert(N == 3, "texture coordinate value count must be 3");
   }
 
   std::array<FloatT, N> values;
 };
 
-
-template<typename ArithT>
-class Normal
-{
-public:
-  static_assert(
-    std::is_arithmetic<ArithT>::value,
-    "normal values must be arithmetic");
+template <typename ArithT>
+struct Normal {
+  static_assert(std::is_arithmetic<ArithT>::value,
+                "normal values must be arithmetic");
 
   constexpr Normal() noexcept = default;
 
   constexpr Normal(const ArithT x, const ArithT y, const ArithT z) noexcept
-    : values{ x, y, z }
-  {
-  }
+      : values{x, y, z} {}
 
   std::array<ArithT, 3> values;
 };
 
-
-template<typename IntT>
-class Index
-{
-public:
+template <typename IntT>
+struct Index {
   static_assert(std::is_integral<IntT>::value, "index value must be integral");
 
   constexpr Index() noexcept = default;
 
-  constexpr explicit Index(const IntT idx) noexcept
-    : value(idx)
-  {
-  }
+  constexpr explicit Index(const IntT idx) noexcept : value(idx) {}
 
   IntT value;
 };
 
-
-template<typename IntT>
-class IndexGroup
-{
-public:
+template <typename IntT>
+struct IndexGroup {
   constexpr IndexGroup() noexcept
-    : position_index{}
-    , tex_coord_index(Index<IntT>{}, false)
-    , normal_index(Index<IntT>{}, false)
-  {
-  }
+      : position_index{},
+        tex_coord_index(Index<IntT>{}, false),
+        normal_index(Index<IntT>{}, false) {}
 
   constexpr IndexGroup(const IntT position_index_value) noexcept
-    : position_index(position_index_value)
-    , tex_coord_index(Index<IntT>{}, false)
-    , normal_index(Index<IntT>{}, false)
-  {
-  }
+      : position_index(position_index_value),
+        tex_coord_index(Index<IntT>{}, false),
+        normal_index(Index<IntT>{}, false) {}
 
-  constexpr IndexGroup(
-    const IntT position_index_value,
-    const IntT tex_coord_index_value,
-    const IntT normal_index_value) noexcept
-    : position_index(position_index_value)
-    , tex_coord_index(tex_coord_index_value, true)
-    , normal_index(normal_index_value, true)
-  {
-  }
+  constexpr IndexGroup(const IntT position_index_value,
+                       const IntT tex_coord_index_value,
+                       const IntT normal_index_value) noexcept
+      : position_index(position_index_value),
+        tex_coord_index(tex_coord_index_value, true),
+        normal_index(normal_index_value, true) {}
 
-  constexpr IndexGroup(
-    const IntT position_index_value,
-    const std::pair<IntT, bool>& tex_coord_index_value,
-    const std::pair<IntT, bool>& normal_index_value) noexcept
-    : position_index(Index<IntT>(position_index_value))
-    , tex_coord_index(std::make_pair(
-        Index<IntT>(tex_coord_index_value.first), 
-        tex_coord_index_value.second))
-    , normal_index(std::make_pair(
-        Index<IntT>(normal_index_value.first), 
-        normal_index_value.second))
-  {
-  }
+  constexpr IndexGroup(const IntT position_index_value,
+                       const std::pair<IntT, bool>& tex_coord_index_value,
+                       const std::pair<IntT, bool>& normal_index_value) noexcept
+      : position_index(Index<IntT>(position_index_value)),
+        tex_coord_index(std::make_pair(Index<IntT>(tex_coord_index_value.first),
+                                       tex_coord_index_value.second)),
+        normal_index(std::make_pair(Index<IntT>(normal_index_value.first),
+                                    normal_index_value.second)) {}
 
   // Note: Optional would have been nice instead of bool-pairs here.
   Index<IntT> position_index;
@@ -160,239 +116,204 @@ public:
   std::pair<Index<IntT>, bool> normal_index;
 };
 
-namespace detail {
+namespace obj_io_internal {
 
-template<typename T>
+template <typename T>
 struct IsIndex : std::false_type {};
 
 // Note: Not decaying the type here.
-template<typename IntT>
+template <typename IntT>
 struct IsIndex<Index<IntT>> : std::true_type {};
 
-template<typename IntT>
+template <typename IntT>
 struct IsIndex<IndexGroup<IntT>> : std::true_type {};
 
-} // namespace detail
+}  // namespace obj_io_internal
 
-template<typename IndexT>
-class TriangleFace
-{
-public:
-  static_assert(detail::IsIndex<IndexT>::value, "face values must be of index type");
+template <typename IndexT>
+struct TriangleFace {
+  static_assert(obj_io_internal::IsIndex<IndexT>::value,
+                "face values must be of index type");
 
   constexpr TriangleFace() noexcept = default;
 
-  constexpr TriangleFace(const IndexT i0, const IndexT i1, const IndexT i2) noexcept
-    : values{ i0, i1, i2 }
-  {
-  }
+  constexpr TriangleFace(const IndexT i0, const IndexT i1,
+                         const IndexT i2) noexcept
+      : values{i0, i1, i2} {}
 
   std::array<IndexT, 3> values;
 };
 
-template<typename IndexT>
-class QuadFace
-{
-public:
-  static_assert(detail::IsIndex<IndexT>::value, "face values must be of index type");
+template <typename IndexT>
+struct QuadFace {
+  static_assert(obj_io_internal::IsIndex<IndexT>::value,
+                "face values must be of index type");
 
   constexpr QuadFace() noexcept = default;
 
-  constexpr QuadFace(const IndexT i0, const IndexT i1, const IndexT i2, const IndexT i3) noexcept
-    : values{ i0, i1, i2, i3 }
-  {
-  }
+  constexpr QuadFace(const IndexT i0, const IndexT i1, const IndexT i2,
+                     const IndexT i3) noexcept
+      : values{i0, i1, i2, i3} {}
 
   std::array<IndexT, 4> values;
 };
 
-template<typename IndexT>
-class PolygonFace
-{
-public:
-  static_assert(detail::IsIndex<IndexT>::value, "face values must be of index type");
+template <typename IndexT>
+struct PolygonFace {
+  static_assert(obj_io_internal::IsIndex<IndexT>::value,
+                "face values must be of index type");
 
   constexpr PolygonFace() noexcept = default;
 
-  template<typename... Args>
+  template <typename... Args>
   constexpr PolygonFace(Args&&... args) noexcept
-    : values(std::forward<Args>(args)...)
-  {
-  }
+      : values(std::forward<Args>(args)...) {}
 
   std::vector<IndexT> values;
 };
 
-
 template <typename T>
-class MapResult
-{
-public:
+struct MapResult {
   constexpr MapResult(const T& value, const bool is_end) noexcept
-    : value(value)
-    , is_end(is_end)
-  {
-  }
+      : value(value), is_end(is_end) {}
 
   T value;
   bool is_end;
 };
 
-
 template <typename T>
-MapResult<T> Map(const T& value) noexcept
-{
+MapResult<T> Map(const T& value) noexcept {
   return MapResult<T>(value, false);
 }
 
 template <typename T>
-MapResult<T> End() noexcept
-{
+MapResult<T> End() noexcept {
   return MapResult<T>(T{}, true);
 }
 
-
-template<typename ParseT, typename Func>
-struct AddFunc
-{
-  typedef ParseT ParseType;
+template <typename ParseT, typename Func>
+struct AddFunc {
+  using ParseType = ParseT;
 
   Func func;
 };
 
-template<typename ParseT, typename Func>
-AddFunc<ParseT, typename std::decay<Func>::type> MakeAddFunc(Func&& func)
-{
-  return { std::forward<Func>(func) };
+template <typename ParseT, typename Func>
+AddFunc<ParseT, typename std::decay<Func>::type> MakeAddFunc(Func&& func) {
+  return {std::forward<Func>(func)};
 }
 
+namespace obj_io_internal {
 
-namespace detail {
-
-template<typename T>
+template <typename T>
 struct IsPositionImpl : std::false_type {};
 
-template<typename T, std::size_t N>
+template <typename T, std::size_t N>
 struct IsPositionImpl<Position<T, N>> : std::true_type {};
 
-template<typename T>
+template <typename T>
 using IsPosition = IsPositionImpl<typename std::decay<T>::type>;
 
-
-template<typename T>
+template <typename T>
 struct IsTexCoordImpl : std::false_type {};
 
-template<typename T, std::size_t N>
+template <typename T, std::size_t N>
 struct IsTexCoordImpl<TexCoord<T, N>> : std::true_type {};
 
-template<typename T>
+template <typename T>
 using IsTexCoord = IsTexCoordImpl<typename std::decay<T>::type>;
 
-
-template<typename T>
+template <typename T>
 struct IsNormalImpl : std::false_type {};
 
-template<typename T>
+template <typename T>
 struct IsNormalImpl<Normal<T>> : std::true_type {};
 
-template<typename T>
+template <typename T>
 using IsNormal = IsNormalImpl<typename std::decay<T>::type>;
 
-
-template<typename T>
+template <typename T>
 struct IsFaceImpl : std::false_type {};
 
-template<typename IndexT>
+template <typename IndexT>
 struct IsFaceImpl<TriangleFace<IndexT>> : std::true_type {};
 
-template<typename IndexT>
-struct IsFaceImpl<QuadFace<IndexT>> : std::true_type {}; 
+template <typename IndexT>
+struct IsFaceImpl<QuadFace<IndexT>> : std::true_type {};
 
-template<typename IndexT>
+template <typename IndexT>
 struct IsFaceImpl<PolygonFace<IndexT>> : std::true_type {};
 
-template<typename T>
+template <typename T>
 using IsFace = IsFaceImpl<typename std::decay<T>::type>;
-
 
 // Face traits.
 struct StaticFaceTag {};
 struct DynamicFaceTag {};
 
-template<typename T>
-struct FaceTraitsImpl; // Not implemented!
+template <typename T>
+struct FaceTraitsImpl;  // Not implemented!
 
-template<typename IndexT>
-struct FaceTraitsImpl<TriangleFace<IndexT>>
-{
-  typedef StaticFaceTag FaceCategory;
+template <typename IndexT>
+struct FaceTraitsImpl<TriangleFace<IndexT>> {
+  using FaceCategory = StaticFaceTag;
 };
 
-template<typename IndexT>
-struct FaceTraitsImpl<QuadFace<IndexT>>
-{
-  typedef StaticFaceTag FaceCategory;
+template <typename IndexT>
+struct FaceTraitsImpl<QuadFace<IndexT>> {
+  using FaceCategory = StaticFaceTag;
 };
 
-template<typename IndexT>
-struct FaceTraitsImpl<PolygonFace<IndexT>>
-{
-  typedef DynamicFaceTag FaceCategory;
+template <typename IndexT>
+struct FaceTraitsImpl<PolygonFace<IndexT>> {
+  using FaceCategory = DynamicFaceTag;
 };
 
-template<typename T>
+template <typename T>
 using FaceTraits = FaceTraitsImpl<typename std::decay<T>::type>;
-
 
 // Tag dispatch for optional vertex attributes, e.g. tex coords and normals.
 struct FuncTag {};
 struct NoOpFuncTag {};
 
-template<typename T>
-struct FuncTraits
-{
-  typedef FuncTag FuncCategory;
+template <typename T>
+struct FuncTraits {
+  using FuncCategory = FuncTag;
 };
 
-template<>
-struct FuncTraits<std::nullptr_t>
-{
-  typedef NoOpFuncTag FuncCategory;
+template <>
+struct FuncTraits<std::nullptr_t> {
+  using FuncCategory = NoOpFuncTag;
 };
 
-
-template<typename FloatT, std::size_t N>
-void ValidateTexCoord(const TexCoord<FloatT, N>& tex_coord)
-{
-  typedef typename decltype(tex_coord.values)::value_type ValueType;
+template <typename FloatT, std::size_t N>
+void ValidateTexCoord(const TexCoord<FloatT, N>& tex_coord) {
+  using ValueType = typename decltype(tex_coord.values)::value_type;
 
   for (const auto v : tex_coord.values) {
     if (!(ValueType{0} <= v && v <= ValueType{1})) {
       auto oss = std::ostringstream{};
-      oss << "texture coordinate values must be in range [0, 1] (found "
-        << v << ")";
+      oss << "texture coordinate values must be in range [0, 1] (found " << v
+          << ")";
       throw std::runtime_error(oss.str());
     }
   }
 }
 
-
 template <typename FaceT>
-void ValidateFace(const FaceT& face, DynamicFaceTag)
-{
+void ValidateFace(const FaceT& face, DynamicFaceTag) {
   if (!(face.values.size() >= 3)) {
     auto oss = std::ostringstream{};
-    oss << "faces must have at least 3 indices (found " <<
-      face.values.size() << ")";
+    oss << "faces must have at least 3 indices (found " << face.values.size()
+        << ")";
     throw std::runtime_error(oss.str());
   }
 }
 
-// No need to validate non-polygon faces, the number 
+// No need to validate non-polygon faces, the number
 // of indices for these are enforced in the class templates.
 template <typename FaceT>
 void ValidateFace(const FaceT& face, StaticFaceTag) {}
-
 
 constexpr inline const char* CommentPrefix() { return "#"; }
 constexpr inline const char* PositionPrefix() { return "v"; }
@@ -401,17 +322,13 @@ constexpr inline const char* TexCoordPrefix() { return "vt"; }
 constexpr inline const char* NormalPrefix() { return "vn"; }
 constexpr inline const char* IndexGroupSeparator() { return "/"; }
 
-
 namespace read {
 
-inline
-std::vector<std::string> Tokenize(
-  const std::string& str, 
-  const char* const delimiters)
-{
+inline std::vector<std::string> Tokenize(const std::string& str,
+                                         const char* const delimiters) {
   auto tokens = std::vector<std::string>{};
-  auto prev = std::size_t{ 0 };
-  auto pos = std::size_t{ 0 };
+  auto prev = std::size_t{0};
+  auto pos = std::size_t{0};
   while ((pos = str.find_first_of(delimiters, prev)) != std::string::npos) {
     if (pos == prev) {
       tokens.push_back(std::string{});
@@ -419,7 +336,7 @@ std::vector<std::string> Tokenize(
     if (pos > prev) {
       tokens.push_back(str.substr(prev, pos - prev));
     }
-    prev = pos + 1; // Skip delimiter.
+    prev = pos + 1;  // Skip delimiter.
   }
 
   // Check for characters after last delimiter.
@@ -433,20 +350,16 @@ std::vector<std::string> Tokenize(
   return tokens;
 }
 
-
-inline
-std::vector<std::string> TokenizeIndexGroup(const std::string& index_group_str)
-{
+inline std::vector<std::string> TokenizeIndexGroup(
+    const std::string& index_group_str) {
   return Tokenize(index_group_str, IndexGroupSeparator());
 }
 
-
-template<typename T>
-bool ParseValue(std::istream* const is, T* const value)
-{
+template <typename T>
+bool ParseValue(std::istream* const is, T* const value) {
   if (*is >> *value || !is->eof()) {
     if (is->fail()) {
-      is->clear(); // Clear status bits.
+      is->clear();  // Clear status bits.
       auto dummy = std::string{};
       *is >> dummy;
       auto oss = std::ostringstream{};
@@ -458,10 +371,8 @@ bool ParseValue(std::istream* const is, T* const value)
   return false;
 }
 
-
-template<typename IntT>
-std::istream& operator>>(std::istream& is, Index<IntT>& index)
-{
+template <typename IntT>
+std::istream& operator>>(std::istream& is, Index<IntT>& index) {
   if (ParseValue(&is, &index.value)) {
     // Check for underflow.
     if (!(index.value > 0)) {
@@ -475,10 +386,9 @@ std::istream& operator>>(std::istream& is, Index<IntT>& index)
   return is;
 }
 
-template<typename IntT>
-std::istream& operator>>(std::istream& is, IndexGroup<IntT>& index_group)
-{
-  // Read index group as the string leading up to the 
+template <typename IntT>
+std::istream& operator>>(std::istream& is, IndexGroup<IntT>& index_group) {
+  // Read index group as the string leading up to the
   // following whitespace/newline.
   auto index_group_str = std::string{};
   if (!ParseValue(&is, &index_group_str)) {
@@ -492,7 +402,8 @@ std::istream& operator>>(std::istream& is, IndexGroup<IntT>& index_group)
 
   if (tokens.size() > 3) {
     auto oss = std::stringstream{};
-    oss << "index group can have at most 3 tokens ('" << index_group_str << "')";
+    oss << "index group can have at most 3 tokens ('" << index_group_str
+        << "')";
     throw std::runtime_error(oss.str());
   }
 
@@ -527,18 +438,15 @@ std::istream& operator>>(std::istream& is, IndexGroup<IntT>& index_group)
   return is;
 }
 
-
-template<typename T, std::size_t N>
-std::uint32_t ParseValues(
-  std::istringstream* const iss, 
-  std::array<T, N>* const values)
-{
-  typedef typename std::remove_pointer<decltype(values)>::type ContainerType;
-  typedef typename ContainerType::value_type ValueType;
+template <typename T, std::size_t N>
+std::uint32_t ParseValues(std::istringstream* const iss,
+                          std::array<T, N>* const values) {
+  using ContainerType = typename std::remove_pointer<decltype(values)>::type;
+  using ValueType = typename ContainerType::value_type;
   constexpr auto kValueCount = std::tuple_size<ContainerType>::value;
   static_assert(kValueCount > 0, "empty array");
 
-  auto parse_count = std::uint32_t{ 0 };
+  auto parse_count = std::uint32_t{0};
   auto value = ValueType{};
   while (ParseValue(iss, &value)) {
     if (parse_count >= kValueCount) {
@@ -552,13 +460,11 @@ std::uint32_t ParseValues(
   return parse_count;
 }
 
-template<typename T>
-std::uint32_t ParseValues(
-  std::istringstream* const iss, 
-  std::vector<T>* const values)
-{
-  typedef typename std::remove_pointer<decltype(values)>::type ContainerType;
-  typedef typename ContainerType::value_type ValueType;
+template <typename T>
+std::uint32_t ParseValues(std::istringstream* const iss,
+                          std::vector<T>* const values) {
+  using ContainerType = typename std::remove_pointer<decltype(values)>::type;
+  using ValueType = typename ContainerType::value_type;
 
   auto value = ValueType{};
   while (ParseValue(iss, &value)) {
@@ -568,16 +474,12 @@ std::uint32_t ParseValues(
   return static_cast<std::uint32_t>(values->size());
 }
 
-
-template<typename AddPositionFuncT>
-void ParsePosition(
-  std::istringstream* const iss,
-  AddPositionFuncT add_position,
-  std::uint32_t* const count)
-{
-  typedef typename AddPositionFuncT::ParseType ParseType;
-  static_assert(IsPosition<ParseType>::value, 
-    "parse type must be a Position type");
+template <typename AddPositionFuncT>
+void ParsePosition(std::istringstream* const iss, AddPositionFuncT add_position,
+                   std::uint32_t* const count) {
+  using ParseType = typename AddPositionFuncT::ParseType;
+  static_assert(IsPosition<ParseType>::value,
+                "parse type must be a Position type");
 
   auto position = ParseType{};
   const auto parse_count = ParseValues(iss, &position.values);
@@ -589,25 +491,20 @@ void ParsePosition(
   }
 
   // Fourth position value (if any) defaults to 1.
-  typedef decltype(position.values) ArrayType;
+  using ArrayType = decltype(position.values);
   if (std::tuple_size<ArrayType>::value == 4 && parse_count == 3) {
-    position.values[3] = typename ArrayType::value_type{ 1 };
+    position.values[3] = typename ArrayType::value_type{1};
   }
 
   add_position.func(position);
   ++(*count);
 }
 
-
-template<typename AddFaceFuncT>
-void ParseFace(
-  std::istringstream* const iss,
-  AddFaceFuncT add_face,
-  std::uint32_t* const count)
-{
-  typedef typename AddFaceFuncT::ParseType ParseType;
-  static_assert(IsFace<ParseType>::value, 
-    "parse type must be a Face type");
+template <typename AddFaceFuncT>
+void ParseFace(std::istringstream* const iss, AddFaceFuncT add_face,
+               std::uint32_t* const count) {
+  using ParseType = typename AddFaceFuncT::ParseType;
+  static_assert(IsFace<ParseType>::value, "parse type must be a Face type");
 
   auto face = ParseType{};
   const auto parse_count = ParseValues(iss, &face.values);
@@ -617,7 +514,7 @@ void ParseFace(
   if (parse_count != face.values.size()) {
     auto oss = std::ostringstream{};
     oss << "expected " << face.values.size() << " face indices (found "
-      << parse_count << ")";
+        << parse_count << ")";
     throw std::runtime_error(oss.str());
   }
 
@@ -626,32 +523,28 @@ void ParseFace(
   ++(*count);
 }
 
-
-template<typename AddTexCoordFuncT>
-void ParseTexCoord(
-  std::istringstream* const iss,
-  AddTexCoordFuncT add_tex_coord,
-  std::uint32_t* const count,
-  FuncTag)
-{
-  typedef typename AddTexCoordFuncT::ParseType ParseType;
-  static_assert(IsTexCoord<ParseType>::value, 
-    "parse type must be a TexCoord type");
+template <typename AddTexCoordFuncT>
+void ParseTexCoord(std::istringstream* const iss,
+                   AddTexCoordFuncT add_tex_coord, std::uint32_t* const count,
+                   FuncTag) {
+  using ParseType = typename AddTexCoordFuncT::ParseType;
+  static_assert(IsTexCoord<ParseType>::value,
+                "parse type must be a TexCoord type");
 
   auto tex_coord = ParseType{};
   const auto parse_count = ParseValues(iss, &tex_coord.values);
 
   if (parse_count < 2) {
     auto oss = std::ostringstream{};
-    oss << "texture coordinates must have 2 or 3 values (found " 
-      << parse_count << ")";
+    oss << "texture coordinates must have 2 or 3 values (found " << parse_count
+        << ")";
     throw std::runtime_error(oss.str());
   }
 
   // Third texture coordinate value (if any) defaults to 1.
-  typedef decltype(tex_coord.values) ArrayType;
+  using ArrayType = decltype(tex_coord.values);
   if (std::tuple_size<ArrayType>::value == 3 && parse_count == 2) {
-    tex_coord.values[2] = typename ArrayType::value_type{ 1 };
+    tex_coord.values[2] = typename ArrayType::value_type{1};
   }
 
   ValidateTexCoord(tex_coord);
@@ -659,21 +552,16 @@ void ParseTexCoord(
   ++(*count);
 }
 
-/// Dummy.
-template<typename AddTexCoordFuncT>
-void ParseTexCoord(std::istringstream* const, AddTexCoordFuncT, std::uint32_t* const, NoOpFuncTag) {}
+// Dummy.
+template <typename AddTexCoordFuncT>
+void ParseTexCoord(std::istringstream* const, AddTexCoordFuncT,
+                   std::uint32_t* const, NoOpFuncTag) {}
 
-
-template<typename AddNormalFuncT>
-void ParseNormal(
-  std::istringstream* const iss,
-  AddNormalFuncT add_normal,
-  std::uint32_t* const count,
-  FuncTag)
-{
-  typedef typename AddNormalFuncT::ParseType ParseType;
-  static_assert(IsNormal<ParseType>::value, 
-    "parse type must be a Normal type");
+template <typename AddNormalFuncT>
+void ParseNormal(std::istringstream* const iss, AddNormalFuncT add_normal,
+                 std::uint32_t* const count, FuncTag) {
+  using ParseType = typename AddNormalFuncT::ParseType;
+  static_assert(IsNormal<ParseType>::value, "parse type must be a Normal type");
 
   auto normal = ParseType{};
   const auto parse_count = ParseValues(iss, &normal.values);
@@ -688,27 +576,19 @@ void ParseNormal(
   ++(*count);
 }
 
-/// Dummy.
-template<typename AddNormalFuncT>
-void ParseNormal(std::istringstream* const, AddNormalFuncT, std::uint32_t* const, NoOpFuncTag) {}
+// Dummy.
+template <typename AddNormalFuncT>
+void ParseNormal(std::istringstream* const, AddNormalFuncT,
+                 std::uint32_t* const, NoOpFuncTag) {}
 
-
-template<
-  typename AddPositionFuncT,
-  typename AddTexCoordFuncT,
-  typename AddNormalFuncT,
-  typename AddFaceFuncT>
-void ParseLine(
-  const std::string& line,
-  AddPositionFuncT add_position,
-  AddFaceFuncT add_face,
-  AddTexCoordFuncT add_tex_coord,
-  AddNormalFuncT add_normal,
-  std::uint32_t* const position_count,
-  std::uint32_t* const face_count,
-  std::uint32_t* const tex_coord_count,
-  std::uint32_t* const normal_count)
-{
+template <typename AddPositionFuncT, typename AddTexCoordFuncT,
+          typename AddNormalFuncT, typename AddFaceFuncT>
+void ParseLine(const std::string& line, AddPositionFuncT add_position,
+               AddFaceFuncT add_face, AddTexCoordFuncT add_tex_coord,
+               AddNormalFuncT add_normal, std::uint32_t* const position_count,
+               std::uint32_t* const face_count,
+               std::uint32_t* const tex_coord_count,
+               std::uint32_t* const normal_count) {
   auto iss = std::istringstream(line);
 
   // Prefix is first non-whitespace token.
@@ -717,122 +597,93 @@ void ParseLine(
 
   // Parse the rest of the line depending on prefix.
   if (prefix.empty() || prefix == CommentPrefix()) {
-    return; // Ignore empty lines and comments.
-  }
-  else if (prefix == PositionPrefix()) {
+    return;  // Ignore empty lines and comments.
+  } else if (prefix == PositionPrefix()) {
     ParsePosition(&iss, add_position, position_count);
-  }
-  else if (prefix == FacePrefix()) {
+  } else if (prefix == FacePrefix()) {
     ParseFace(&iss, add_face, face_count);
-  }
-  else if (prefix == TexCoordPrefix()) {
+  } else if (prefix == TexCoordPrefix()) {
     ParseTexCoord(&iss, add_tex_coord, tex_coord_count,
-      typename FuncTraits<AddTexCoordFuncT>::FuncCategory{});
-  }
-  else if (prefix == NormalPrefix()) {
+                  typename FuncTraits<AddTexCoordFuncT>::FuncCategory{});
+  } else if (prefix == NormalPrefix()) {
     ParseNormal(&iss, add_normal, normal_count,
-      typename FuncTraits<AddNormalFuncT>::FuncCategory{});
-  }
-  else {
+                typename FuncTraits<AddNormalFuncT>::FuncCategory{});
+  } else {
     auto oss = std::ostringstream{};
     oss << "unrecognized line prefix '" << prefix << "'";
     throw std::runtime_error(oss.str());
   }
 }
 
-
-template<
-  typename AddPositionFuncT,
-  typename AddTexCoordFuncT,
-  typename AddNormalFuncT,
-  typename AddFaceFuncT>
-void ParseLines(
-  std::istream& is, 
-  AddPositionFuncT add_position,
-  AddFaceFuncT add_face,
-  AddTexCoordFuncT add_tex_coord,
-  AddNormalFuncT add_normal,
-  std::uint32_t* const position_count,
-  std::uint32_t* const face_count,
-  std::uint32_t* const tex_coord_count,
-  std::uint32_t* const normal_count)
-{
+template <typename AddPositionFuncT, typename AddTexCoordFuncT,
+          typename AddNormalFuncT, typename AddFaceFuncT>
+void ParseLines(std::istream& is, AddPositionFuncT add_position,
+                AddFaceFuncT add_face, AddTexCoordFuncT add_tex_coord,
+                AddNormalFuncT add_normal, std::uint32_t* const position_count,
+                std::uint32_t* const face_count,
+                std::uint32_t* const tex_coord_count,
+                std::uint32_t* const normal_count) {
   auto line = std::string{};
   while (std::getline(is, line)) {
-    detail::read::ParseLine(
-      line, add_position, add_face, add_tex_coord, add_normal,
-      position_count, face_count, tex_coord_count, normal_count);
+    obj_io_internal::read::ParseLine(line, add_position, add_face,
+                                     add_tex_coord, add_normal, position_count,
+                                     face_count, tex_coord_count, normal_count);
   }
 }
 
-} // namespace read
+}  // namespace read
 
 namespace write {
 
-template<typename IntT>
-std::ostream& operator<<(std::ostream& os, const Index<IntT>& index)
-{
-  typedef decltype(index.value) ValueType;
+template <typename IntT>
+std::ostream& operator<<(std::ostream& os, const Index<IntT>& index) {
+  using ValueType = decltype(index.value);
 
   // Note that the valid range allows increment of one.
-  if (!(ValueType{0} <= index.value && 
-    index.value < std::numeric_limits<ValueType>::max())) {
+  if (!(ValueType{0} <= index.value &&
+        index.value < std::numeric_limits<ValueType>::max())) {
     auto oss = std::ostringstream{};
     oss << "invalid index: " << static_cast<std::int64_t>(index.value);
     throw std::runtime_error(oss.str());
   }
 
   // Input indices are assumed to be zero-based.
-  // OBJ format uses one-based indexing. 
+  // OBJ format uses one-based indexing.
   os << index.value + 1;
   return os;
 }
 
-template<typename IntT>
-std::ostream& operator<<(std::ostream& os, const IndexGroup<IntT>& index_group)
-{
+template <typename IntT>
+std::ostream& operator<<(std::ostream& os,
+                         const IndexGroup<IntT>& index_group) {
   os << index_group.position_index;
-  if (index_group.tex_coord_index.second &&
-      index_group.normal_index.second) {
+  if (index_group.tex_coord_index.second && index_group.normal_index.second) {
     os << IndexGroupSeparator() << index_group.tex_coord_index.first
-      << IndexGroupSeparator() << index_group.normal_index.first;
-  }
-  else if (index_group.tex_coord_index.second) {
+       << IndexGroupSeparator() << index_group.normal_index.first;
+  } else if (index_group.tex_coord_index.second) {
     os << IndexGroupSeparator() << index_group.tex_coord_index.first;
-  }
-  else if (index_group.normal_index.second) {
-    os << IndexGroupSeparator() << IndexGroupSeparator() 
-      << index_group.normal_index.first;
+  } else if (index_group.normal_index.second) {
+    os << IndexGroupSeparator() << IndexGroupSeparator()
+       << index_group.normal_index.first;
   }
   return os;
 }
 
-
-inline
-void WriteHeader(std::ostream& os, const std::string& newline)
-{
-  os << CommentPrefix() 
-    << " Written by https://github.com/thinks/obj-io" << newline;
+inline void WriteHeader(std::ostream& os, const std::string& newline) {
+  os << CommentPrefix() << " Written by https://github.com/thinks/obj-io"
+     << newline;
 }
 
-
-template<
-  template<typename> class MappedTypeCheckerT, 
-  typename MapperT, 
-  typename ValidatorT>
-std::uint32_t WriteMappedLines(
-  std::ostream& os,
-  const std::string& line_prefix,
-  MapperT mapper,
-  ValidatorT validator,
-  const std::string& newline)
-{
-  auto count = std::uint32_t{ 0 };
+template <template <typename> class MappedTypeCheckerT, typename MapperT,
+          typename ValidatorT>
+std::uint32_t WriteMappedLines(std::ostream& os, const std::string& line_prefix,
+                               MapperT mapper, ValidatorT validator,
+                               const std::string& newline) {
+  auto count = std::uint32_t{0};
   auto map_result = mapper();
   while (!map_result.is_end) {
-    static_assert(
-      MappedTypeCheckerT<decltype(map_result.value)>::value,
-      "incorrect mapped type");
+    static_assert(MappedTypeCheckerT<decltype(map_result.value)>::value,
+                  "incorrect mapped type");
 
     validator(map_result.value);
 
@@ -849,162 +700,109 @@ std::uint32_t WriteMappedLines(
   return count;
 }
 
-
-template<typename MapperT>
-std::uint32_t WritePositions(
-  std::ostream& os,
-  MapperT mapper,
-  const std::string& newline)
-{
-  return WriteMappedLines<IsPosition>(
-    os, 
-    PositionPrefix(), 
-    mapper, 
-    [](const auto&) {}, // No validation.  
-    newline);
+template <typename MapperT>
+std::uint32_t WritePositions(std::ostream& os, MapperT mapper,
+                             const std::string& newline) {
+  return WriteMappedLines<IsPosition>(os, PositionPrefix(), mapper,
+                                      [](const auto&) {},  // No validation.
+                                      newline);
 }
 
-
-template<typename MapperT>
-std::uint32_t WriteTexCoords(
-  std::ostream& os,
-  MapperT mapper,
-  const std::string& newline,
-  FuncTag)
-{
+template <typename MapperT>
+std::uint32_t WriteTexCoords(std::ostream& os, MapperT mapper,
+                             const std::string& newline, FuncTag) {
   return WriteMappedLines<IsTexCoord>(
-    os,
-    TexCoordPrefix(),
-    mapper,
-    [](const auto& tex_coord) { ValidateTexCoord(tex_coord); },  
-    newline);
+      os, TexCoordPrefix(), mapper,
+      [](const auto& tex_coord) { ValidateTexCoord(tex_coord); }, newline);
 }
 
-/// Dummy.
-template<typename MapperT>
-std::uint32_t WriteTexCoords(
-  std::ostream&, 
-  MapperT, 
-  const std::string&, 
-  NoOpFuncTag) 
-{
+// Dummy.
+template <typename MapperT>
+std::uint32_t WriteTexCoords(std::ostream&, MapperT, const std::string&,
+                             NoOpFuncTag) {
   return 0;
 }
 
-
-template<typename MapperT>
-std::uint32_t WriteNormals(
-  std::ostream& os,
-  MapperT mapper,
-  const std::string& newline,
-  FuncTag)
-{
-  return WriteMappedLines<IsNormal>(
-    os,
-    NormalPrefix(),
-    mapper,
-    [](const auto&) {}, // No validation.
-    newline);
+template <typename MapperT>
+std::uint32_t WriteNormals(std::ostream& os, MapperT mapper,
+                           const std::string& newline, FuncTag) {
+  return WriteMappedLines<IsNormal>(os, NormalPrefix(), mapper,
+                                    [](const auto&) {},  // No validation.
+                                    newline);
 }
 
-/// Dummy.
-template<typename MapperT>
-std::uint32_t WriteNormals(
-  std::ostream&, 
-  MapperT, 
-  const std::string&, 
-  NoOpFuncTag) 
-{
+// Dummy.
+template <typename MapperT>
+std::uint32_t WriteNormals(std::ostream&, MapperT, const std::string&,
+                           NoOpFuncTag) {
   return 0;
 }
 
-
-template<typename MapperT>
-std::uint32_t WriteFaces(
-  std::ostream& os,
-  MapperT mapper,
-  const std::string& newline)
-{
+template <typename MapperT>
+std::uint32_t WriteFaces(std::ostream& os, MapperT mapper,
+                         const std::string& newline) {
   return WriteMappedLines<IsFace>(
-    os, 
-    FacePrefix(), 
-    mapper, 
-    [](const auto& face) { 
-      ValidateFace(face, typename FaceTraits<decltype(face)>::FaceCategory{});
-    }, 
-    newline);
+      os, FacePrefix(), mapper,
+      [](const auto& face) {
+        ValidateFace(face, typename FaceTraits<decltype(face)>::FaceCategory{});
+      },
+      newline);
 }
 
-} // namespace write
+}  // namespace write
 
-} // namespace detail
+}  // namespace obj_io_internal
 
-
-struct ReadResult
-{
+struct ReadResult {
   std::uint32_t position_count = 0;
   std::uint32_t face_count = 0;
   std::uint32_t tex_coord_count = 0;
   std::uint32_t normal_count = 0;
 };
 
-template<
-  typename AddPositionFuncT,
-  typename AddFaceFuncT,
-  typename AddTexCoordFuncT = std::nullptr_t,
-  typename AddNormalFuncT = std::nullptr_t>
-ReadResult Read(
-  std::istream& is,
-  AddPositionFuncT add_position,
-  AddFaceFuncT add_face,
-  AddTexCoordFuncT add_tex_coord = nullptr,
-  AddNormalFuncT add_normal = nullptr)
-{
+template <typename AddPositionFuncT, typename AddFaceFuncT,
+          typename AddTexCoordFuncT = std::nullptr_t,
+          typename AddNormalFuncT = std::nullptr_t>
+ReadResult Read(std::istream& is, AddPositionFuncT add_position,
+                AddFaceFuncT add_face, AddTexCoordFuncT add_tex_coord = nullptr,
+                AddNormalFuncT add_normal = nullptr) {
   auto result = ReadResult{};
-  detail::read::ParseLines(
-    is, add_position, add_face, add_tex_coord, add_normal,
-    &result.position_count, &result.face_count, &result.tex_coord_count, &result.normal_count);
+  obj_io_internal::read::ParseLines(is, add_position, add_face, add_tex_coord,
+                                    add_normal, &result.position_count,
+                                    &result.face_count, &result.tex_coord_count,
+                                    &result.normal_count);
   return result;
 }
 
-
-struct WriteResult
-{
+struct WriteResult {
   std::uint32_t position_count = 0;
   std::uint32_t face_count = 0;
   std::uint32_t tex_coord_count = 0;
   std::uint32_t normal_count = 0;
 };
 
-template<
-  typename PositionMapperT,
-  typename FaceMapperT,
-  typename TexCoordMapperT = std::nullptr_t,
-  typename NormalMapperT = std::nullptr_t>
-WriteResult Write(
-  std::ostream& os,
-  PositionMapperT position_mapper,
-  FaceMapperT face_mapper,
-  TexCoordMapperT tex_coord_mapper = nullptr,
-  NormalMapperT normal_mapper = nullptr,
-  const std::string& newline = "\n")
-{
+template <typename PositionMapperT, typename FaceMapperT,
+          typename TexCoordMapperT = std::nullptr_t,
+          typename NormalMapperT = std::nullptr_t>
+WriteResult Write(std::ostream& os, PositionMapperT position_mapper,
+                  FaceMapperT face_mapper,
+                  TexCoordMapperT tex_coord_mapper = nullptr,
+                  NormalMapperT normal_mapper = nullptr,
+                  const std::string& newline = "\n") {
   auto result = WriteResult{};
-  detail::write::WriteHeader(os, newline);
-  result.position_count += 
-    detail::write::WritePositions(os, position_mapper, newline);
-  result.tex_coord_count += 
-    detail::write::WriteTexCoords(os, tex_coord_mapper, newline,
-      typename detail::FuncTraits<TexCoordMapperT>::FuncCategory{});
-  result.normal_count += 
-    detail::write::WriteNormals(os, normal_mapper, newline,
-      typename detail::FuncTraits<NormalMapperT>::FuncCategory{});
-  result.face_count += 
-    detail::write::WriteFaces(os, face_mapper, newline);
+  obj_io_internal::write::WriteHeader(os, newline);
+  result.position_count +=
+      obj_io_internal::write::WritePositions(os, position_mapper, newline);
+  result.tex_coord_count += obj_io_internal::write::WriteTexCoords(
+      os, tex_coord_mapper, newline,
+      typename obj_io_internal::FuncTraits<TexCoordMapperT>::FuncCategory{});
+  result.normal_count += obj_io_internal::write::WriteNormals(
+      os, normal_mapper, newline,
+      typename obj_io_internal::FuncTraits<NormalMapperT>::FuncCategory{});
+  result.face_count +=
+      obj_io_internal::write::WriteFaces(os, face_mapper, newline);
   return result;
 }
 
-} // namespace obj_io
-} // namespace thinks
-
-#endif // THINKS_OBJ_IO_OBJ_IO_H_INCLUDED
+}  // namespace obj_io
+}  // namespace thinks
