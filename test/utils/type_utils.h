@@ -12,7 +12,7 @@ namespace utils {
 
 template <typename FloatT>
 struct Vec2 {
-  typedef FloatT ValueType;
+  using ValueType = FloatT;
 
   FloatT x = FloatT{0};
   FloatT y = FloatT{0};
@@ -20,7 +20,7 @@ struct Vec2 {
 
 template <typename FloatT>
 struct Vec3 {
-  typedef FloatT ValueType;
+  using ValueType = FloatT;
 
   FloatT x = FloatT{0};
   FloatT y = FloatT{0};
@@ -29,7 +29,7 @@ struct Vec3 {
 
 template <typename FloatT>
 struct Vec4 {
-  typedef FloatT ValueType;
+  using ValueType = FloatT;
 
   FloatT x = FloatT{0};
   FloatT y = FloatT{0};
@@ -109,10 +109,10 @@ bool Equals(const Vec4<FloatT>& lhs, const Vec4<FloatT>& rhs) {
 template <typename PositionT = Vec3<float>, typename TexCoordT = Vec2<float>,
           typename NormalT = Vec3<float>, typename ColorT = Vec4<float>>
 struct Vertex {
-  typedef PositionT PositionType;
-  typedef TexCoordT TexCoordType;
-  typedef NormalT NormalType;
-  typedef ColorT ColorType;
+  using PositionType = PositionT;
+  using TexCoordType = TexCoordT;
+  using NormalType = NormalT;
+  using ColorType = ColorT;
 
   PositionType pos;
   TexCoordType tex;
@@ -126,8 +126,8 @@ struct Vertex {
 template <typename VertexT = Vertex<>, typename IntT = std::uint32_t,
           std::size_t IndicesPerFaceT = 3>
 struct Mesh {
-  typedef VertexT VertexType;
-  typedef IntT IndexType;
+  using VertexType = VertexT;
+  using IndexType = IntT;
   static constexpr std::size_t IndicesPerFace = IndicesPerFaceT;
 
   std::vector<VertexType> vertices;
@@ -144,10 +144,10 @@ template <typename PositionT = Vec3<float>, typename TexCoordT = Vec2<float>,
           typename NormalT = Vec3<float>, typename IntT = std::uint32_t,
           std::size_t IndicesPerFaceT = 3>
 struct IndexGroupMesh {
-  typedef PositionT PositionType;
-  typedef TexCoordT TexCoordType;
-  typedef NormalT NormalType;
-  typedef IntT IndexType;
+  using PositionType = PositionT;
+  using TexCoordType = TexCoordT;
+  using NormalType = NormalT;
+  using IndexType = IntT;
   static constexpr std::size_t IndicesPerFace = IndicesPerFaceT;
 
   std::vector<PositionType> positions;

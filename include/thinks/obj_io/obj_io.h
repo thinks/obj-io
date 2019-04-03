@@ -773,10 +773,10 @@ std::uint32_t WriteFaces(std::ostream& os, MapperT&& mapper,
 }  // namespace obj_io_internal
 
 struct ReadResult {
-  std::uint32_t position_count = 0;
-  std::uint32_t face_count = 0;
-  std::uint32_t tex_coord_count = 0;
-  std::uint32_t normal_count = 0;
+  std::uint32_t position_count;
+  std::uint32_t face_count;
+  std::uint32_t tex_coord_count;
+  std::uint32_t normal_count;
 };
 
 template <typename AddPositionFuncT, 
@@ -788,7 +788,7 @@ ReadResult Read(std::istream& is,
                 AddFaceFuncT&& add_face, 
                 AddTexCoordFuncT&& add_tex_coord = nullptr,
                 AddNormalFuncT&& add_normal = nullptr) {
-  auto result = ReadResult{};
+  ReadResult result = {};
   obj_io_internal::read::ParseLines(
       is, 
       std::forward<AddPositionFuncT>(add_position),
@@ -801,10 +801,10 @@ ReadResult Read(std::istream& is,
 }
 
 struct WriteResult {
-  std::uint32_t position_count = 0;
-  std::uint32_t face_count = 0;
-  std::uint32_t tex_coord_count = 0;
-  std::uint32_t normal_count = 0;
+  std::uint32_t position_count;
+  std::uint32_t face_count;
+  std::uint32_t tex_coord_count;
+  std::uint32_t normal_count;
 };
 
 template <typename PositionMapperT, 
@@ -817,7 +817,7 @@ WriteResult Write(std::ostream& os,
                   TexCoordMapperT&& tex_coord_mapper = nullptr,
                   NormalMapperT&& normal_mapper = nullptr,
                   const std::string& newline = "\n") {
-  auto result = WriteResult{};
+  WriteResult result = {};
   obj_io_internal::write::WriteHeader(os, newline);
   result.position_count += obj_io_internal::write::WritePositions(
       os, std::forward<PositionMapperT>(position_mapper), newline);
