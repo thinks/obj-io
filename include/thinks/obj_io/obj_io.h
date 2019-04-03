@@ -443,6 +443,7 @@ std::uint32_t ParseValues(std::istringstream* const iss,
                           std::array<T, N>* const values) {
   using ContainerType = typename std::remove_pointer<decltype(values)>::type;
   using ValueType = typename ContainerType::value_type;
+
   constexpr auto kValueCount = std::tuple_size<ContainerType>::value;
   static_assert(kValueCount > 0, "empty array");
 
@@ -475,9 +476,9 @@ std::uint32_t ParseValues(std::istringstream* const iss,
 }
 
 template <typename AddPositionFuncT>
-void ParsePosition(std::istringstream* const iss, AddPositionFuncT add_position,
+void ParsePosition(std::istringstream* const iss, AddPositionFuncT&& add_position,
                    std::uint32_t* const count) {
-  using ParseType = typename AddPositionFuncT::ParseType;
+  using ParseType = typename std::decay<AddPositionFuncT>::type::ParseType;
   static_assert(IsPosition<ParseType>::value,
                 "parse type must be a Position type");
 
@@ -501,9 +502,10 @@ void ParsePosition(std::istringstream* const iss, AddPositionFuncT add_position,
 }
 
 template <typename AddFaceFuncT>
-void ParseFace(std::istringstream* const iss, AddFaceFuncT add_face,
+void ParseFace(std::istringstream* const iss, 
+               AddFaceFuncT&& add_face,
                std::uint32_t* const count) {
-  using ParseType = typename AddFaceFuncT::ParseType;
+  using ParseType = typename std::decay<AddFaceFuncT>::type::ParseType;
   static_assert(IsFace<ParseType>::value, "parse type must be a Face type");
 
   auto face = ParseType{};
@@ -525,9 +527,10 @@ void ParseFace(std::istringstream* const iss, AddFaceFuncT add_face,
 
 template <typename AddTexCoordFuncT>
 void ParseTexCoord(std::istringstream* const iss,
-                   AddTexCoordFuncT add_tex_coord, std::uint32_t* const count,
+                   AddTexCoordFuncT&& add_tex_coord, 
+                   std::uint32_t* const count,
                    FuncTag) {
-  using ParseType = typename AddTexCoordFuncT::ParseType;
+  using ParseType = typename std::decay<AddTexCoordFuncT>::type::ParseType;
   static_assert(IsTexCoord<ParseType>::value,
                 "parse type must be a TexCoord type");
 
@@ -554,13 +557,15 @@ void ParseTexCoord(std::istringstream* const iss,
 
 // Dummy.
 template <typename AddTexCoordFuncT>
-void ParseTexCoord(std::istringstream* const, AddTexCoordFuncT,
+void ParseTexCoord(std::istringstream* const, AddTexCoordFuncT&&,
                    std::uint32_t* const, NoOpFuncTag) {}
 
 template <typename AddNormalFuncT>
-void ParseNormal(std::istringstream* const iss, AddNormalFuncT add_normal,
-                 std::uint32_t* const count, FuncTag) {
-  using ParseType = typename AddNormalFuncT::ParseType;
+void ParseNormal(std::istringstream* const iss, 
+                 AddNormalFuncT&& add_normal,
+                 std::uint32_t* const count, 
+                 FuncTag) {
+  using ParseType = typename std::decay<AddNormalFuncT>::type::ParseType;
   static_assert(IsNormal<ParseType>::value, "parse type must be a Normal type");
 
   auto normal = ParseType{};
@@ -578,14 +583,17 @@ void ParseNormal(std::istringstream* const iss, AddNormalFuncT add_normal,
 
 // Dummy.
 template <typename AddNormalFuncT>
-void ParseNormal(std::istringstream* const, AddNormalFuncT,
+void ParseNormal(std::istringstream* const, AddNormalFuncT&&,
                  std::uint32_t* const, NoOpFuncTag) {}
 
 template <typename AddPositionFuncT, typename AddTexCoordFuncT,
           typename AddNormalFuncT, typename AddFaceFuncT>
-void ParseLine(const std::string& line, AddPositionFuncT add_position,
-               AddFaceFuncT add_face, AddTexCoordFuncT add_tex_coord,
-               AddNormalFuncT add_normal, std::uint32_t* const position_count,
+void ParseLine(const std::string& line, 
+               AddPositionFuncT&& add_position,
+               AddFaceFuncT&& add_face, 
+               AddTexCoordFuncT&& add_tex_coord,
+               AddNormalFuncT&& add_normal, 
+               std::uint32_t* const position_count,
                std::uint32_t* const face_count,
                std::uint32_t* const tex_coord_count,
                std::uint32_t* const normal_count) {
@@ -599,14 +607,16 @@ void ParseLine(const std::string& line, AddPositionFuncT add_position,
   if (prefix.empty() || prefix == CommentPrefix()) {
     return;  // Ignore empty lines and comments.
   } else if (prefix == PositionPrefix()) {
-    ParsePosition(&iss, add_position, position_count);
+    ParsePosition(&iss, std::forward<AddPositionFuncT>(add_position),
+                  position_count);
   } else if (prefix == FacePrefix()) {
-    ParseFace(&iss, add_face, face_count);
+    ParseFace(&iss, std::forward<AddFaceFuncT>(add_face), face_count);
   } else if (prefix == TexCoordPrefix()) {
-    ParseTexCoord(&iss, add_tex_coord, tex_coord_count,
+    ParseTexCoord(&iss, std::forward<AddTexCoordFuncT>(add_tex_coord),
+                  tex_coord_count,
                   typename FuncTraits<AddTexCoordFuncT>::FuncCategory{});
   } else if (prefix == NormalPrefix()) {
-    ParseNormal(&iss, add_normal, normal_count,
+    ParseNormal(&iss, std::forward<AddNormalFuncT>(add_normal), normal_count,
                 typename FuncTraits<AddNormalFuncT>::FuncCategory{});
   } else {
     auto oss = std::ostringstream{};
@@ -617,17 +627,25 @@ void ParseLine(const std::string& line, AddPositionFuncT add_position,
 
 template <typename AddPositionFuncT, typename AddTexCoordFuncT,
           typename AddNormalFuncT, typename AddFaceFuncT>
-void ParseLines(std::istream& is, AddPositionFuncT add_position,
-                AddFaceFuncT add_face, AddTexCoordFuncT add_tex_coord,
-                AddNormalFuncT add_normal, std::uint32_t* const position_count,
+void ParseLines(std::istream& is, 
+                AddPositionFuncT&& add_position,
+                AddFaceFuncT&& add_face, 
+                AddTexCoordFuncT&& add_tex_coord,
+                AddNormalFuncT&& add_normal,
+                std::uint32_t* const position_count,
                 std::uint32_t* const face_count,
                 std::uint32_t* const tex_coord_count,
                 std::uint32_t* const normal_count) {
   auto line = std::string{};
   while (std::getline(is, line)) {
-    obj_io_internal::read::ParseLine(line, add_position, add_face,
-                                     add_tex_coord, add_normal, position_count,
-                                     face_count, tex_coord_count, normal_count);
+    obj_io_internal::read::ParseLine(
+        line, 
+        std::forward<AddPositionFuncT>(add_position),
+        std::forward<AddFaceFuncT>(add_face),
+        std::forward<AddTexCoordFuncT>(add_tex_coord),
+        std::forward<AddNormalFuncT>(add_normal), 
+        position_count, face_count,
+        tex_coord_count, normal_count);
   }
 }
 
@@ -677,7 +695,7 @@ inline void WriteHeader(std::ostream& os, const std::string& newline) {
 template <template <typename> class MappedTypeCheckerT, typename MapperT,
           typename ValidatorT>
 std::uint32_t WriteMappedLines(std::ostream& os, const std::string& line_prefix,
-                               MapperT mapper, ValidatorT validator,
+                               MapperT&& mapper, ValidatorT validator,
                                const std::string& newline) {
   auto count = std::uint32_t{0};
   auto map_result = mapper();
@@ -701,48 +719,50 @@ std::uint32_t WriteMappedLines(std::ostream& os, const std::string& line_prefix,
 }
 
 template <typename MapperT>
-std::uint32_t WritePositions(std::ostream& os, MapperT mapper,
+std::uint32_t WritePositions(std::ostream& os, MapperT&& mapper,
                              const std::string& newline) {
-  return WriteMappedLines<IsPosition>(os, PositionPrefix(), mapper,
+  return WriteMappedLines<IsPosition>(os, PositionPrefix(),
+                                      std::forward<MapperT>(mapper),
                                       [](const auto&) {},  // No validation.
                                       newline);
 }
 
 template <typename MapperT>
-std::uint32_t WriteTexCoords(std::ostream& os, MapperT mapper,
+std::uint32_t WriteTexCoords(std::ostream& os, MapperT&& mapper,
                              const std::string& newline, FuncTag) {
   return WriteMappedLines<IsTexCoord>(
-      os, TexCoordPrefix(), mapper,
+      os, TexCoordPrefix(), std::forward<MapperT>(mapper),
       [](const auto& tex_coord) { ValidateTexCoord(tex_coord); }, newline);
 }
 
 // Dummy.
 template <typename MapperT>
-std::uint32_t WriteTexCoords(std::ostream&, MapperT, const std::string&,
+std::uint32_t WriteTexCoords(std::ostream&, MapperT&&, const std::string&,
                              NoOpFuncTag) {
   return 0;
 }
 
 template <typename MapperT>
-std::uint32_t WriteNormals(std::ostream& os, MapperT mapper,
+std::uint32_t WriteNormals(std::ostream& os, MapperT&& mapper,
                            const std::string& newline, FuncTag) {
-  return WriteMappedLines<IsNormal>(os, NormalPrefix(), mapper,
+  return WriteMappedLines<IsNormal>(os, NormalPrefix(),
+                                    std::forward<MapperT>(mapper),
                                     [](const auto&) {},  // No validation.
                                     newline);
 }
 
 // Dummy.
 template <typename MapperT>
-std::uint32_t WriteNormals(std::ostream&, MapperT, const std::string&,
+std::uint32_t WriteNormals(std::ostream&, MapperT&&, const std::string&,
                            NoOpFuncTag) {
   return 0;
 }
 
 template <typename MapperT>
-std::uint32_t WriteFaces(std::ostream& os, MapperT mapper,
+std::uint32_t WriteFaces(std::ostream& os, MapperT&& mapper,
                          const std::string& newline) {
   return WriteMappedLines<IsFace>(
-      os, FacePrefix(), mapper,
+      os, FacePrefix(), std::forward<MapperT>(mapper),
       [](const auto& face) {
         ValidateFace(face, typename FaceTraits<decltype(face)>::FaceCategory{});
       },
@@ -750,7 +770,6 @@ std::uint32_t WriteFaces(std::ostream& os, MapperT mapper,
 }
 
 }  // namespace write
-
 }  // namespace obj_io_internal
 
 struct ReadResult {
@@ -760,17 +779,24 @@ struct ReadResult {
   std::uint32_t normal_count = 0;
 };
 
-template <typename AddPositionFuncT, typename AddFaceFuncT,
+template <typename AddPositionFuncT, 
+          typename AddFaceFuncT,
           typename AddTexCoordFuncT = std::nullptr_t,
           typename AddNormalFuncT = std::nullptr_t>
-ReadResult Read(std::istream& is, AddPositionFuncT add_position,
-                AddFaceFuncT add_face, AddTexCoordFuncT add_tex_coord = nullptr,
-                AddNormalFuncT add_normal = nullptr) {
+ReadResult Read(std::istream& is, 
+                AddPositionFuncT&& add_position,
+                AddFaceFuncT&& add_face, 
+                AddTexCoordFuncT&& add_tex_coord = nullptr,
+                AddNormalFuncT&& add_normal = nullptr) {
   auto result = ReadResult{};
-  obj_io_internal::read::ParseLines(is, add_position, add_face, add_tex_coord,
-                                    add_normal, &result.position_count,
-                                    &result.face_count, &result.tex_coord_count,
-                                    &result.normal_count);
+  obj_io_internal::read::ParseLines(
+      is, 
+      std::forward<AddPositionFuncT>(add_position),
+      std::forward<AddFaceFuncT>(add_face),
+      std::forward<AddTexCoordFuncT>(add_tex_coord),
+      std::forward<AddNormalFuncT>(add_normal), 
+      &result.position_count, &result.face_count, 
+      &result.tex_coord_count, &result.normal_count);
   return result;
 }
 
@@ -781,26 +807,28 @@ struct WriteResult {
   std::uint32_t normal_count = 0;
 };
 
-template <typename PositionMapperT, typename FaceMapperT,
+template <typename PositionMapperT, 
+          typename FaceMapperT,
           typename TexCoordMapperT = std::nullptr_t,
           typename NormalMapperT = std::nullptr_t>
-WriteResult Write(std::ostream& os, PositionMapperT position_mapper,
-                  FaceMapperT face_mapper,
-                  TexCoordMapperT tex_coord_mapper = nullptr,
-                  NormalMapperT normal_mapper = nullptr,
+WriteResult Write(std::ostream& os, 
+                  PositionMapperT&& position_mapper,
+                  FaceMapperT&& face_mapper,
+                  TexCoordMapperT&& tex_coord_mapper = nullptr,
+                  NormalMapperT&& normal_mapper = nullptr,
                   const std::string& newline = "\n") {
   auto result = WriteResult{};
   obj_io_internal::write::WriteHeader(os, newline);
-  result.position_count +=
-      obj_io_internal::write::WritePositions(os, position_mapper, newline);
+  result.position_count += obj_io_internal::write::WritePositions(
+      os, std::forward<PositionMapperT>(position_mapper), newline);
   result.tex_coord_count += obj_io_internal::write::WriteTexCoords(
-      os, tex_coord_mapper, newline,
+      os, std::forward<TexCoordMapperT>(tex_coord_mapper), newline,
       typename obj_io_internal::FuncTraits<TexCoordMapperT>::FuncCategory{});
   result.normal_count += obj_io_internal::write::WriteNormals(
-      os, normal_mapper, newline,
+      os, std::forward<NormalMapperT>(normal_mapper), newline,
       typename obj_io_internal::FuncTraits<NormalMapperT>::FuncCategory{});
-  result.face_count +=
-      obj_io_internal::write::WriteFaces(os, face_mapper, newline);
+  result.face_count += obj_io_internal::write::WriteFaces(
+      os, std::forward<FaceMapperT>(face_mapper), newline);
   return result;
 }
 
