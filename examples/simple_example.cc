@@ -123,7 +123,7 @@ void WriteMesh(const std::string& filename, const Mesh& mesh) {
   // Mappers have two responsibilities:
   // (1) - Iterating over a certain attribute of the mesh (e.g. positions).
   // (2) - Translating from users types to OBJ types (e.g. Vec3 ->
-  // Position<float, 3>)
+  //       Position<float, 3>)
 
   // Positions.
   auto pos_vtx_iter = std::begin(mesh.vertices);
@@ -143,14 +143,14 @@ void WriteMesh(const std::string& filename, const Mesh& mesh) {
   };
 
   // Faces.
-  auto idx_iter = begin(mesh.indices);
-  const auto idx_iend = end(mesh.indices);
+  auto idx_iter = std::begin(mesh.indices);
+  const auto idx_iend = std::end(mesh.indices);
   auto face_mapper = [&idx_iter, idx_iend]() {
     using ObjIndexType = thinks::obj_io::Index<uint16_t>;
     using ObjFaceType = thinks::obj_io::TriangleFace<ObjIndexType>;
 
     // Check that there are 3 more indices (trailing indices handled below).
-    if (distance(idx_iter, idx_iend) < 3) {
+    if (std::distance(idx_iter, idx_iend) < 3) {
       return thinks::obj_io::End<ObjFaceType>();
     }
 
