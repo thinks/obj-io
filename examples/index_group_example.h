@@ -2,16 +2,12 @@
 // This file is subject to the license terms in the LICENSE file
 // found in the top-level directory of this distribution.
 
-#ifndef THINKS_OBJ_IO_EXAMPLES_INDEX_GROUP_EXAMPLE_H_INCLUDED
-#define THINKS_OBJ_IO_EXAMPLES_INDEX_GROUP_EXAMPLE_H_INCLUDED
+#pragma once
 
 #include <string>
-
 
 namespace examples {
 
 void IndexGroupExample(const std::string& filename);
 
 } // namespace examples
-
-#endif // THINKS_OBJ_IO_EXAMPLES_INDEX_GROUP_EXAMPLE_H_INCLUDED

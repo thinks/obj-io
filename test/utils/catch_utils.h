@@ -109,7 +109,7 @@ struct IndexGroupMeshMatcher : Catch::MatcherBase<MeshT> {
       }
     }
 
-    for (auto i = std::size_t{0}; i < matchee.position_indices.size(); ++i) {
+    for (std::size_t i = 0; i < matchee.position_indices.size(); ++i) {
       if (matchee.position_indices[i] != target_.position_indices[i]) {
         return false;
       }
@@ -149,7 +149,7 @@ struct IndexGroupMeshMatcher : Catch::MatcherBase<MeshT> {
         }
       }
 
-      for (auto i = std::size_t{0}; i < matchee.normal_indices.size(); ++i) {
+      for (std::size_t i = 0; i < matchee.normal_indices.size(); ++i) {
         if (matchee.normal_indices[i] != target_.normal_indices[i]) {
           return false;
         }

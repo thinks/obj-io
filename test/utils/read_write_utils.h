@@ -26,7 +26,7 @@ struct ReadResult {
   MeshT mesh;
 };
 
-namespace detail {
+namespace utils_internal {
 
 template <typename ObjT>
 struct ObjTypeMaker;
@@ -102,7 +102,7 @@ struct ObjTypeMaker<thinks::obj_io::PolygonFace<IndexT>> {
     // Heap allocation!
     face.values.resize(std::tuple_size<std::array<IndexT, N>>::value);
 
-    for (auto i = std::size_t{0}; i < face.values.size(); ++i) {
+    for (std::size_t i = 0; i < face.values.size(); ++i) {
       face.values[i] = a[i];
     }
     return face;
@@ -111,17 +111,17 @@ struct ObjTypeMaker<thinks::obj_io::PolygonFace<IndexT>> {
 
 template <std::size_t IndicesPerFaceT, typename IndexT>
 struct FaceSelector {
-  typedef thinks::obj_io::PolygonFace<IndexT> Type;
+  using Type = thinks::obj_io::PolygonFace<IndexT>;
 };
 
 template <typename IndexT>
 struct FaceSelector<3, IndexT> {
-  typedef thinks::obj_io::TriangleFace<IndexT> Type;
+  using Type = thinks::obj_io::TriangleFace<IndexT>;
 };
 
 template <typename IndexT>
 struct FaceSelector<4, IndexT> {
-  typedef thinks::obj_io::QuadFace<IndexT> Type;
+  using Type = thinks::obj_io::QuadFace<IndexT>;
 };
 
 template <typename AddPositionFuncT, typename AddFaceFuncT,
@@ -168,19 +168,15 @@ WriteResult WriteHelper(PosMapper pos_mapper, FaceMapper face_mapper,
   return {result, oss.str()};
 }
 
-}  // namespace detail
+}  // namespace utils_internal
 
 template <typename MeshT>
 ReadResult<MeshT> ReadMesh(std::istream& is, const bool read_tex_coords,
                            const bool read_normals) {
-  using thinks::obj_io::Index;
   using thinks::obj_io::MakeAddFunc;
-  using thinks::obj_io::Normal;
-  using thinks::obj_io::Position;
-  using thinks::obj_io::TexCoord;
 
-  typedef MeshT MeshType;
-  typedef typename MeshType::VertexType VertexType;
+  using MeshType = MeshT;
+  using VertexType = MeshType::VertexType;
 
   auto mesh = MeshType{};
   auto pos_count = uint32_t{0};
@@ -188,10 +184,10 @@ ReadResult<MeshT> ReadMesh(std::istream& is, const bool read_tex_coords,
   auto nml_count = uint32_t{0};
 
   // Positions.
-  typedef typename VertexType::PositionType PositionType;
-  typedef Position<typename PositionType::ValueType,
-                   VecSize<PositionType>::value>
-      ObjPositionType;
+  using PositionType = VertexType::PositionType;
+  using ObjPositionType =
+      thinks::obj_io::Position<PositionType::ValueType,
+                               VecSize<PositionType>::value>;
 
   auto add_position =
       MakeAddFunc<ObjPositionType>([&mesh, &pos_count](const auto& pos) {
@@ -203,10 +199,9 @@ ReadResult<MeshT> ReadMesh(std::istream& is, const bool read_tex_coords,
       });
 
   // Faces.
-  typedef
-      typename detail::FaceSelector<MeshType::IndicesPerFace,
-                                    Index<typename MeshType::IndexType>>::Type
-          ObjFaceType;
+  using ObjFaceType = utils_internal::FaceSelector<
+      MeshType::IndicesPerFace,
+      thinks::obj_io::Index<MeshType::IndexType>>::Type;
 
   auto add_face = MakeAddFunc<ObjFaceType>([&mesh](const auto& face) {
     if (face.values.size() != MeshType::IndicesPerFace) {
@@ -218,10 +213,10 @@ ReadResult<MeshT> ReadMesh(std::istream& is, const bool read_tex_coords,
   });
 
   // Texture coordinates [optional].
-  typedef typename VertexType::TexCoordType TexCoordType;
-  typedef TexCoord<typename TexCoordType::ValueType,
-                   VecSize<TexCoordType>::value>
-      ObjTexCoordType;
+  using TexCoordType = VertexType::TexCoordType;
+  using ObjTexCoordType =
+      thinks::obj_io::TexCoord<TexCoordType::ValueType,
+                               VecSize<TexCoordType>::value>;
 
   auto add_tex_coord =
       MakeAddFunc<ObjTexCoordType>([&mesh, &tex_count](const auto& tex) {
@@ -233,8 +228,8 @@ ReadResult<MeshT> ReadMesh(std::istream& is, const bool read_tex_coords,
       });
 
   // Normals [optional].
-  typedef typename VertexType::NormalType NormalType;
-  typedef Normal<typename NormalType::ValueType> ObjNormalType;
+  using NormalType = VertexType::NormalType;
+  using ObjNormalType = thinks::obj_io::Normal<NormalType::ValueType>;
 
   auto add_normal =
       MakeAddFunc<ObjNormalType>([&mesh, &nml_count](const auto& nml) {
@@ -246,7 +241,7 @@ ReadResult<MeshT> ReadMesh(std::istream& is, const bool read_tex_coords,
       });
 
   const auto result =
-      detail::ReadHelper(is, add_position, add_face, add_tex_coord, add_normal,
+      utils_internal::ReadHelper(is, add_position, add_face, add_tex_coord, add_normal,
                          read_tex_coords, read_normals);
 
   // Some sanity checks...
@@ -277,30 +272,25 @@ template <typename IndexedMeshT>
 ReadResult<IndexedMeshT> ReadIndexGroupMesh(std::istream& is,
                                             const bool read_tex_coords,
                                             const bool read_normals) {
-  using thinks::obj_io::IndexGroup;
   using thinks::obj_io::MakeAddFunc;
-  using thinks::obj_io::Normal;
-  using thinks::obj_io::Position;
-  using thinks::obj_io::TexCoord;
-
-  typedef IndexedMeshT MeshType;
+  using MeshType = IndexedMeshT;
 
   auto mesh = MeshType{};
 
   // Positions.
-  typedef typename MeshType::PositionType PositionType;
-  typedef Position<typename PositionType::ValueType,
-                   VecSize<PositionType>::value>
-      ObjPositionType;
+  using PositionType = MeshType::PositionType;
+  using ObjPositionType =
+      thinks::obj_io::Position<PositionType::ValueType,
+                               VecSize<PositionType>::value>;
 
   auto add_position = MakeAddFunc<ObjPositionType>([&mesh](const auto& pos) {
     mesh.positions.push_back(VecMaker<PositionType>::Make(pos.values));
   });
 
   // Faces.
-  typedef typename detail::FaceSelector<
-      MeshType::IndicesPerFace, IndexGroup<typename MeshType::IndexType>>::Type
-      ObjFaceType;
+  using ObjFaceType = utils_internal::FaceSelector<
+      MeshType::IndicesPerFace,
+      thinks::obj_io::IndexGroup<MeshType::IndexType>>::Type;
 
   auto add_face = MakeAddFunc<ObjFaceType>(
       [&mesh, read_tex_coords, read_normals](const auto& face) {
@@ -320,25 +310,25 @@ ReadResult<IndexedMeshT> ReadIndexGroupMesh(std::istream& is,
       });
 
   // Texture coordinates [optional.
-  typedef typename MeshType::TexCoordType TexCoordType;
-  typedef TexCoord<typename TexCoordType::ValueType,
-                   VecSize<TexCoordType>::value>
-      ObjTexCoordType;
+  using TexCoordType = MeshType::TexCoordType;
+  using ObjTexCoordType =
+      thinks::obj_io::TexCoord<TexCoordType::ValueType,
+                               VecSize<TexCoordType>::value>;
 
   auto add_tex_coord = MakeAddFunc<ObjTexCoordType>([&mesh](const auto& tex) {
     mesh.tex_coords.push_back(VecMaker<TexCoordType>::Make(tex.values));
   });
 
   // Normals [optional].
-  typedef typename MeshType::NormalType NormalType;
-  typedef Normal<typename NormalType::ValueType> ObjNormalType;
+  using NormalType = MeshType::NormalType;
+  using ObjNormalType = thinks::obj_io::Normal<NormalType::ValueType>;
 
   auto add_normal = MakeAddFunc<ObjNormalType>([&mesh](const auto& nml) {
     mesh.normals.push_back(VecMaker<NormalType>::Make(nml.values));
   });
 
   const auto result =
-      detail::ReadHelper(is, add_position, add_face, add_tex_coord, add_normal,
+      utils_internal::ReadHelper(is, add_position, add_face, add_tex_coord, add_normal,
                          read_tex_coords, read_normals);
 
   // Some sanity checks...
@@ -370,24 +360,24 @@ ReadResult<IndexedMeshT> ReadIndexGroupMesh(std::istream& is,
 template <typename MeshT>
 WriteResult WriteMesh(const MeshT& mesh, const bool write_tex_coords,
                       const bool write_normals) {
-  using detail::FaceSelector;
-  using detail::ObjTypeMaker;
-  using detail::WriteHelper;
+  using utils_internal::FaceSelector;
+  using utils_internal::ObjTypeMaker;
+  using utils_internal::WriteHelper;
   using thinks::obj_io::End;
   using thinks::obj_io::Map;
 
-  typedef MeshT MeshType;
-  typedef typename MeshType::VertexType VertexType;
+  using MeshType = MeshT;
+  using VertexType = MeshType::VertexType;
 
   const auto vtx_iend = std::end(mesh.vertices);
 
   // Positions.
   auto pos_vtx_iter = begin(mesh.vertices);
   auto pos_mapper = [&pos_vtx_iter, vtx_iend]() {
-    typedef typename VertexType::PositionType PositionType;
-    using thinks::obj_io::Position;
-    typedef Position<PositionType::ValueType, VecSize<PositionType>::value>
-        ObjPositionType;
+    using PositionType = VertexType::PositionType;
+    using ObjPositionType =
+        thinks::obj_io::Position<PositionType::ValueType,
+                                 VecSize<PositionType>::value>;
 
     return pos_vtx_iter == vtx_iend ? End<ObjPositionType>()
                                     : Map(ObjTypeMaker<ObjPositionType>::Make(
@@ -397,10 +387,10 @@ WriteResult WriteMesh(const MeshT& mesh, const bool write_tex_coords,
   // Texture coordinates.
   auto tex_vtx_iter = begin(mesh.vertices);
   auto tex_mapper = [&tex_vtx_iter, vtx_iend]() {
-    typedef typename VertexType::TexCoordType TexCoordType;
-    using thinks::obj_io::TexCoord;
-    typedef TexCoord<TexCoordType::ValueType, VecSize<TexCoordType>::value>
-        ObjTexCoordType;
+    using TexCoordType = VertexType::TexCoordType;
+    using ObjTexCoordType =
+        thinks::obj_io::TexCoord<TexCoordType::ValueType,
+                                 VecSize<TexCoordType>::value>;
 
     return tex_vtx_iter == vtx_iend ? End<ObjTexCoordType>()
                                     : Map(ObjTypeMaker<ObjTexCoordType>::Make(
@@ -410,9 +400,8 @@ WriteResult WriteMesh(const MeshT& mesh, const bool write_tex_coords,
   // Normals.
   auto nml_vtx_iter = begin(mesh.vertices);
   auto nml_mapper = [&nml_vtx_iter, vtx_iend]() {
-    typedef typename VertexType::NormalType NormalType;
-    using thinks::obj_io::Normal;
-    typedef Normal<NormalType::ValueType> ObjNormalType;
+    using NormalType = VertexType::NormalType;
+    using ObjNormalType = thinks::obj_io::Normal<NormalType::ValueType>;
 
     return nml_vtx_iter == vtx_iend ? End<ObjNormalType>()
                                     : Map(ObjTypeMaker<ObjNormalType>::Make(
@@ -423,11 +412,9 @@ WriteResult WriteMesh(const MeshT& mesh, const bool write_tex_coords,
   auto idx_iter = mesh.indices.begin();
   const auto idx_iend = mesh.indices.end();
   auto face_mapper = [&idx_iter, idx_iend]() {
-    typedef typename MeshType::IndexType MeshIndexType;
-    using thinks::obj_io::Index;
-    typedef Index<MeshIndexType> ObjIndexType;
-    typedef FaceSelector<MeshType::IndicesPerFace, ObjIndexType>::Type
-        ObjFaceType;
+    using MeshIndexType = MeshType::IndexType;
+    using ObjIndexType = thinks::obj_io::Index<MeshIndexType>;
+    using ObjFaceType = FaceSelector<MeshType::IndicesPerFace, ObjIndexType>::Type;
 
     if (std::distance(idx_iter, idx_iend) < MeshType::IndicesPerFace) {
       return End<ObjFaceType>();
@@ -465,22 +452,22 @@ template <typename IndexedMeshT>
 WriteResult WriteIndexGroupMesh(const IndexedMeshT& imesh,
                                 const bool write_tex_coords,
                                 const bool write_normals) {
-  using detail::FaceSelector;
-  using detail::ObjTypeMaker;
-  using detail::WriteHelper;
+  using utils_internal::FaceSelector;
+  using utils_internal::ObjTypeMaker;
+  using utils_internal::WriteHelper;
   using thinks::obj_io::End;
   using thinks::obj_io::Map;
 
-  typedef IndexedMeshT MeshType;
+  using MeshType = IndexedMeshT;
 
   // Positions.
   auto pos_iter = std::begin(imesh.positions);
   const auto pos_iend = std::end(imesh.positions);
   auto pos_mapper = [&pos_iter, pos_iend]() {
-    typedef typename MeshType::PositionType PositionType;
-    using thinks::obj_io::Position;
-    typedef Position<PositionType::ValueType, VecSize<PositionType>::value>
-        ObjPositionType;
+    using PositionType = MeshType::PositionType;
+    using ObjPositionType =
+        thinks::obj_io::Position<PositionType::ValueType,
+                                 VecSize<PositionType>::value>;
 
     return pos_iter == pos_iend
                ? End<ObjPositionType>()
@@ -491,10 +478,10 @@ WriteResult WriteIndexGroupMesh(const IndexedMeshT& imesh,
   auto tex_iter = std::begin(imesh.tex_coords);
   const auto tex_iend = std::end(imesh.tex_coords);
   auto tex_mapper = [&tex_iter, tex_iend]() {
-    typedef typename MeshType::TexCoordType TexCoordType;
-    using thinks::obj_io::TexCoord;
-    typedef TexCoord<TexCoordType::ValueType, VecSize<TexCoordType>::value>
-        ObjTexCoordType;
+    using TexCoordType = MeshType::TexCoordType;
+    using ObjTexCoordType =
+        thinks::obj_io::TexCoord<TexCoordType::ValueType,
+                                 VecSize<TexCoordType>::value>;
 
     return tex_iter == tex_iend
                ? End<ObjTexCoordType>()
@@ -505,9 +492,8 @@ WriteResult WriteIndexGroupMesh(const IndexedMeshT& imesh,
   auto nml_iter = std::begin(imesh.normals);
   const auto nml_iend = std::end(imesh.normals);
   auto nml_mapper = [&nml_iter, nml_iend]() {
-    typedef typename MeshType::NormalType NormalType;
-    using thinks::obj_io::Normal;
-    typedef Normal<NormalType::ValueType> ObjNormalType;
+    using NormalType = MeshType::NormalType;
+    using ObjNormalType = thinks::obj_io::Normal<NormalType::ValueType>;
 
     return nml_iter == nml_iend
                ? End<ObjNormalType>()
@@ -524,11 +510,9 @@ WriteResult WriteIndexGroupMesh(const IndexedMeshT& imesh,
   auto face_mapper = [&pos_idx_iter, &tex_idx_iter, &nml_idx_iter, pos_idx_iend,
                       tex_idx_iend, nml_idx_iend, write_tex_coords,
                       write_normals]() {
-    typedef typename MeshType::IndexType MeshIndexType;
-    using thinks::obj_io::IndexGroup;
-    typedef IndexGroup<MeshIndexType> ObjIndexGroupType;
-    typedef FaceSelector<MeshType::IndicesPerFace, ObjIndexGroupType>::Type
-        ObjFaceType;
+    using MeshIndexType = MeshType::IndexType;
+    using ObjIndexGroupType = thinks::obj_io::IndexGroup<MeshIndexType> ;
+    using ObjFaceType = FaceSelector<MeshType::IndicesPerFace, ObjIndexGroupType>::Type;
 
     if (std::distance(pos_idx_iter, pos_idx_iend) < MeshType::IndicesPerFace ||
         std::distance(tex_idx_iter, tex_idx_iend) < MeshType::IndicesPerFace ||
