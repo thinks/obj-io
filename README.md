@@ -219,10 +219,10 @@ void WriteMesh(const std::string& filename, const Mesh& mesh) {
   assert(idx_iter == idx_iend && "trailing indices");
 }
 ```
-Again, the `Write` method has no direct knowledge of the `Mesh` class. The relevant information is provided through the lambdas that are passed in. A complete code example using the above methods can be found in the [examples](https://github.com/thinks/obj-io/tree/master/examples) folder. More advanced mesh I/O utilities built on top of the provided framework can be found in the [test/utils/read_write_utils.h](https://github.com/thinks/obj-io/blob/master/test/utils/read_write_utils.h) file.
+Again, the `Write` method has no direct knowledge of the `Mesh` class. The relevant information is provided through the lambdas that are passed in. Complete code examples using the above methods can be found in the [examples](https://github.com/thinks/obj-io/tree/master/examples) folder. More advanced mesh I/O utilities built on top of the provided framework can be found in the [test/read_write_utils.h](https://github.com/thinks/obj-io/blob/master/test/read_write_utils.h) file.
 
 ## Tests
-The tests for this distribution are written in the [catch2](https://github.com/catchorg/Catch2) framework, which is included as a submodule of this repository. Cloning recursively to initialize submodules is not required when using the functionality in this package, only to run the tests.
+The tests for this distribution are written in the [Catch2](https://github.com/catchorg/Catch2) framework, which is included as a submodule of this repository. Cloning recursively to initialize submodules is not required when using the functionality in this package, only to run the tests.
 
 Running the tests is simple. In a terminal do the following (and similar for `Debug`):
 ```bash
