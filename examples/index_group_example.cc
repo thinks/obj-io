@@ -29,22 +29,21 @@ Mesh ReadMesh(const std::string& filename) {
   auto mesh = Mesh{};
 
   // Positions.
-  auto add_position = thinks::obj_io::MakeAddFunc<
-      thinks::obj_io::Position<float, 3>>([&mesh](const auto& pos) {
+  auto add_position = thinks::MakeObjAddFunc<
+      thinks::ObjPosition<float, 3>>([&mesh](const auto& pos) {
     mesh.positions.push_back(Vec3{pos.values[0], pos.values[1], pos.values[2]});
   });
 
   // Normals.
-  auto add_normal = thinks::obj_io::MakeAddFunc<
-      thinks::obj_io::Normal<float>>([&mesh](const auto& nml) {
+  auto add_normal = thinks::MakeObjAddFunc<
+      thinks::ObjNormal<float>>([&mesh](const auto& nml) {
     mesh.normals.push_back(Vec3{nml.values[0], nml.values[1], nml.values[2]});
   });
 
   // Faces.
-  using ObjFaceType =
-      thinks::obj_io::TriangleFace<thinks::obj_io::IndexGroup<uint16_t>>;
+  using ObjFaceType = thinks::ObjTriangleFace<thinks::ObjIndexGroup<uint16_t>>;
   auto add_face =
-      thinks::obj_io::MakeAddFunc<ObjFaceType>([&mesh](const auto& face) {
+      thinks::MakeObjAddFunc<ObjFaceType>([&mesh](const auto& face) {
         mesh.position_indices.push_back(face.values[0].position_index.value);
         mesh.position_indices.push_back(face.values[1].position_index.value);
         mesh.position_indices.push_back(face.values[2].position_index.value);
@@ -61,9 +60,9 @@ Mesh ReadMesh(const std::string& filename) {
 
   auto ifs = std::ifstream(filename);
   assert(ifs);
-  const auto result = thinks::obj_io::Read(ifs, add_position, add_face,
-                                           nullptr,  // no texture coordinates.
-                                           add_normal);
+  const auto result = thinks::ReadObj(ifs, add_position, add_face,
+                                      nullptr,  // no texture coordinates.
+                                      add_normal);
   ifs.close();
 
   return mesh;
@@ -74,14 +73,14 @@ void WriteMesh(const std::string& filename, const Mesh& mesh) {
   const auto pos_iend = std::end(mesh.positions);
   auto pos_iter = std::begin(mesh.positions);
   auto pos_mapper = [&pos_iter, pos_iend]() {
-    using ObjPositionType = thinks::obj_io::Position<float, 3>;
+    using ObjPositionType = thinks::ObjPosition<float, 3>;
 
     if (pos_iter == pos_iend) {
-      return thinks::obj_io::End<ObjPositionType>();
+      return thinks::ObjEnd<ObjPositionType>();
     }
 
     const auto pos = *pos_iter++;
-    return thinks::obj_io::Map(ObjPositionType(pos.x, pos.y, pos.z));
+    return thinks::ObjMap(ObjPositionType(pos.x, pos.y, pos.z));
   };
 
   // Faces.
@@ -91,12 +90,12 @@ void WriteMesh(const std::string& filename, const Mesh& mesh) {
   auto nml_idx_iter = std::begin(mesh.normal_indices);
   auto face_mapper = [&pos_idx_iter, &nml_idx_iter, pos_idx_iend,
                       nml_idx_iend]() {
-    using ObjIndexType = thinks::obj_io::IndexGroup<uint16_t>;
-    using ObjFaceType = thinks::obj_io::TriangleFace<ObjIndexType>;
+    using ObjIndexType = thinks::ObjIndexGroup<uint16_t>;
+    using ObjFaceType = thinks::ObjTriangleFace<ObjIndexType>;
 
     if (distance(pos_idx_iter, pos_idx_iend) < 3 ||
         distance(nml_idx_iter, nml_idx_iend) < 3) {
-      return thinks::obj_io::End<ObjFaceType>();
+      return thinks::ObjEnd<ObjFaceType>();
     }
 
     const auto pos_idx0 = *pos_idx_iter++;
@@ -107,40 +106,34 @@ void WriteMesh(const std::string& filename, const Mesh& mesh) {
     const auto nml_idx2 = *nml_idx_iter++;
 
     // No texture coordinates.
-    return thinks::obj_io::Map(
-        ObjFaceType(ObjIndexType(
-                        pos_idx0, 
-                        std::make_pair(0, false),
-                        std::make_pair(nml_idx0, true)),
-                    ObjIndexType(
-                        pos_idx1, 
-                        std::make_pair(0, false),
-                        std::make_pair(nml_idx1, true)),
-                    ObjIndexType(
-                        pos_idx2, 
-                        std::make_pair(0, false),
-                        std::make_pair(nml_idx2, true))));
+    return thinks::ObjMap(
+        ObjFaceType(ObjIndexType(pos_idx0, std::make_pair(0, false),
+                                 std::make_pair(nml_idx0, true)),
+                    ObjIndexType(pos_idx1, std::make_pair(0, false),
+                                 std::make_pair(nml_idx1, true)),
+                    ObjIndexType(pos_idx2, std::make_pair(0, false),
+                                 std::make_pair(nml_idx2, true))));
   };
 
   // Normals.
   const auto nml_iend = end(mesh.normals);
   auto nml_iter = begin(mesh.normals);
   auto nml_mapper = [&nml_iter, nml_iend]() {
-    using ObjNormalType = thinks::obj_io::Normal<float>;
+    using ObjNormalType = thinks::ObjNormal<float>;
 
     if (nml_iter == nml_iend) {
-      return thinks::obj_io::End<ObjNormalType>();
+      return thinks::ObjEnd<ObjNormalType>();
     }
 
     const auto nml = *nml_iter++;
-    return thinks::obj_io::Map(ObjNormalType(nml.x, nml.y, nml.z));
+    return thinks::ObjMap(ObjNormalType(nml.x, nml.y, nml.z));
   };
 
   auto ofs = std::ofstream(filename);
   assert(ofs);
-  const auto result = thinks::obj_io::Write(ofs, pos_mapper, face_mapper,
-                                            nullptr,  // No texture coordinates.
-                                            nml_mapper);
+  const auto result = thinks::WriteObj(ofs, pos_mapper, face_mapper,
+                                       nullptr,  // No texture coordinates.
+                                       nml_mapper);
   ofs.close();
 }
 

@@ -13,23 +13,22 @@
 #include <vector>
 
 namespace thinks {
-namespace obj_io {
 
 template <typename ArithT, std::size_t N>
-struct Position {
+struct ObjPosition {
   static_assert(std::is_arithmetic<ArithT>::value,
                 "position values must be arithmetic");
   static_assert(N == 3 || N == 4, "position value count must be 3 or 4");
 
-  constexpr Position() noexcept = default;
+  constexpr ObjPosition() noexcept = default;
 
-  constexpr Position(const ArithT x, const ArithT y, const ArithT z) noexcept
+  constexpr ObjPosition(const ArithT x, const ArithT y, const ArithT z) noexcept
       : values{x, y, z} {
     static_assert(N == 3, "position value count must be 3");
   }
 
-  constexpr Position(const ArithT x, const ArithT y, const ArithT z,
-                     const ArithT w) noexcept
+  constexpr ObjPosition(const ArithT x, const ArithT y, const ArithT z,
+                        const ArithT w) noexcept
       : values{x, y, z, w} {
     static_assert(N == 4, "position value count must be 4");
   }
@@ -38,19 +37,20 @@ struct Position {
 };
 
 template <typename FloatT, std::size_t N>
-struct TexCoord {
+struct ObjTexCoord {
   static_assert(std::is_floating_point<FloatT>::value,
                 "texture coordinate values must be floating point");
   static_assert(N == 2 || N == 3,
                 "texture coordinate value count must be 2 or 3");
 
-  constexpr TexCoord() noexcept = default;
+  constexpr ObjTexCoord() noexcept = default;
 
-  constexpr TexCoord(const FloatT u, const FloatT v) noexcept : values{u, v} {
+  constexpr ObjTexCoord(const FloatT u, const FloatT v) noexcept
+      : values{u, v} {
     static_assert(N == 2, "texture coordinate value count must be 2");
   }
 
-  constexpr TexCoord(const FloatT u, const FloatT v, const FloatT w) noexcept
+  constexpr ObjTexCoord(const FloatT u, const FloatT v, const FloatT w) noexcept
       : values{u, v, w} {
     static_assert(N == 3, "texture coordinate value count must be 3");
   }
@@ -59,61 +59,63 @@ struct TexCoord {
 };
 
 template <typename ArithT>
-struct Normal {
+struct ObjNormal {
   static_assert(std::is_arithmetic<ArithT>::value,
                 "normal values must be arithmetic");
 
-  constexpr Normal() noexcept = default;
+  constexpr ObjNormal() noexcept = default;
 
-  constexpr Normal(const ArithT x, const ArithT y, const ArithT z) noexcept
+  constexpr ObjNormal(const ArithT x, const ArithT y, const ArithT z) noexcept
       : values{x, y, z} {}
 
   std::array<ArithT, 3> values;
 };
 
 template <typename IntT>
-struct Index {
+struct ObjIndex {
   static_assert(std::is_integral<IntT>::value, "index value must be integral");
 
-  constexpr Index() noexcept = default;
+  constexpr ObjIndex() noexcept = default;
 
-  constexpr explicit Index(const IntT idx) noexcept : value(idx) {}
+  constexpr explicit ObjIndex(const IntT idx) noexcept : value(idx) {}
 
   IntT value;
 };
 
 template <typename IntT>
-struct IndexGroup {
-  constexpr IndexGroup() noexcept
+struct ObjIndexGroup {
+  constexpr ObjIndexGroup() noexcept
       : position_index{},
-        tex_coord_index(Index<IntT>{}, false),
-        normal_index(Index<IntT>{}, false) {}
+        tex_coord_index(ObjIndex<IntT>{}, false),
+        normal_index(ObjIndex<IntT>{}, false) {}
 
-  constexpr IndexGroup(const IntT position_index_value) noexcept
+  constexpr ObjIndexGroup(const IntT position_index_value) noexcept
       : position_index(position_index_value),
-        tex_coord_index(Index<IntT>{}, false),
-        normal_index(Index<IntT>{}, false) {}
+        tex_coord_index(ObjIndex<IntT>{}, false),
+        normal_index(ObjIndex<IntT>{}, false) {}
 
-  constexpr IndexGroup(const IntT position_index_value,
-                       const IntT tex_coord_index_value,
-                       const IntT normal_index_value) noexcept
+  constexpr ObjIndexGroup(const IntT position_index_value,
+                          const IntT tex_coord_index_value,
+                          const IntT normal_index_value) noexcept
       : position_index(position_index_value),
         tex_coord_index(tex_coord_index_value, true),
         normal_index(normal_index_value, true) {}
 
-  constexpr IndexGroup(const IntT position_index_value,
-                       const std::pair<IntT, bool>& tex_coord_index_value,
-                       const std::pair<IntT, bool>& normal_index_value) noexcept
-      : position_index(Index<IntT>(position_index_value)),
-        tex_coord_index(std::make_pair(Index<IntT>(tex_coord_index_value.first),
-                                       tex_coord_index_value.second)),
-        normal_index(std::make_pair(Index<IntT>(normal_index_value.first),
+  constexpr ObjIndexGroup(
+      const IntT position_index_value,
+      const std::pair<IntT, bool>& tex_coord_index_value,
+      const std::pair<IntT, bool>& normal_index_value) noexcept
+      : position_index(ObjIndex<IntT>(position_index_value)),
+        tex_coord_index(
+            std::make_pair(ObjIndex<IntT>(tex_coord_index_value.first),
+                           tex_coord_index_value.second)),
+        normal_index(std::make_pair(ObjIndex<IntT>(normal_index_value.first),
                                     normal_index_value.second)) {}
 
   // Note: Optional would have been nice instead of bool-pairs here.
-  Index<IntT> position_index;
-  std::pair<Index<IntT>, bool> tex_coord_index;
-  std::pair<Index<IntT>, bool> normal_index;
+  ObjIndex<IntT> position_index;
+  std::pair<ObjIndex<IntT>, bool> tex_coord_index;
+  std::pair<ObjIndex<IntT>, bool> normal_index;
 };
 
 namespace obj_io_internal {
@@ -123,58 +125,58 @@ struct IsIndex : std::false_type {};
 
 // Note: Not decaying the type here.
 template <typename IntT>
-struct IsIndex<Index<IntT>> : std::true_type {};
+struct IsIndex<ObjIndex<IntT>> : std::true_type {};
 
 template <typename IntT>
-struct IsIndex<IndexGroup<IntT>> : std::true_type {};
+struct IsIndex<ObjIndexGroup<IntT>> : std::true_type {};
 
 }  // namespace obj_io_internal
 
 template <typename IndexT>
-struct TriangleFace {
+struct ObjTriangleFace {
   static_assert(obj_io_internal::IsIndex<IndexT>::value,
                 "face values must be of index type");
 
-  constexpr TriangleFace() noexcept = default;
+  constexpr ObjTriangleFace() noexcept = default;
 
-  constexpr TriangleFace(const IndexT i0, const IndexT i1,
-                         const IndexT i2) noexcept
+  constexpr ObjTriangleFace(const IndexT i0, const IndexT i1,
+                            const IndexT i2) noexcept
       : values{i0, i1, i2} {}
 
   std::array<IndexT, 3> values;
 };
 
 template <typename IndexT>
-struct QuadFace {
+struct ObjQuadFace {
   static_assert(obj_io_internal::IsIndex<IndexT>::value,
                 "face values must be of index type");
 
-  constexpr QuadFace() noexcept = default;
+  constexpr ObjQuadFace() noexcept = default;
 
-  constexpr QuadFace(const IndexT i0, const IndexT i1, const IndexT i2,
-                     const IndexT i3) noexcept
+  constexpr ObjQuadFace(const IndexT i0, const IndexT i1, const IndexT i2,
+                        const IndexT i3) noexcept
       : values{i0, i1, i2, i3} {}
 
   std::array<IndexT, 4> values;
 };
 
 template <typename IndexT>
-struct PolygonFace {
+struct ObjPolygonFace {
   static_assert(obj_io_internal::IsIndex<IndexT>::value,
                 "face values must be of index type");
 
-  constexpr PolygonFace() noexcept = default;
+  constexpr ObjPolygonFace() noexcept = default;
 
   template <typename... Args>
-  constexpr PolygonFace(Args&&... args) noexcept
+  constexpr ObjPolygonFace(Args&&... args) noexcept
       : values(std::forward<Args>(args)...) {}
 
   std::vector<IndexT> values;
 };
 
 template <typename T>
-struct MapResult {
-  constexpr MapResult(const T& value, const bool is_end) noexcept
+struct ObjMapResult {
+  constexpr ObjMapResult(const T& value, const bool is_end) noexcept
       : value(value), is_end(is_end) {}
 
   T value;
@@ -182,24 +184,25 @@ struct MapResult {
 };
 
 template <typename T>
-MapResult<T> Map(const T& value) noexcept {
-  return MapResult<T>(value, false);
+ObjMapResult<T> ObjMap(const T& value) noexcept {
+  return ObjMapResult<T>(value, false);
 }
 
 template <typename T>
-MapResult<T> End() noexcept {
-  return MapResult<T>(T{}, true);
+ObjMapResult<T> ObjEnd() noexcept {
+  return ObjMapResult<T>(T{}, true);
 }
 
 template <typename ParseT, typename Func>
-struct AddFunc {
+struct ObjAddFunc {
   using ParseType = ParseT;
 
   Func func;
 };
 
 template <typename ParseT, typename Func>
-AddFunc<ParseT, typename std::decay<Func>::type> MakeAddFunc(Func&& func) {
+ObjAddFunc<ParseT, typename std::decay<Func>::type> MakeObjAddFunc(
+    Func&& func) {
   return {std::forward<Func>(func)};
 }
 
@@ -209,25 +212,25 @@ template <typename T>
 struct IsPositionImpl : std::false_type {};
 
 template <typename T, std::size_t N>
-struct IsPositionImpl<Position<T, N>> : std::true_type {};
+struct IsPositionImpl<ObjPosition<T, N>> : std::true_type {};
 
 template <typename T>
 using IsPosition = IsPositionImpl<typename std::decay<T>::type>;
 
 template <typename T>
-struct IsTexCoordImpl : std::false_type {};
+struct IsObjTexCoordImpl : std::false_type {};
 
 template <typename T, std::size_t N>
-struct IsTexCoordImpl<TexCoord<T, N>> : std::true_type {};
+struct IsObjTexCoordImpl<ObjTexCoord<T, N>> : std::true_type {};
 
 template <typename T>
-using IsTexCoord = IsTexCoordImpl<typename std::decay<T>::type>;
+using IsObjTexCoord = IsObjTexCoordImpl<typename std::decay<T>::type>;
 
 template <typename T>
 struct IsNormalImpl : std::false_type {};
 
 template <typename T>
-struct IsNormalImpl<Normal<T>> : std::true_type {};
+struct IsNormalImpl<ObjNormal<T>> : std::true_type {};
 
 template <typename T>
 using IsNormal = IsNormalImpl<typename std::decay<T>::type>;
@@ -236,13 +239,13 @@ template <typename T>
 struct IsFaceImpl : std::false_type {};
 
 template <typename IndexT>
-struct IsFaceImpl<TriangleFace<IndexT>> : std::true_type {};
+struct IsFaceImpl<ObjTriangleFace<IndexT>> : std::true_type {};
 
 template <typename IndexT>
-struct IsFaceImpl<QuadFace<IndexT>> : std::true_type {};
+struct IsFaceImpl<ObjQuadFace<IndexT>> : std::true_type {};
 
 template <typename IndexT>
-struct IsFaceImpl<PolygonFace<IndexT>> : std::true_type {};
+struct IsFaceImpl<ObjPolygonFace<IndexT>> : std::true_type {};
 
 template <typename T>
 using IsFace = IsFaceImpl<typename std::decay<T>::type>;
@@ -255,17 +258,17 @@ template <typename T>
 struct FaceTraitsImpl;  // Not implemented!
 
 template <typename IndexT>
-struct FaceTraitsImpl<TriangleFace<IndexT>> {
+struct FaceTraitsImpl<ObjTriangleFace<IndexT>> {
   using FaceCategory = StaticFaceTag;
 };
 
 template <typename IndexT>
-struct FaceTraitsImpl<QuadFace<IndexT>> {
+struct FaceTraitsImpl<ObjQuadFace<IndexT>> {
   using FaceCategory = StaticFaceTag;
 };
 
 template <typename IndexT>
-struct FaceTraitsImpl<PolygonFace<IndexT>> {
+struct FaceTraitsImpl<ObjPolygonFace<IndexT>> {
   using FaceCategory = DynamicFaceTag;
 };
 
@@ -287,7 +290,7 @@ struct FuncTraits<std::nullptr_t> {
 };
 
 template <typename FloatT, std::size_t N>
-void ValidateTexCoord(const TexCoord<FloatT, N>& tex_coord) {
+void ValidateObjTexCoord(const ObjTexCoord<FloatT, N>& tex_coord) {
   using ValueType = typename decltype(tex_coord.values)::value_type;
 
   for (const auto v : tex_coord.values) {
@@ -318,7 +321,7 @@ void ValidateFace(const FaceT& face, StaticFaceTag) {}
 constexpr inline const char* CommentPrefix() { return "#"; }
 constexpr inline const char* PositionPrefix() { return "v"; }
 constexpr inline const char* FacePrefix() { return "f"; }
-constexpr inline const char* TexCoordPrefix() { return "vt"; }
+constexpr inline const char* ObjTexCoordPrefix() { return "vt"; }
 constexpr inline const char* NormalPrefix() { return "vn"; }
 constexpr inline const char* IndexGroupSeparator() { return "/"; }
 
@@ -372,7 +375,7 @@ bool ParseValue(std::istream* const is, T* const value) {
 }
 
 template <typename IntT>
-std::istream& operator>>(std::istream& is, Index<IntT>& index) {
+std::istream& operator>>(std::istream& is, ObjIndex<IntT>& index) {
   if (ParseValue(&is, &index.value)) {
     // Check for underflow.
     if (!(index.value > 0)) {
@@ -387,7 +390,7 @@ std::istream& operator>>(std::istream& is, Index<IntT>& index) {
 }
 
 template <typename IntT>
-std::istream& operator>>(std::istream& is, IndexGroup<IntT>& index_group) {
+std::istream& operator>>(std::istream& is, ObjIndexGroup<IntT>& index_group) {
   // Read index group as the string leading up to the
   // following whitespace/newline.
   auto index_group_str = std::string{};
@@ -407,7 +410,7 @@ std::istream& operator>>(std::istream& is, IndexGroup<IntT>& index_group) {
     throw std::runtime_error(oss.str());
   }
 
-  // Position index.
+  // ObjPosition index.
   if (tokens[0].empty()) {
     auto oss = std::stringstream{};
     oss << "empty position index ('" << index_group_str << "')";
@@ -423,7 +426,7 @@ std::istream& operator>>(std::istream& is, IndexGroup<IntT>& index_group) {
     index_group.tex_coord_index.second = true;
   }
 
-  // Normal index.
+  // ObjNormal index.
   if (tokens.size() > 2) {
     if (tokens[2].empty()) {
       auto oss = std::stringstream{};
@@ -480,7 +483,7 @@ void ParsePosition(std::istringstream* const iss, AddPositionFuncT&& add_positio
                    std::uint32_t* const count) {
   using ParseType = typename std::decay<AddPositionFuncT>::type::ParseType;
   static_assert(IsPosition<ParseType>::value,
-                "parse type must be a Position type");
+                "parse type must be a ObjPosition type");
 
   auto position = ParseType{};
   const auto parse_count = ParseValues(iss, &position.values);
@@ -525,14 +528,14 @@ void ParseFace(std::istringstream* const iss,
   ++(*count);
 }
 
-template <typename AddTexCoordFuncT>
-void ParseTexCoord(std::istringstream* const iss,
-                   AddTexCoordFuncT&& add_tex_coord, 
+template <typename AddObjTexCoordFuncT>
+void ParseObjTexCoord(std::istringstream* const iss,
+                   AddObjTexCoordFuncT&& add_tex_coord, 
                    std::uint32_t* const count,
                    FuncTag) {
-  using ParseType = typename std::decay<AddTexCoordFuncT>::type::ParseType;
-  static_assert(IsTexCoord<ParseType>::value,
-                "parse type must be a TexCoord type");
+  using ParseType = typename std::decay<AddObjTexCoordFuncT>::type::ParseType;
+  static_assert(IsObjTexCoord<ParseType>::value,
+                "parse type must be a ObjTexCoord type");
 
   auto tex_coord = ParseType{};
   const auto parse_count = ParseValues(iss, &tex_coord.values);
@@ -550,14 +553,14 @@ void ParseTexCoord(std::istringstream* const iss,
     tex_coord.values[2] = typename ArrayType::value_type{1};
   }
 
-  ValidateTexCoord(tex_coord);
+  ValidateObjTexCoord(tex_coord);
   add_tex_coord.func(tex_coord);
   ++(*count);
 }
 
 // Dummy.
-template <typename AddTexCoordFuncT>
-void ParseTexCoord(std::istringstream* const, AddTexCoordFuncT&&,
+template <typename AddObjTexCoordFuncT>
+void ParseObjTexCoord(std::istringstream* const, AddObjTexCoordFuncT&&,
                    std::uint32_t* const, NoOpFuncTag) {}
 
 template <typename AddNormalFuncT>
@@ -566,7 +569,7 @@ void ParseNormal(std::istringstream* const iss,
                  std::uint32_t* const count, 
                  FuncTag) {
   using ParseType = typename std::decay<AddNormalFuncT>::type::ParseType;
-  static_assert(IsNormal<ParseType>::value, "parse type must be a Normal type");
+  static_assert(IsNormal<ParseType>::value, "parse type must be a ObjNormal type");
 
   auto normal = ParseType{};
   const auto parse_count = ParseValues(iss, &normal.values);
@@ -586,12 +589,12 @@ template <typename AddNormalFuncT>
 void ParseNormal(std::istringstream* const, AddNormalFuncT&&,
                  std::uint32_t* const, NoOpFuncTag) {}
 
-template <typename AddPositionFuncT, typename AddTexCoordFuncT,
+template <typename AddPositionFuncT, typename AddObjTexCoordFuncT,
           typename AddNormalFuncT, typename AddFaceFuncT>
 void ParseLine(const std::string& line, 
                AddPositionFuncT&& add_position,
                AddFaceFuncT&& add_face, 
-               AddTexCoordFuncT&& add_tex_coord,
+               AddObjTexCoordFuncT&& add_tex_coord,
                AddNormalFuncT&& add_normal, 
                std::uint32_t* const position_count,
                std::uint32_t* const face_count,
@@ -611,10 +614,10 @@ void ParseLine(const std::string& line,
                   position_count);
   } else if (prefix == FacePrefix()) {
     ParseFace(&iss, std::forward<AddFaceFuncT>(add_face), face_count);
-  } else if (prefix == TexCoordPrefix()) {
-    ParseTexCoord(&iss, std::forward<AddTexCoordFuncT>(add_tex_coord),
+  } else if (prefix == ObjTexCoordPrefix()) {
+    ParseObjTexCoord(&iss, std::forward<AddObjTexCoordFuncT>(add_tex_coord),
                   tex_coord_count,
-                  typename FuncTraits<AddTexCoordFuncT>::FuncCategory{});
+                  typename FuncTraits<AddObjTexCoordFuncT>::FuncCategory{});
   } else if (prefix == NormalPrefix()) {
     ParseNormal(&iss, std::forward<AddNormalFuncT>(add_normal), normal_count,
                 typename FuncTraits<AddNormalFuncT>::FuncCategory{});
@@ -625,12 +628,12 @@ void ParseLine(const std::string& line,
   }
 }
 
-template <typename AddPositionFuncT, typename AddTexCoordFuncT,
+template <typename AddPositionFuncT, typename AddObjTexCoordFuncT,
           typename AddNormalFuncT, typename AddFaceFuncT>
 void ParseLines(std::istream& is, 
                 AddPositionFuncT&& add_position,
                 AddFaceFuncT&& add_face, 
-                AddTexCoordFuncT&& add_tex_coord,
+                AddObjTexCoordFuncT&& add_tex_coord,
                 AddNormalFuncT&& add_normal,
                 std::uint32_t* const position_count,
                 std::uint32_t* const face_count,
@@ -642,7 +645,7 @@ void ParseLines(std::istream& is,
         line, 
         std::forward<AddPositionFuncT>(add_position),
         std::forward<AddFaceFuncT>(add_face),
-        std::forward<AddTexCoordFuncT>(add_tex_coord),
+        std::forward<AddObjTexCoordFuncT>(add_tex_coord),
         std::forward<AddNormalFuncT>(add_normal), 
         position_count, face_count,
         tex_coord_count, normal_count);
@@ -654,7 +657,7 @@ void ParseLines(std::istream& is,
 namespace write {
 
 template <typename IntT>
-std::ostream& operator<<(std::ostream& os, const Index<IntT>& index) {
+std::ostream& operator<<(std::ostream& os, const ObjIndex<IntT>& index) {
   using ValueType = decltype(index.value);
 
   // Note that the valid range allows increment of one.
@@ -673,7 +676,7 @@ std::ostream& operator<<(std::ostream& os, const Index<IntT>& index) {
 
 template <typename IntT>
 std::ostream& operator<<(std::ostream& os,
-                         const IndexGroup<IntT>& index_group) {
+                         const ObjIndexGroup<IntT>& index_group) {
   os << index_group.position_index;
   if (index_group.tex_coord_index.second && index_group.normal_index.second) {
     os << IndexGroupSeparator() << index_group.tex_coord_index.first
@@ -728,16 +731,16 @@ std::uint32_t WritePositions(std::ostream& os, MapperT&& mapper,
 }
 
 template <typename MapperT>
-std::uint32_t WriteTexCoords(std::ostream& os, MapperT&& mapper,
+std::uint32_t WriteObjTexCoords(std::ostream& os, MapperT&& mapper,
                              const std::string& newline, FuncTag) {
-  return WriteMappedLines<IsTexCoord>(
-      os, TexCoordPrefix(), std::forward<MapperT>(mapper),
-      [](const auto& tex_coord) { ValidateTexCoord(tex_coord); }, newline);
+  return WriteMappedLines<IsObjTexCoord>(
+      os, ObjTexCoordPrefix(), std::forward<MapperT>(mapper),
+      [](const auto& tex_coord) { ValidateObjTexCoord(tex_coord); }, newline);
 }
 
 // Dummy.
 template <typename MapperT>
-std::uint32_t WriteTexCoords(std::ostream&, MapperT&&, const std::string&,
+std::uint32_t WriteObjTexCoords(std::ostream&, MapperT&&, const std::string&,
                              NoOpFuncTag) {
   return 0;
 }
@@ -772,58 +775,54 @@ std::uint32_t WriteFaces(std::ostream& os, MapperT&& mapper,
 }  // namespace write
 }  // namespace obj_io_internal
 
-struct ReadResult {
+struct ObjReadResult {
   std::uint32_t position_count;
   std::uint32_t face_count;
   std::uint32_t tex_coord_count;
   std::uint32_t normal_count;
 };
 
-template <typename AddPositionFuncT, 
-          typename AddFaceFuncT,
-          typename AddTexCoordFuncT = std::nullptr_t,
+template <typename AddPositionFuncT, typename AddFaceFuncT,
+          typename AddObjTexCoordFuncT = std::nullptr_t,
           typename AddNormalFuncT = std::nullptr_t>
-ReadResult Read(std::istream& is, 
-                AddPositionFuncT&& add_position,
-                AddFaceFuncT&& add_face, 
-                AddTexCoordFuncT&& add_tex_coord = nullptr,
-                AddNormalFuncT&& add_normal = nullptr) {
-  ReadResult result = {};
+ObjReadResult ReadObj(std::istream& is, 
+                      AddPositionFuncT&& add_position,
+                      AddFaceFuncT&& add_face,
+                      AddObjTexCoordFuncT&& add_tex_coord = nullptr,
+                      AddNormalFuncT&& add_normal = nullptr) {
+  ObjReadResult result = {};
   obj_io_internal::read::ParseLines(
-      is, 
-      std::forward<AddPositionFuncT>(add_position),
+      is, std::forward<AddPositionFuncT>(add_position),
       std::forward<AddFaceFuncT>(add_face),
-      std::forward<AddTexCoordFuncT>(add_tex_coord),
-      std::forward<AddNormalFuncT>(add_normal), 
-      &result.position_count, &result.face_count, 
-      &result.tex_coord_count, &result.normal_count);
+      std::forward<AddObjTexCoordFuncT>(add_tex_coord),
+      std::forward<AddNormalFuncT>(add_normal), &result.position_count,
+      &result.face_count, &result.tex_coord_count, &result.normal_count);
   return result;
 }
 
-struct WriteResult {
+struct ObjWriteResult {
   std::uint32_t position_count;
   std::uint32_t face_count;
   std::uint32_t tex_coord_count;
   std::uint32_t normal_count;
 };
 
-template <typename PositionMapperT, 
-          typename FaceMapperT,
-          typename TexCoordMapperT = std::nullptr_t,
+template <typename PositionMapperT, typename FaceMapperT,
+          typename ObjTexCoordMapperT = std::nullptr_t,
           typename NormalMapperT = std::nullptr_t>
-WriteResult Write(std::ostream& os, 
-                  PositionMapperT&& position_mapper,
-                  FaceMapperT&& face_mapper,
-                  TexCoordMapperT&& tex_coord_mapper = nullptr,
-                  NormalMapperT&& normal_mapper = nullptr,
-                  const std::string& newline = "\n") {
-  WriteResult result = {};
+ObjWriteResult WriteObj(std::ostream& os, 
+                        PositionMapperT&& position_mapper,
+                        FaceMapperT&& face_mapper,
+                        ObjTexCoordMapperT&& tex_coord_mapper = nullptr,
+                        NormalMapperT&& normal_mapper = nullptr,
+                        const std::string& newline = "\n") {
+  ObjWriteResult result = {};
   obj_io_internal::write::WriteHeader(os, newline);
   result.position_count += obj_io_internal::write::WritePositions(
       os, std::forward<PositionMapperT>(position_mapper), newline);
-  result.tex_coord_count += obj_io_internal::write::WriteTexCoords(
-      os, std::forward<TexCoordMapperT>(tex_coord_mapper), newline,
-      typename obj_io_internal::FuncTraits<TexCoordMapperT>::FuncCategory{});
+  result.tex_coord_count += obj_io_internal::write::WriteObjTexCoords(
+      os, std::forward<ObjTexCoordMapperT>(tex_coord_mapper), newline,
+      typename obj_io_internal::FuncTraits<ObjTexCoordMapperT>::FuncCategory{});
   result.normal_count += obj_io_internal::write::WriteNormals(
       os, std::forward<NormalMapperT>(normal_mapper), newline,
       typename obj_io_internal::FuncTraits<NormalMapperT>::FuncCategory{});
@@ -832,5 +831,4 @@ WriteResult Write(std::ostream& os,
   return result;
 }
 
-}  // namespace obj_io
 }  // namespace thinks

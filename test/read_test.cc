@@ -6,12 +6,14 @@
 #include <string>
 
 #include "catch2/catch.hpp"
-#include "catch_utils.h"
+#include "catch_mesh_matcher.h"
+#include "mesh_types.h"
 #include "read_write_utils.h"
-#include "type_utils.h"
+
+namespace {
 
 TEST_CASE("READ", "[container]") {
-  using MeshType = utils::Mesh<>;
+  using MeshType = Mesh<>;
   using IndexType = MeshType::IndexType;
   using VertexType = MeshType::VertexType;
   using PositionType = VertexType::PositionType;
@@ -39,7 +41,7 @@ TEST_CASE("READ", "[container]") {
 
     auto iss = std::istringstream(input);
     const auto read_result =
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
 
     auto expected_mesh = MeshType{};
     expected_mesh.vertices =
@@ -51,7 +53,7 @@ TEST_CASE("READ", "[container]") {
         2, 1, 0};
 
     REQUIRE_THAT(read_result.mesh,
-                 utils::MeshMatcher<MeshType>(expected_mesh, use_tex_coords,
+                 MeshMatcher<MeshType>(expected_mesh, use_tex_coords,
                                               use_normals));
   }
 
@@ -61,7 +63,7 @@ TEST_CASE("READ", "[container]") {
 
     auto iss = std::istringstream(input);
     const auto read_result =
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
 
     auto expected_mesh = MeshType{};
     expected_mesh.vertices = std::vector<VertexType>{
@@ -73,7 +75,7 @@ TEST_CASE("READ", "[container]") {
         2, 1, 0};
 
     REQUIRE_THAT(read_result.mesh,
-                 utils::MeshMatcher<MeshType>(expected_mesh, use_tex_coords,
+                 MeshMatcher<MeshType>(expected_mesh, use_tex_coords,
                                               use_normals));
   }
 
@@ -83,7 +85,7 @@ TEST_CASE("READ", "[container]") {
 
     auto iss = std::istringstream(input);
     const auto read_result =
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
 
     auto expected_mesh = MeshType{};
     expected_mesh.vertices = std::vector<VertexType>{
@@ -101,7 +103,7 @@ TEST_CASE("READ", "[container]") {
         2, 1, 0};
 
     REQUIRE_THAT(read_result.mesh,
-                 utils::MeshMatcher<MeshType>(expected_mesh, use_tex_coords,
+                 MeshMatcher<MeshType>(expected_mesh, use_tex_coords,
                                               use_normals));
   }
 
@@ -111,7 +113,7 @@ TEST_CASE("READ", "[container]") {
 
     auto iss = std::istringstream(input);
     const auto read_result =
-        utils::ReadMesh<utils::Mesh<>>(iss, use_tex_coords, use_normals);
+        ReadMesh<Mesh<>>(iss, use_tex_coords, use_normals);
 
     auto expected_mesh = MeshType{};
     expected_mesh.vertices = std::vector<VertexType>{
@@ -129,13 +131,13 @@ TEST_CASE("READ", "[container]") {
         2, 1, 0};
 
     REQUIRE_THAT(read_result.mesh,
-                 utils::MeshMatcher<MeshType>(expected_mesh, use_tex_coords,
+                 MeshMatcher<MeshType>(expected_mesh, use_tex_coords,
                                               use_normals));
   }
 }
 
 TEST_CASE("READ - index group", "[container]") {
-  using MeshType = utils::IndexGroupMesh<>;
+  using MeshType = IndexGroupMesh<>;
   using IndexType = MeshType::IndexType;
   using PositionType = MeshType::PositionType;
   using TexCoordType = MeshType::TexCoordType;
@@ -156,7 +158,7 @@ TEST_CASE("READ - index group", "[container]") {
 
     auto iss = std::istringstream(input);
     const auto read_result =
-        utils::ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals);
+        ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals);
 
     auto expected_mesh = MeshType{};
     expected_mesh.positions = std::vector<PositionType>{
@@ -168,7 +170,7 @@ TEST_CASE("READ - index group", "[container]") {
         2, 1, 0};
 
     REQUIRE_THAT(read_result.mesh,
-                 utils::IndexGroupMeshMatcher<MeshType>(
+                 IndexGroupMeshMatcher<MeshType>(
                      expected_mesh, use_tex_coords, use_normals));
   }
 
@@ -190,7 +192,7 @@ TEST_CASE("READ - index group", "[container]") {
 
     auto iss = std::istringstream(input);
     const auto read_result =
-        utils::ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals);
+        ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals);
 
     auto expected_mesh = MeshType{};
     expected_mesh.positions = std::vector<PositionType>{
@@ -209,7 +211,7 @@ TEST_CASE("READ - index group", "[container]") {
         0, 1, 2};
 
     REQUIRE_THAT(read_result.mesh,
-                 utils::IndexGroupMeshMatcher<MeshType>(
+                 IndexGroupMeshMatcher<MeshType>(
                      expected_mesh, use_tex_coords, use_normals));
   }
 
@@ -231,7 +233,7 @@ TEST_CASE("READ - index group", "[container]") {
 
     auto iss = std::istringstream(input);
     const auto read_result =
-        utils::ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals);
+        ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals);
 
     auto expected_mesh = MeshType{};
     expected_mesh.positions = std::vector<PositionType>{
@@ -250,7 +252,7 @@ TEST_CASE("READ - index group", "[container]") {
         0, 1, 2};
 
     REQUIRE_THAT(read_result.mesh,
-                 utils::IndexGroupMeshMatcher<MeshType>(
+                 IndexGroupMeshMatcher<MeshType>(
                      expected_mesh, use_tex_coords, use_normals));
   }
 
@@ -275,7 +277,7 @@ TEST_CASE("READ - index group", "[container]") {
 
     auto iss = std::istringstream(input);
     const auto read_result =
-        utils::ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals);
+        ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals);
 
     auto expected_mesh = MeshType{};
     expected_mesh.positions = std::vector<PositionType>{
@@ -301,13 +303,13 @@ TEST_CASE("READ - index group", "[container]") {
         0, 1, 2};
 
     REQUIRE_THAT(read_result.mesh,
-                 utils::IndexGroupMeshMatcher<MeshType>(
+                 IndexGroupMeshMatcher<MeshType>(
                      expected_mesh, use_tex_coords, use_normals));
   }
 }
 
 TEST_CASE("READ - unrecognized line prefix") {
-  using MeshType = utils::Mesh<>;
+  using MeshType = Mesh<>;
 
   constexpr auto use_tex_coords = false;
   constexpr auto use_normals = false;
@@ -316,13 +318,13 @@ TEST_CASE("READ - unrecognized line prefix") {
   auto iss = std::istringstream(input);
 
   REQUIRE_THROWS_MATCHES(
-      utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+      ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
       std::runtime_error,
-      utils::ExceptionContentMatcher{"unrecognized line prefix 'bad'"});
+      ExceptionContentMatcher{"unrecognized line prefix 'bad'"});
 }
 
 TEST_CASE("READ - position errors", "[container]") {
-  using MeshType = utils::Mesh<>;
+  using MeshType = Mesh<>;
   using VertexType = MeshType::VertexType;
   using PositionType = VertexType::PositionType;
 
@@ -334,23 +336,23 @@ TEST_CASE("READ - position errors", "[container]") {
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{
+        ExceptionContentMatcher{
             "positions must have 3 or 4 values (found 2)"});
   }
 
   SECTION("position value count > size") {
-    static_assert(utils::VecSize<PositionType>::value == 3,
+    static_assert(VecSize<PositionType>::value == 3,
                   "position size must be 3");
 
     const auto input = std::string("v 0 1 2 3\n");
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{"expected to parse at most 3 values"});
+        ExceptionContentMatcher{"expected to parse at most 3 values"});
   }
 }
 
@@ -359,35 +361,35 @@ TEST_CASE("READ - face errors", "[container]") {
   constexpr auto use_normals = false;
 
   SECTION("incomplete face") {
-    using MeshType = utils::Mesh<>;
+    using MeshType = Mesh<>;
 
     const auto input = std::string("f 1 2\n");
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{"expected 3 face indices (found 2)"});
+        ExceptionContentMatcher{"expected 3 face indices (found 2)"});
   }
 
   SECTION("invalid polygon") {
     using IndexType = std::uint32_t;
     constexpr auto kIndicesPerFace = std::size_t{5};
-    using MeshType = utils::Mesh<utils::Vertex<>, IndexType, kIndicesPerFace>;
+    using MeshType = Mesh<Vertex<>, IndexType, kIndicesPerFace>;
 
     const auto input = std::string("f 1 2\n");
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{
+        ExceptionContentMatcher{
             "faces must have at least 3 indices (found 2)"});
   }
 }
 
 TEST_CASE("READ - texture coordinate errors", "[container]") {
-  using MeshType = utils::Mesh<>;
+  using MeshType = Mesh<>;
   using VertexType = MeshType::VertexType;
   using TexCoordType = VertexType::TexCoordType;
 
@@ -399,23 +401,23 @@ TEST_CASE("READ - texture coordinate errors", "[container]") {
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{
+        ExceptionContentMatcher{
             "texture coordinates must have 2 or 3 values (found 1)"});
   }
 
   SECTION("texture coordinate value count > size") {
-    static_assert(utils::VecSize<TexCoordType>::value == 2,
+    static_assert(VecSize<TexCoordType>::value == 2,
                   "tex coord size must be 2");
 
     const auto input = std::string("vt 0.0 0.5 1.0\n");
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{"expected to parse at most 2 values"});
+        ExceptionContentMatcher{"expected to parse at most 2 values"});
   }
 
   SECTION("texture coordinate value < 0") {
@@ -423,9 +425,9 @@ TEST_CASE("READ - texture coordinate errors", "[container]") {
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{
+        ExceptionContentMatcher{
             "texture coordinate values must be in range [0, 1] (found -0.1)"});
   }
 
@@ -434,15 +436,15 @@ TEST_CASE("READ - texture coordinate errors", "[container]") {
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{
+        ExceptionContentMatcher{
             "texture coordinate values must be in range [0, 1] (found 1.1)"});
   }
 }
 
 TEST_CASE("READ - normal errors", "[container]") {
-  using MeshType = utils::Mesh<>;
+  using MeshType = Mesh<>;
   using VertexType = MeshType::VertexType;
   using NormalType = VertexType::NormalType;
 
@@ -454,9 +456,9 @@ TEST_CASE("READ - normal errors", "[container]") {
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{"normals must have 3 values (found 2)"});
+        ExceptionContentMatcher{"normals must have 3 values (found 2)"});
   }
 
   SECTION("normal value count > 3") {
@@ -464,17 +466,17 @@ TEST_CASE("READ - normal errors", "[container]") {
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{"expected to parse at most 3 values"});
+        ExceptionContentMatcher{"expected to parse at most 3 values"});
   }
 }
 
 TEST_CASE("READ - default values", "[container]") {
-  using PositionType = utils::Vec4<float>;
-  using TexCoordType = utils::Vec3<float>;
-  using VertexType = utils::Vertex<PositionType, TexCoordType>;
-  using MeshType = utils::Mesh<VertexType>;
+  using PositionType = Vec4<float>;
+  using TexCoordType = Vec3<float>;
+  using VertexType = Vertex<PositionType, TexCoordType>;
+  using MeshType = Mesh<VertexType>;
 
   SECTION("position w defaults to 1") {
     constexpr auto use_tex_coords = false;
@@ -484,9 +486,9 @@ TEST_CASE("READ - default values", "[container]") {
     auto iss = std::istringstream(input);
 
     const auto read_result =
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
 
-    REQUIRE(utils::Equals(read_result.mesh.vertices[0].pos,
+    REQUIRE(Equals(read_result.mesh.vertices[0].pos,
                           PositionType{0.1f, 0.2f, 0.3f, 1.f}));
   }
 
@@ -500,15 +502,15 @@ TEST_CASE("READ - default values", "[container]") {
     auto iss = std::istringstream(input);
 
     const auto read_result =
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
 
-    REQUIRE(utils::Equals(read_result.mesh.vertices[0].tex,
+    REQUIRE(Equals(read_result.mesh.vertices[0].tex,
                           TexCoordType{0.1f, 0.2f, 1.f}));
   }
 }
 
 TEST_CASE("READ - parse value error") {
-  using MeshType = utils::Mesh<>;
+  using MeshType = Mesh<>;
 
   constexpr auto use_tex_coords = false;
   constexpr auto use_normals = false;
@@ -518,19 +520,19 @@ TEST_CASE("READ - parse value error") {
   auto iss = std::istringstream(input);
 
   REQUIRE_THROWS_MATCHES(
-      utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+      ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
       std::runtime_error,
-      utils::ExceptionContentMatcher{"failed parsing 'xxx'"});
+      ExceptionContentMatcher{"failed parsing 'xxx'"});
 }
 
 TEST_CASE("READ - index range", "[container]") {
-  using PositionType = utils::Vec3<float>;
-  using TexCoordType = utils::Vec2<float>;
-  using NormalType = utils::Vec3<float>;
-  using ColorType = utils::Vec3<float>;
-  using VertexType = utils::Vertex<PositionType, TexCoordType, NormalType, ColorType>;
+  using PositionType = Vec3<float>;
+  using TexCoordType = Vec2<float>;
+  using NormalType = Vec3<float>;
+  using ColorType = Vec3<float>;
+  using VertexType = Vertex<PositionType, TexCoordType, NormalType, ColorType>;
   using IndexType = std::int16_t;
-  using MeshType = utils::Mesh<VertexType, IndexType>;
+  using MeshType = Mesh<VertexType, IndexType>;
 
   constexpr auto use_tex_coords = false;
   constexpr auto use_normals = false;
@@ -540,15 +542,15 @@ TEST_CASE("READ - index range", "[container]") {
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{
+        ExceptionContentMatcher{
             "parsed index must be greater than zero"});
   }
 }
 
 TEST_CASE("READ - index group errors", "[container]") {
-  using MeshType = utils::IndexGroupMesh<>;
+  using MeshType = IndexGroupMesh<>;
 
   constexpr auto use_tex_coords = false;
   constexpr auto use_normals = false;
@@ -558,9 +560,9 @@ TEST_CASE("READ - index group errors", "[container]") {
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{"empty position index ('/3')"});
+        ExceptionContentMatcher{"empty position index ('/3')"});
   }
 
   SECTION("empty normal index") {
@@ -568,9 +570,9 @@ TEST_CASE("READ - index group errors", "[container]") {
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{"empty normal index ('3/3/')"});
+        ExceptionContentMatcher{"empty normal index ('3/3/')"});
   }
 
   SECTION("token count > 3") {
@@ -578,9 +580,11 @@ TEST_CASE("READ - index group errors", "[container]") {
     auto iss = std::istringstream(input);
 
     REQUIRE_THROWS_MATCHES(
-        utils::ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals),
+        ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals),
         std::runtime_error,
-        utils::ExceptionContentMatcher{
+        ExceptionContentMatcher{
             "index group can have at most 3 tokens ('1/2/3/4')"});
   }
 }
+
+} // namespace

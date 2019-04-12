@@ -48,28 +48,26 @@ Mesh ReadMesh(const std::string& filename) {
   // Positions.
   // Wrap a lambda expression and set expectations on position data.
   // In this case we expect each position to be 3 floating point values.
-  auto add_position =
-      thinks::obj_io::MakeAddFunc<thinks::obj_io::Position<float, 3>>(
-          [&mesh, &pos_count](const auto& pos) {
-            // Check if we need a new vertex.
-            if (mesh.vertices.size() <= pos_count) {
-              mesh.vertices.push_back(Vertex{});
-            }
+  auto add_position = thinks::MakeObjAddFunc<thinks::ObjPosition<float, 3>>(
+      [&mesh, &pos_count](const auto& pos) {
+        // Check if we need a new vertex.
+        if (mesh.vertices.size() <= pos_count) {
+          mesh.vertices.push_back(Vertex{});
+        }
 
-            // Write the position property of current vertex and
-            // set position index to next vertex. Values are translated
-            // from OBJ representation to our vector class.
-            mesh.vertices[pos_count++].position =
-                Vec3{pos.values[0], pos.values[1], pos.values[2]};
-          });
+        // Write the position property of current vertex and
+        // set position index to next vertex. Values are translated
+        // from OBJ representation to our vector class.
+        mesh.vertices[pos_count++].position =
+            Vec3{pos.values[0], pos.values[1], pos.values[2]};
+      });
 
   // Faces.
   // We expect each face in the OBJ file to be a triangle, i.e. have three
   // indices. Also, we expect each index to have only one value.
-  using ObjFaceType =
-      thinks::obj_io::TriangleFace<thinks::obj_io::Index<std::uint16_t>>;
+  using ObjFaceType = thinks::ObjTriangleFace<thinks::ObjIndex<std::uint16_t>>;
   auto add_face =
-      thinks::obj_io::MakeAddFunc<ObjFaceType>([&mesh](const auto& face) {
+      thinks::MakeObjAddFunc<ObjFaceType>([&mesh](const auto& face) {
         // Add triangle indices into the linear storage of our mesh class.
         mesh.indices.push_back(face.values[0].value);
         mesh.indices.push_back(face.values[1].value);
@@ -77,8 +75,8 @@ Mesh ReadMesh(const std::string& filename) {
       });
 
   // Texture coordinates [optional].
-  auto add_tex_coord = thinks::obj_io::MakeAddFunc<
-      thinks::obj_io::TexCoord<float, 2>>([&mesh, &tex_count](const auto& tex) {
+  auto add_tex_coord = thinks::MakeObjAddFunc<
+      thinks::ObjTexCoord<float, 2>>([&mesh, &tex_count](const auto& tex) {
     if (mesh.vertices.size() <= tex_count) {
       mesh.vertices.push_back(Vertex{});
     }
@@ -87,7 +85,7 @@ Mesh ReadMesh(const std::string& filename) {
 
   // Normals [optional].
   // Note: Normals must always have 3 components.
-  auto add_normal = thinks::obj_io::MakeAddFunc<thinks::obj_io::Normal<float>>(
+  auto add_normal = thinks::MakeObjAddFunc<thinks::ObjNormal<float>>(
       [&mesh, &nml_count](const auto& nml) {
         if (mesh.vertices.size() <= nml_count) {
           mesh.vertices.push_back(Vertex{});
@@ -99,8 +97,8 @@ Mesh ReadMesh(const std::string& filename) {
   // Open the OBJ file and populate the mesh while parsing it.
   auto ifs = std::ifstream(filename);
   assert(ifs);
-  const auto result = thinks::obj_io::Read(ifs, add_position, add_face,
-                                           add_tex_coord, add_normal);
+  const auto result =
+      thinks::ReadObj(ifs, add_position, add_face, add_tex_coord, add_normal);
   ifs.close();
 
   // Some sanity checks.
@@ -128,71 +126,71 @@ void WriteMesh(const std::string& filename, const Mesh& mesh) {
   // Positions.
   auto pos_vtx_iter = std::begin(mesh.vertices);
   auto pos_mapper = [&pos_vtx_iter, vtx_iend]() {
-    using ObjPositionType = thinks::obj_io::Position<float, 3>;
+    using ObjPositionType = thinks::ObjPosition<float, 3>;
 
     if (pos_vtx_iter == vtx_iend) {
       // End indicates that no further calls should be made to this mapper,
       // in this case because the captured iterator has reached the end
       // of the vector.
-      return thinks::obj_io::End<ObjPositionType>();
+      return thinks::ObjEnd<ObjPositionType>();
     }
 
     // Map indicates that additional positions may be available after this one.
     const auto pos = (*pos_vtx_iter++).position;
-    return thinks::obj_io::Map(ObjPositionType(pos.x, pos.y, pos.z));
+    return thinks::ObjMap(ObjPositionType(pos.x, pos.y, pos.z));
   };
 
   // Faces.
   auto idx_iter = std::begin(mesh.indices);
   const auto idx_iend = std::end(mesh.indices);
   auto face_mapper = [&idx_iter, idx_iend]() {
-    using ObjIndexType = thinks::obj_io::Index<uint16_t>;
-    using ObjFaceType = thinks::obj_io::TriangleFace<ObjIndexType>;
+    using ObjIndexType = thinks::ObjIndex<uint16_t>;
+    using ObjFaceType = thinks::ObjTriangleFace<ObjIndexType>;
 
     // Check that there are 3 more indices (trailing indices handled below).
     if (std::distance(idx_iter, idx_iend) < 3) {
-      return thinks::obj_io::End<ObjFaceType>();
+      return thinks::ObjEnd<ObjFaceType>();
     }
 
     // Create a face from the mesh indices.
     const auto idx0 = ObjIndexType(*idx_iter++);
     const auto idx1 = ObjIndexType(*idx_iter++);
     const auto idx2 = ObjIndexType(*idx_iter++);
-    return thinks::obj_io::Map(ObjFaceType(idx0, idx1, idx2));
+    return thinks::ObjMap(ObjFaceType(idx0, idx1, idx2));
   };
 
   // Texture coordinates [optional].
   auto tex_vtx_iter = std::begin(mesh.vertices);
   auto tex_mapper = [&tex_vtx_iter, vtx_iend]() {
-    using ObjTexCoordType = thinks::obj_io::TexCoord<float, 2>;
+    using ObjTexCoordType = thinks::ObjTexCoord<float, 2>;
 
     if (tex_vtx_iter == vtx_iend) {
-      return thinks::obj_io::End<ObjTexCoordType>();
+      return thinks::ObjEnd<ObjTexCoordType>();
     }
 
     const auto tex = (*tex_vtx_iter++).tex_coord;
-    return thinks::obj_io::Map(ObjTexCoordType(tex.x, tex.y));
+    return thinks::ObjMap(ObjTexCoordType(tex.x, tex.y));
   };
 
   // Normals [optional].
   auto nml_vtx_iter = std::begin(mesh.vertices);
   auto nml_mapper = [&nml_vtx_iter, vtx_iend]() {
-    using ObjNormalType = thinks::obj_io::Normal<float>;
+    using ObjNormalType = thinks::ObjNormal<float>;
 
     if (nml_vtx_iter == vtx_iend) {
-      return thinks::obj_io::End<ObjNormalType>();
+      return thinks::ObjEnd<ObjNormalType>();
     }
 
     const auto nml = (*nml_vtx_iter++).normal;
-    return thinks::obj_io::Map(ObjNormalType(nml.x, nml.y, nml.z));
+    return thinks::ObjMap(ObjNormalType(nml.x, nml.y, nml.z));
   };
 
   // Open the OBJ file and pass in the mappers, which will be called
   // internally to write the contents of the mesh to the file.
   auto ofs = std::ofstream(filename);
   assert(ofs);
-  const auto result = thinks::obj_io::Write(ofs, pos_mapper, face_mapper,
-                                            tex_mapper, nml_mapper);
+  const auto result =
+      thinks::WriteObj(ofs, pos_mapper, face_mapper, tex_mapper, nml_mapper);
   ofs.close();
 
   // Some sanity checks.

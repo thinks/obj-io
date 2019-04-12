@@ -8,8 +8,6 @@
 #include <cstdint>
 #include <vector>
 
-namespace utils {
-
 template <typename FloatT>
 struct Vec2 {
   using ValueType = FloatT;
@@ -61,11 +59,11 @@ struct VecMaker;
 template <typename FloatT>
 struct VecMaker<Vec2<FloatT>> {
   template <typename T, std::size_t N>
-  static constexpr Vec2<FloatT> Make(const std::array<T, N>& a) {
+  static constexpr Vec2<FloatT> Make(const std::array<T, N>& a) noexcept {
     static_assert(VecSize<Vec2<FloatT>>::value <=
                       std::tuple_size<std::array<T, N>>::value,
                   "vec type must be smaller or equal than array");
-    return Vec2<FloatT>{a[0], a[1]};
+    return {a[0], a[1]};
   }
 };
 
@@ -76,18 +74,18 @@ struct VecMaker<Vec3<FloatT>> {
     static_assert(VecSize<Vec3<FloatT>>::value <=
                       std::tuple_size<std::array<T, N>>::value,
                   "vec type must be smaller or equal than array");
-    return Vec3<FloatT>{a[0], a[1], a[2]};
+    return {a[0], a[1], a[2]};
   }
 };
 
 template <typename FloatT>
 struct VecMaker<Vec4<FloatT>> {
   template <typename T, std::size_t N>
-  static constexpr Vec4<FloatT> Make(const std::array<T, N>& a) {
+  static constexpr Vec4<FloatT> Make(const std::array<T, N>& a) noexcept {
     static_assert(VecSize<Vec4<FloatT>>::value <=
                       std::tuple_size<std::array<T, N>>::value,
                   "vec type must be smaller or equal than array");
-    return Vec4<FloatT>{a[0], a[1], a[2], a[3]};
+    return {a[0], a[1], a[2], a[3]};
   }
 };
 
@@ -167,5 +165,3 @@ template <typename PositionT = Vec3<float>, typename TexCoordT = Vec2<float>,
           typename NormalT = Vec3<float>, typename IntT = std::uint32_t>
 using IndexGroupQuadMesh =
     IndexGroupMesh<PositionT, TexCoordT, NormalT, IntT, 4>;
-
-}  // namespace utils
