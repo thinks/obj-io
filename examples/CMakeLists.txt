@@ -5,8 +5,7 @@
 set(examples
     index_group_example.cc
     polygon_example.cc
-    simple_example.cc
-)
+    simple_example.cc)
 
 add_executable(thinks_obj_io_examples
     main.cc

@@ -6,10 +6,10 @@
 #include <string>
 #include <vector>
 
-#include "catch.hpp"
-#include "utils/catch_utils.h"
-#include "utils/read_write_utils.h"
-#include "utils/type_utils.h"
+#include "catch2/catch.hpp"
+#include "catch_utils.h"
+#include "read_write_utils.h"
+#include "type_utils.h"
 
 TEST_CASE("WRITE", "[container]") {
   using MeshType = utils::TriangleMesh<>;

@@ -5,14 +5,16 @@
 set(tests
     write_test.cc
     read_test.cc
-    round_trip_test.cc
-)
+    round_trip_test.cc)
 
 add_executable(thinks_obj_io_test
-    main.cc
+    catch_main.cc
     ${tests})
 target_include_directories(thinks_obj_io_test SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(thinks_obj_io_test PRIVATE thinks_obj_io)
+target_link_libraries(thinks_obj_io_test 
+    PRIVATE 
+        thinks_obj_io
+        Catch2::Catch2)
 set_target_properties(thinks_obj_io_test PROPERTIES CXX_STANDARD 11)
 
 add_test(NAME test COMMAND thinks_obj_io_test)

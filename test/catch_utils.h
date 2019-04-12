@@ -8,8 +8,8 @@
 #include <sstream>
 #include <string>
 
-#include "catch.hpp"
-#include "utils/type_utils.h"
+#include "catch2/catch.hpp"
+#include "type_utils.h"
 
 namespace utils {
 

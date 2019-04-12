@@ -11,7 +11,7 @@
 #include <string>
 
 #include "thinks/obj_io/obj_io.h"
-#include "utils/type_utils.h"
+#include "type_utils.h"
 
 namespace utils {
 
