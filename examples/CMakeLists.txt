@@ -11,5 +11,5 @@ add_executable(thinks_obj_io_examples
     main.cc
     ${examples})
 target_include_directories(thinks_obj_io_examples SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(thinks_obj_io_examples PRIVATE thinks_obj_io)
+target_link_libraries(thinks_obj_io_examples PRIVATE thinks::obj_io)
 set_target_properties(thinks_obj_io_examples PROPERTIES CXX_STANDARD 11)
