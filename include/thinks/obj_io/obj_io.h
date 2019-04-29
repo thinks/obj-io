@@ -176,21 +176,18 @@ struct ObjPolygonFace {
 
 template <typename T>
 struct ObjMapResult {
-  constexpr ObjMapResult(const T& value, const bool is_end) noexcept
-      : value(value), is_end(is_end) {}
-
   T value;
   bool is_end;
 };
 
 template <typename T>
 ObjMapResult<T> ObjMap(const T& value) noexcept {
-  return ObjMapResult<T>(value, false);
+  return {value, false};
 }
 
 template <typename T>
 ObjMapResult<T> ObjEnd() noexcept {
-  return ObjMapResult<T>(T{}, true);
+  return {T{}, true};
 }
 
 template <typename ParseT, typename Func>
@@ -616,8 +613,8 @@ void ParseLine(const std::string& line,
     ParseFace(&iss, std::forward<AddFaceFuncT>(add_face), face_count);
   } else if (prefix == ObjTexCoordPrefix()) {
     ParseObjTexCoord(&iss, std::forward<AddObjTexCoordFuncT>(add_tex_coord),
-                  tex_coord_count,
-                  typename FuncTraits<AddObjTexCoordFuncT>::FuncCategory{});
+                     tex_coord_count,
+                     typename FuncTraits<AddObjTexCoordFuncT>::FuncCategory{});
   } else if (prefix == NormalPrefix()) {
     ParseNormal(&iss, std::forward<AddNormalFuncT>(add_normal), normal_count,
                 typename FuncTraits<AddNormalFuncT>::FuncCategory{});
