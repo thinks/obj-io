@@ -13,28 +13,24 @@ Mesh representations vary wildly across different frameworks. It seems fairly li
 
 A simple example illustrates how to read and write a mesh using our method. Let's assume we have the following simple mesh class.
 ```cpp
-struct Vec2 
-{
+struct Vec2 {
   float x;
   float y;
 };
 
-struct Vec3
-{
+struct Vec3 {
   float x;
   float y;
   float z;
 };
 
-struct Vertex
-{
+struct Vertex {
   Vec3 position;
   Vec2 tex_coord;
   Vec3 normal;
 };
 
-struct Mesh
-{
+struct Mesh {
   std::vector<Vertex> vertices;
   std::vector<std::uint16_t> indices;
 };
@@ -43,7 +39,7 @@ This type of layout is common since it fits nicely with several widely used APIs
 ```cpp
 //#include relevant std headers.
 
-#include <thinks/obj_io/obj_io.h>
+#include "thinks/obj_io/obj_io.h"
 
 Mesh ReadMesh(const std::string& filename) {
   auto mesh = Mesh{};
@@ -130,7 +126,7 @@ A nice feature of reading a mesh this way is that we avoid memory spikes. The me
 ```cpp
 //#include relevant std headers.
 
-#include <thinks/obj_io/obj_io.h>
+#include "thinks/obj_io/obj_io.h"
 
 void WriteMesh(const std::string& filename, const Mesh& mesh) {
   const auto vtx_iend = std::end(mesh.vertices);
