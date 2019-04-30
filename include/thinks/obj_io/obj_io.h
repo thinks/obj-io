@@ -729,7 +729,7 @@ std::uint32_t WritePositions(std::ostream& os, MapperT&& mapper,
 
 template <typename MapperT>
 std::uint32_t WriteObjTexCoords(std::ostream& os, MapperT&& mapper,
-                             const std::string& newline, FuncTag) {
+                                const std::string& newline, FuncTag) {
   return WriteMappedLines<IsObjTexCoord>(
       os, ObjTexCoordPrefix(), std::forward<MapperT>(mapper),
       [](const auto& tex_coord) { ValidateObjTexCoord(tex_coord); }, newline);
@@ -738,7 +738,7 @@ std::uint32_t WriteObjTexCoords(std::ostream& os, MapperT&& mapper,
 // Dummy.
 template <typename MapperT>
 std::uint32_t WriteObjTexCoords(std::ostream&, MapperT&&, const std::string&,
-                             NoOpFuncTag) {
+                                NoOpFuncTag) {
   return 0;
 }
 
