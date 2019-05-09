@@ -31,16 +31,16 @@ Mesh ReadMesh(const std::string& filename) {
   auto mesh = Mesh{};
 
   // Positions.
-  auto add_position = thinks::obj_io::MakeAddFunc<
-      thinks::obj_io::Position<float, 3>>([&mesh](const auto& pos) {
+  auto add_position = thinks::MakeObjAddFunc<
+      thinks::ObjPosition<float, 3>>([&mesh](const auto& pos) {
     mesh.positions.push_back(Vec3{pos.values[0], pos.values[1], pos.values[2]});
   });
 
   // Faces.
   using ObjFaceType =
-      thinks::obj_io::PolygonFace<thinks::obj_io::Index<uint16_t>>;
+      thinks::ObjPolygonFace<thinks::ObjIndex<uint16_t>>;
   auto add_face =
-      thinks::obj_io::MakeAddFunc<ObjFaceType>([&mesh](const auto& face) {
+      thinks::MakeObjAddFunc<ObjFaceType>([&mesh](const auto& face) {
         auto polygon = PolygonFace{};
         for (const auto index : face.values) {
           polygon.indices.push_back(index.value);
@@ -50,7 +50,7 @@ Mesh ReadMesh(const std::string& filename) {
 
   auto ifs = std::ifstream(filename);
   assert(ifs);
-  const auto result = thinks::obj_io::Read(ifs, add_position, add_face);
+  const auto result = thinks::ReadObj(ifs, add_position, add_face);
   ifs.close();
 
   return mesh;
@@ -61,25 +61,25 @@ void WriteMesh(const std::string& filename, const Mesh& mesh) {
   const auto pos_iend = std::end(mesh.positions);
   auto pos_iter = std::begin(mesh.positions);
   auto pos_mapper = [&pos_iter, pos_iend]() {
-    using ObjPositionType = thinks::obj_io::Position<float, 3>;
+    using ObjPositionType = thinks::ObjPosition<float, 3>;
 
     if (pos_iter == pos_iend) {
-      return thinks::obj_io::End<ObjPositionType>();
+      return thinks::ObjEnd<ObjPositionType>();
     }
 
     const auto pos = *pos_iter++;
-    return thinks::obj_io::Map(ObjPositionType(pos.x, pos.y, pos.z));
+    return thinks::ObjMap(ObjPositionType(pos.x, pos.y, pos.z));
   };
 
   // Faces.
   const auto face_iend = std::end(mesh.faces);
   auto face_iter = std::begin(mesh.faces);
   auto face_mapper = [&face_iter, face_iend]() {
-    using ObjIndexType = thinks::obj_io::IndexGroup<uint16_t>;
-    using ObjFaceType = thinks::obj_io::PolygonFace<ObjIndexType>;
+    using ObjIndexType = thinks::ObjIndexGroup<uint16_t>;
+    using ObjFaceType = thinks::ObjPolygonFace<ObjIndexType>;
 
     if (face_iter == face_iend) {
-      return thinks::obj_io::End<ObjFaceType>();
+      return thinks::ObjEnd<ObjFaceType>();
     }
 
     auto face = *face_iter++;
@@ -88,12 +88,12 @@ void WriteMesh(const std::string& filename, const Mesh& mesh) {
       obj_face.values.push_back(ObjIndexType(index));
     }
 
-    return thinks::obj_io::Map(obj_face);
+    return thinks::ObjMap(obj_face);
   };
 
   auto ofs = std::ofstream(filename);
   assert(ofs);
-  const auto result = thinks::obj_io::Write(ofs, pos_mapper, face_mapper);
+  const auto result = thinks::WriteObj(ofs, pos_mapper, face_mapper);
   ofs.close();
 }
 

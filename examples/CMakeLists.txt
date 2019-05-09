@@ -3,14 +3,13 @@
 # found in the top-level directory of this distribution.
 
 set(examples
-	index_group_example.cc
-	polygon_example.cc
-	simple_example.cc
-)
+    index_group_example.cc
+    polygon_example.cc
+    simple_example.cc)
 
 add_executable(thinks_obj_io_examples
-	main.cc
-	${examples})
-target_include_directories(thinks_obj_io_examples SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(thinks_obj_io_examples PUBLIC thinks_obj_io)
+    main.cc
+    ${examples})
+target_include_directories(thinks_obj_io_examples SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(thinks_obj_io_examples PRIVATE thinks::obj_io)
 set_target_properties(thinks_obj_io_examples PROPERTIES CXX_STANDARD 11)

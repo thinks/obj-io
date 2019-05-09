@@ -5,21 +5,22 @@
 #include <sstream>
 #include <vector>
 
-#include "catch.hpp"
+#include "catch2/catch.hpp"
+#include "catch_mesh_matcher.h"
+#include "mesh_types.h"
+#include "read_write_utils.h"
 
-#include "utils/catch_utils.h"
-#include "utils/read_write_utils.h"
-#include "utils/type_utils.h"
+namespace {
 
 TEST_CASE("ROUND_TRIP") {
-  using PositionType = utils::Vec4<float>;
-  using TexCoordType = utils::Vec3<float>;
-  using NormalType = utils::Vec3<float>;
-  using ColorType = utils::Vec3<float>;
+  using PositionType = Vec4<float>;
+  using TexCoordType = Vec3<float>;
+  using NormalType = Vec3<float>;
+  using ColorType = Vec3<float>;
   using VertexType =
-      utils::Vertex<PositionType, TexCoordType, NormalType, ColorType>;
+      Vertex<PositionType, TexCoordType, NormalType, ColorType>;
   using IndexType = std::uint32_t;
-  using MeshType = utils::Mesh<VertexType, IndexType>;
+  using MeshType = Mesh<VertexType, IndexType>;
 
   // Setup.
   auto mesh = MeshType{};
@@ -41,24 +42,24 @@ TEST_CASE("ROUND_TRIP") {
   constexpr auto use_normals = true;
 
   // Write.
-  const auto write_result = utils::WriteMesh(mesh, use_tex_coords, use_normals);
+  const auto write_result = WriteMesh(mesh, use_tex_coords, use_normals);
 
   // Read.
   auto iss = std::istringstream(write_result.mesh_str);
   const auto read_result =
-      utils::ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
+      ReadMesh<MeshType>(iss, use_tex_coords, use_normals);
 
   REQUIRE_THAT(read_result.mesh,
-               utils::MeshMatcher<MeshType>(mesh, use_tex_coords, use_normals));
+               MeshMatcher<MeshType>(mesh, use_tex_coords, use_normals));
 }
 
 TEST_CASE("ROUND_TRIP - index groups") {
-  using PositionType = utils::Vec4<float>;
-  using TexCoordType = utils::Vec3<float>;
-  using NormalType = utils::Vec3<float>;
+  using PositionType = Vec4<float>;
+  using TexCoordType = Vec3<float>;
+  using NormalType = Vec3<float>;
   using IndexType = std::uint32_t;
   using MeshType =
-      utils::IndexGroupMesh<PositionType, TexCoordType, NormalType, IndexType>;
+      IndexGroupMesh<PositionType, TexCoordType, NormalType, IndexType>;
 
   // Setup.
   auto mesh = MeshType{};
@@ -87,13 +88,15 @@ TEST_CASE("ROUND_TRIP - index groups") {
 
   // Write.
   const auto write_result =
-      utils::WriteIndexGroupMesh(mesh, use_tex_coords, use_normals);
+      WriteIndexGroupMesh(mesh, use_tex_coords, use_normals);
 
   // Read.
   auto iss = std::istringstream(write_result.mesh_str);
   const auto read_result =
-      utils::ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals);
+      ReadIndexGroupMesh<MeshType>(iss, use_tex_coords, use_normals);
 
-  REQUIRE_THAT(read_result.mesh, utils::IndexGroupMeshMatcher<MeshType>(
+  REQUIRE_THAT(read_result.mesh, IndexGroupMeshMatcher<MeshType>(
                                      mesh, use_tex_coords, use_normals));
 }
+
+} // namespace

@@ -8,10 +8,8 @@
 #include <sstream>
 #include <string>
 
-#include "catch.hpp"
-#include "utils/type_utils.h"
-
-namespace utils {
+#include "catch2/catch.hpp"
+#include "mesh_types.h"
 
 struct ExceptionContentMatcher : Catch::MatcherBase<std::exception> {
   ExceptionContentMatcher(const std::string& target) : target_(target) {}
@@ -173,5 +171,3 @@ struct IndexGroupMeshMatcher : Catch::MatcherBase<MeshT> {
   bool match_tex_coords_;
   bool match_normals_;
 };
-
-}  // namespace utils

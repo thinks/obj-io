@@ -11,93 +11,91 @@
 #include <string>
 
 #include "thinks/obj_io/obj_io.h"
-#include "utils/type_utils.h"
-
-namespace utils {
+#include "mesh_types.h"
 
 struct WriteResult {
-  thinks::obj_io::WriteResult write_result;
+  thinks::ObjWriteResult write_result;
   std::string mesh_str;
 };
 
 template <typename MeshT>
 struct ReadResult {
-  thinks::obj_io::ReadResult read_result;
+  thinks::ObjReadResult read_result;
   MeshT mesh;
 };
 
-namespace utils_internal {
+namespace read_write_utils_internal {
 
 template <typename ObjT>
 struct ObjTypeMaker;
 
 template <typename FloatT>
-struct ObjTypeMaker<thinks::obj_io::Position<FloatT, 3>> {
+struct ObjTypeMaker<thinks::ObjPosition<FloatT, 3>> {
   template <typename VecFloatT>
-  static constexpr thinks::obj_io::Position<FloatT, 3> Make(
+  static constexpr thinks::ObjPosition<FloatT, 3> Make(
       const Vec3<VecFloatT>& v) noexcept {
-    return thinks::obj_io::Position<FloatT, 3>(v.x, v.y, v.z);
+    return {v.x, v.y, v.z};
   }
 };
 
 template <typename FloatT>
-struct ObjTypeMaker<thinks::obj_io::Position<FloatT, 4>> {
+struct ObjTypeMaker<thinks::ObjPosition<FloatT, 4>> {
   template <typename VecFloatT>
-  static constexpr thinks::obj_io::Position<FloatT, 4> Make(
+  static constexpr thinks::ObjPosition<FloatT, 4> Make(
       const Vec4<VecFloatT>& v) noexcept {
-    return thinks::obj_io::Position<FloatT, 4>(v.x, v.y, v.z, v.w);
+    return {v.x, v.y, v.z, v.w};
   }
 };
 
 template <typename FloatT>
-struct ObjTypeMaker<thinks::obj_io::TexCoord<FloatT, 2>> {
+struct ObjTypeMaker<thinks::ObjTexCoord<FloatT, 2>> {
   template <typename VecFloatT>
-  static constexpr thinks::obj_io::TexCoord<FloatT, 2> Make(
+  static constexpr thinks::ObjTexCoord<FloatT, 2> Make(
       const Vec2<VecFloatT>& v) noexcept {
-    return thinks::obj_io::TexCoord<FloatT, 2>(v.x, v.y);
+    return {v.x, v.y};
   }
 };
 
 template <typename FloatT>
-struct ObjTypeMaker<thinks::obj_io::TexCoord<FloatT, 3>> {
+struct ObjTypeMaker<thinks::ObjTexCoord<FloatT, 3>> {
   template <typename VecFloatT>
-  static constexpr thinks::obj_io::TexCoord<FloatT, 3> Make(
+  static constexpr thinks::ObjTexCoord<FloatT, 3> Make(
       const Vec3<VecFloatT>& v) noexcept {
-    return thinks::obj_io::TexCoord<FloatT, 3>(v.x, v.y, v.z);
+    return {v.x, v.y, v.z};
   }
 };
 
 template <typename FloatT>
-struct ObjTypeMaker<thinks::obj_io::Normal<FloatT>> {
+struct ObjTypeMaker<thinks::ObjNormal<FloatT>> {
   template <typename VecFloatT>
-  static constexpr thinks::obj_io::Normal<FloatT> Make(
+  static constexpr thinks::ObjNormal<FloatT> Make(
       const Vec3<VecFloatT>& v) noexcept {
-    return thinks::obj_io::Normal<FloatT>(v.x, v.y, v.z);
+    return {v.x, v.y, v.z};
   }
 };
 
 template <typename IndexT>
-struct ObjTypeMaker<thinks::obj_io::TriangleFace<IndexT>> {
-  static constexpr thinks::obj_io::TriangleFace<IndexT> Make(
+struct ObjTypeMaker<thinks::ObjTriangleFace<IndexT>> {
+  static constexpr thinks::ObjTriangleFace<IndexT> Make(
       const std::array<IndexT, 3>& a) noexcept {
-    return thinks::obj_io::TriangleFace<IndexT>(a[0], a[1], a[2]);
+    return {a[0], a[1], a[2]};
   }
 };
 
 template <typename IndexT>
-struct ObjTypeMaker<thinks::obj_io::QuadFace<IndexT>> {
-  static constexpr thinks::obj_io::QuadFace<IndexT> Make(
+struct ObjTypeMaker<thinks::ObjQuadFace<IndexT>> {
+  static constexpr thinks::ObjQuadFace<IndexT> Make(
       const std::array<IndexT, 4>& a) noexcept {
-    return thinks::obj_io::QuadFace<IndexT>(a[0], a[1], a[2], a[3]);
+    return {a[0], a[1], a[2], a[3]};
   }
 };
 
 template <typename IndexT>
-struct ObjTypeMaker<thinks::obj_io::PolygonFace<IndexT>> {
+struct ObjTypeMaker<thinks::ObjPolygonFace<IndexT>> {
   template <std::size_t N>
-  static constexpr thinks::obj_io::PolygonFace<IndexT> Make(
+  static constexpr thinks::ObjPolygonFace<IndexT> Make(
       const std::array<IndexT, N>& a) noexcept {
-    auto face = thinks::obj_io::PolygonFace<IndexT>{};
+    auto face = thinks::ObjPolygonFace<IndexT>{};
 
     // Heap allocation!
     face.values.resize(std::tuple_size<std::array<IndexT, N>>::value);
@@ -111,69 +109,85 @@ struct ObjTypeMaker<thinks::obj_io::PolygonFace<IndexT>> {
 
 template <std::size_t IndicesPerFaceT, typename IndexT>
 struct FaceSelector {
-  using Type = thinks::obj_io::PolygonFace<IndexT>;
+  using Type = thinks::ObjPolygonFace<IndexT>;
 };
 
 template <typename IndexT>
 struct FaceSelector<3, IndexT> {
-  using Type = thinks::obj_io::TriangleFace<IndexT>;
+  using Type = thinks::ObjTriangleFace<IndexT>;
 };
 
 template <typename IndexT>
 struct FaceSelector<4, IndexT> {
-  using Type = thinks::obj_io::QuadFace<IndexT>;
+  using Type = thinks::ObjQuadFace<IndexT>;
 };
 
 template <typename AddPositionFuncT, typename AddFaceFuncT,
           typename AddTexCoordFuncT, typename AddNormalFuncT>
-thinks::obj_io::ReadResult ReadHelper(
-    std::istream& is, AddPositionFuncT add_position, AddFaceFuncT add_face,
-    AddTexCoordFuncT add_tex_coord, AddNormalFuncT add_normal,
+thinks::ObjReadResult ReadHelper(
+    std::istream& is, AddPositionFuncT&& add_position, AddFaceFuncT&& add_face,
+    AddTexCoordFuncT&& add_tex_coord, AddNormalFuncT&& add_normal,
     const bool read_tex_coords, const bool read_normals) {
-  using thinks::obj_io::Read;
+  using thinks::ReadObj;
 
-  auto result = thinks::obj_io::ReadResult{};
+  auto result = thinks::ObjReadResult{};
   if (!read_tex_coords && !read_normals) {
-    result = Read(is, add_position, add_face);
+    result = ReadObj(is, std::forward<AddPositionFuncT>(add_position),
+                     std::forward<AddFaceFuncT>(add_face));
   } else if (read_tex_coords && !read_normals) {
-    result = Read(is, add_position, add_face, add_tex_coord);
+    result = ReadObj(is, std::forward<AddPositionFuncT>(add_position),
+                     std::forward<AddFaceFuncT>(add_face), add_tex_coord);
   } else if (!read_tex_coords && read_normals) {
-    result = Read(is, add_position, add_face, nullptr /* add_tex_coord */,
-                  add_normal);
+    result = ReadObj(is, std::forward<AddPositionFuncT>(add_position),
+                     std::forward<AddFaceFuncT>(add_face),
+                     nullptr /* add_tex_coord */,
+                     std::forward<AddNormalFuncT>(add_normal));
   } else {
-    result = Read(is, add_position, add_face, add_tex_coord, add_normal);
+    result = ReadObj(is, std::forward<AddPositionFuncT>(add_position),
+                     std::forward<AddFaceFuncT>(add_face),
+                     std::forward<AddTexCoordFuncT>(add_tex_coord),
+                     std::forward<AddNormalFuncT>(add_normal));
   }
   return result;
 }
 
-template <typename PosMapper, typename FaceMapper, typename TexMapper,
-          typename NmlMapper>
-WriteResult WriteHelper(PosMapper pos_mapper, FaceMapper face_mapper,
-                        TexMapper tex_mapper, NmlMapper nml_mapper,
+template <typename PosMapperT, typename FaceMapperT, typename TexMapperT,
+          typename NmlMapperT>
+WriteResult WriteHelper(PosMapperT&& pos_mapper, FaceMapperT&& face_mapper,
+                        TexMapperT&& tex_mapper, NmlMapperT&& nml_mapper,
                         const bool write_tex_coords, const bool write_normals) {
-  using thinks::obj_io::Write;
+  using thinks::WriteObj;
 
-  auto result = thinks::obj_io::WriteResult{};
+  auto result = thinks::ObjWriteResult{};
   auto oss = std::ostringstream{};
   if (!write_tex_coords && !write_normals) {
-    result = Write(oss, pos_mapper, face_mapper);
+    result = WriteObj(oss, std::forward<PosMapperT>(pos_mapper),
+                      std::forward<FaceMapperT>(face_mapper));
   } else if (write_tex_coords && !write_normals) {
-    result = Write(oss, pos_mapper, face_mapper, tex_mapper);
+    result = WriteObj(oss, std::forward<PosMapperT>(pos_mapper),
+                      std::forward<FaceMapperT>(face_mapper),
+                      std::forward<TexMapperT>(tex_mapper));
   } else if (!write_tex_coords && write_normals) {
-    result = Write(oss, pos_mapper, face_mapper, nullptr, nml_mapper);
+    result = WriteObj(oss, std::forward<PosMapperT>(pos_mapper),
+                      std::forward<FaceMapperT>(face_mapper), 
+                      nullptr, // No texture coordinates!
+                      std::forward<NmlMapperT>(nml_mapper));
   } else {
-    result = Write(oss, pos_mapper, face_mapper, tex_mapper, nml_mapper);
+    result = WriteObj(oss, std::forward<PosMapperT>(pos_mapper),
+                      std::forward<FaceMapperT>(face_mapper),
+                      std::forward<TexMapperT>(tex_mapper),
+                      std::forward<NmlMapperT>(nml_mapper));
   }
 
   return {result, oss.str()};
 }
 
-}  // namespace utils_internal
+}  // namespace read_write_utils_internal
 
 template <typename MeshT>
 ReadResult<MeshT> ReadMesh(std::istream& is, const bool read_tex_coords,
                            const bool read_normals) {
-  using thinks::obj_io::MakeAddFunc;
+  using thinks::MakeObjAddFunc;
 
   using MeshType = MeshT;
   using VertexType = MeshType::VertexType;
@@ -185,12 +199,11 @@ ReadResult<MeshT> ReadMesh(std::istream& is, const bool read_tex_coords,
 
   // Positions.
   using PositionType = VertexType::PositionType;
-  using ObjPositionType =
-      thinks::obj_io::Position<PositionType::ValueType,
-                               VecSize<PositionType>::value>;
+  using ObjPositionType = thinks::ObjPosition<PositionType::ValueType,
+                                              VecSize<PositionType>::value>;
 
   auto add_position =
-      MakeAddFunc<ObjPositionType>([&mesh, &pos_count](const auto& pos) {
+      MakeObjAddFunc<ObjPositionType>([&mesh, &pos_count](const auto& pos) {
         if (mesh.vertices.size() <= pos_count) {
           mesh.vertices.push_back(VertexType{});
         }
@@ -199,11 +212,10 @@ ReadResult<MeshT> ReadMesh(std::istream& is, const bool read_tex_coords,
       });
 
   // Faces.
-  using ObjFaceType = utils_internal::FaceSelector<
-      MeshType::IndicesPerFace,
-      thinks::obj_io::Index<MeshType::IndexType>>::Type;
+  using ObjFaceType = read_write_utils_internal::FaceSelector<
+      MeshType::IndicesPerFace, thinks::ObjIndex<MeshType::IndexType>>::Type;
 
-  auto add_face = MakeAddFunc<ObjFaceType>([&mesh](const auto& face) {
+  auto add_face = MakeObjAddFunc<ObjFaceType>([&mesh](const auto& face) {
     if (face.values.size() != MeshType::IndicesPerFace) {
       throw std::runtime_error("unexpected face index count");
     }
@@ -214,12 +226,11 @@ ReadResult<MeshT> ReadMesh(std::istream& is, const bool read_tex_coords,
 
   // Texture coordinates [optional].
   using TexCoordType = VertexType::TexCoordType;
-  using ObjTexCoordType =
-      thinks::obj_io::TexCoord<TexCoordType::ValueType,
-                               VecSize<TexCoordType>::value>;
+  using ObjTexCoordType = thinks::ObjTexCoord<TexCoordType::ValueType,
+                                              VecSize<TexCoordType>::value>;
 
   auto add_tex_coord =
-      MakeAddFunc<ObjTexCoordType>([&mesh, &tex_count](const auto& tex) {
+      MakeObjAddFunc<ObjTexCoordType>([&mesh, &tex_count](const auto& tex) {
         if (mesh.vertices.size() <= tex_count) {
           mesh.vertices.push_back(VertexType{});
         }
@@ -229,10 +240,10 @@ ReadResult<MeshT> ReadMesh(std::istream& is, const bool read_tex_coords,
 
   // Normals [optional].
   using NormalType = VertexType::NormalType;
-  using ObjNormalType = thinks::obj_io::Normal<NormalType::ValueType>;
+  using ObjNormalType = thinks::ObjNormal<NormalType::ValueType>;
 
   auto add_normal =
-      MakeAddFunc<ObjNormalType>([&mesh, &nml_count](const auto& nml) {
+      MakeObjAddFunc<ObjNormalType>([&mesh, &nml_count](const auto& nml) {
         if (mesh.vertices.size() <= nml_count) {
           mesh.vertices.push_back(VertexType{});
         }
@@ -240,9 +251,9 @@ ReadResult<MeshT> ReadMesh(std::istream& is, const bool read_tex_coords,
             VecMaker<NormalType>::Make(nml.values);
       });
 
-  const auto result =
-      utils_internal::ReadHelper(is, add_position, add_face, add_tex_coord, add_normal,
-                         read_tex_coords, read_normals);
+  const auto result = read_write_utils_internal::ReadHelper(
+      is, add_position, add_face, add_tex_coord, add_normal, read_tex_coords,
+      read_normals);
 
   // Some sanity checks...
   if (read_tex_coords && pos_count != tex_count) {
@@ -272,27 +283,26 @@ template <typename IndexedMeshT>
 ReadResult<IndexedMeshT> ReadIndexGroupMesh(std::istream& is,
                                             const bool read_tex_coords,
                                             const bool read_normals) {
-  using thinks::obj_io::MakeAddFunc;
+  using thinks::MakeObjAddFunc;
   using MeshType = IndexedMeshT;
 
   auto mesh = MeshType{};
 
   // Positions.
   using PositionType = MeshType::PositionType;
-  using ObjPositionType =
-      thinks::obj_io::Position<PositionType::ValueType,
-                               VecSize<PositionType>::value>;
+  using ObjPositionType = thinks::ObjPosition<PositionType::ValueType,
+                                              VecSize<PositionType>::value>;
 
-  auto add_position = MakeAddFunc<ObjPositionType>([&mesh](const auto& pos) {
+  auto add_position = MakeObjAddFunc<ObjPositionType>([&mesh](const auto& pos) {
     mesh.positions.push_back(VecMaker<PositionType>::Make(pos.values));
   });
 
   // Faces.
-  using ObjFaceType = utils_internal::FaceSelector<
+  using ObjFaceType = read_write_utils_internal::FaceSelector<
       MeshType::IndicesPerFace,
-      thinks::obj_io::IndexGroup<MeshType::IndexType>>::Type;
+      thinks::ObjIndexGroup<MeshType::IndexType>>::Type;
 
-  auto add_face = MakeAddFunc<ObjFaceType>(
+  auto add_face = MakeObjAddFunc<ObjFaceType>(
       [&mesh, read_tex_coords, read_normals](const auto& face) {
         if (face.values.size() != MeshType::IndicesPerFace) {
           throw std::runtime_error("unexpected face index count");
@@ -311,25 +321,25 @@ ReadResult<IndexedMeshT> ReadIndexGroupMesh(std::istream& is,
 
   // Texture coordinates [optional.
   using TexCoordType = MeshType::TexCoordType;
-  using ObjTexCoordType =
-      thinks::obj_io::TexCoord<TexCoordType::ValueType,
-                               VecSize<TexCoordType>::value>;
+  using ObjTexCoordType = thinks::ObjTexCoord<TexCoordType::ValueType,
+                                              VecSize<TexCoordType>::value>;
 
-  auto add_tex_coord = MakeAddFunc<ObjTexCoordType>([&mesh](const auto& tex) {
-    mesh.tex_coords.push_back(VecMaker<TexCoordType>::Make(tex.values));
-  });
+  auto add_tex_coord =
+      MakeObjAddFunc<ObjTexCoordType>([&mesh](const auto& tex) {
+        mesh.tex_coords.push_back(VecMaker<TexCoordType>::Make(tex.values));
+      });
 
   // Normals [optional].
   using NormalType = MeshType::NormalType;
-  using ObjNormalType = thinks::obj_io::Normal<NormalType::ValueType>;
+  using ObjNormalType = thinks::ObjNormal<NormalType::ValueType>;
 
-  auto add_normal = MakeAddFunc<ObjNormalType>([&mesh](const auto& nml) {
+  auto add_normal = MakeObjAddFunc<ObjNormalType>([&mesh](const auto& nml) {
     mesh.normals.push_back(VecMaker<NormalType>::Make(nml.values));
   });
 
-  const auto result =
-      utils_internal::ReadHelper(is, add_position, add_face, add_tex_coord, add_normal,
-                         read_tex_coords, read_normals);
+  const auto result = read_write_utils_internal::ReadHelper(
+      is, add_position, add_face, add_tex_coord, add_normal, read_tex_coords,
+      read_normals);
 
   // Some sanity checks...
   if (result.position_count != mesh.positions.size()) {
@@ -360,11 +370,11 @@ ReadResult<IndexedMeshT> ReadIndexGroupMesh(std::istream& is,
 template <typename MeshT>
 WriteResult WriteMesh(const MeshT& mesh, const bool write_tex_coords,
                       const bool write_normals) {
-  using utils_internal::FaceSelector;
-  using utils_internal::ObjTypeMaker;
-  using utils_internal::WriteHelper;
-  using thinks::obj_io::End;
-  using thinks::obj_io::Map;
+  using thinks::ObjEnd;
+  using thinks::ObjMap;
+  using read_write_utils_internal::FaceSelector;
+  using read_write_utils_internal::ObjTypeMaker;
+  using read_write_utils_internal::WriteHelper;
 
   using MeshType = MeshT;
   using VertexType = MeshType::VertexType;
@@ -375,36 +385,36 @@ WriteResult WriteMesh(const MeshT& mesh, const bool write_tex_coords,
   auto pos_vtx_iter = begin(mesh.vertices);
   auto pos_mapper = [&pos_vtx_iter, vtx_iend]() {
     using PositionType = VertexType::PositionType;
-    using ObjPositionType =
-        thinks::obj_io::Position<PositionType::ValueType,
-                                 VecSize<PositionType>::value>;
+    using ObjPositionType = thinks::ObjPosition<PositionType::ValueType,
+                                                VecSize<PositionType>::value>;
 
-    return pos_vtx_iter == vtx_iend ? End<ObjPositionType>()
-                                    : Map(ObjTypeMaker<ObjPositionType>::Make(
-                                          (*pos_vtx_iter++).pos));
+    return pos_vtx_iter == vtx_iend
+               ? ObjEnd<ObjPositionType>()
+               : ObjMap(ObjTypeMaker<ObjPositionType>::Make(
+                     (*pos_vtx_iter++).pos));
   };
 
   // Texture coordinates.
   auto tex_vtx_iter = begin(mesh.vertices);
   auto tex_mapper = [&tex_vtx_iter, vtx_iend]() {
     using TexCoordType = VertexType::TexCoordType;
-    using ObjTexCoordType =
-        thinks::obj_io::TexCoord<TexCoordType::ValueType,
-                                 VecSize<TexCoordType>::value>;
+    using ObjTexCoordType = thinks::ObjTexCoord<TexCoordType::ValueType,
+                                                VecSize<TexCoordType>::value>;
 
-    return tex_vtx_iter == vtx_iend ? End<ObjTexCoordType>()
-                                    : Map(ObjTypeMaker<ObjTexCoordType>::Make(
-                                          (*tex_vtx_iter++).tex));
+    return tex_vtx_iter == vtx_iend
+               ? ObjEnd<ObjTexCoordType>()
+               : ObjMap(ObjTypeMaker<ObjTexCoordType>::Make(
+                     (*tex_vtx_iter++).tex));
   };
 
   // Normals.
   auto nml_vtx_iter = begin(mesh.vertices);
   auto nml_mapper = [&nml_vtx_iter, vtx_iend]() {
     using NormalType = VertexType::NormalType;
-    using ObjNormalType = thinks::obj_io::Normal<NormalType::ValueType>;
+    using ObjNormalType = thinks::ObjNormal<NormalType::ValueType>;
 
-    return nml_vtx_iter == vtx_iend ? End<ObjNormalType>()
-                                    : Map(ObjTypeMaker<ObjNormalType>::Make(
+    return nml_vtx_iter == vtx_iend ? ObjEnd<ObjNormalType>()
+                                    : ObjMap(ObjTypeMaker<ObjNormalType>::Make(
                                           (*nml_vtx_iter++).normal));
   };
 
@@ -413,22 +423,24 @@ WriteResult WriteMesh(const MeshT& mesh, const bool write_tex_coords,
   const auto idx_iend = mesh.indices.end();
   auto face_mapper = [&idx_iter, idx_iend]() {
     using MeshIndexType = MeshType::IndexType;
-    using ObjIndexType = thinks::obj_io::Index<MeshIndexType>;
-    using ObjFaceType = FaceSelector<MeshType::IndicesPerFace, ObjIndexType>::Type;
+    using ObjIndexType = thinks::ObjIndex<MeshIndexType>;
+    using ObjFaceType =
+        FaceSelector<MeshType::IndicesPerFace, ObjIndexType>::Type;
 
     if (std::distance(idx_iter, idx_iend) < MeshType::IndicesPerFace) {
-      return End<ObjFaceType>();
+      return ObjEnd<ObjFaceType>();
     }
 
     auto idx_buf = std::array<ObjIndexType, MeshType::IndicesPerFace>{};
     for (auto& idx : idx_buf) {
       idx = ObjIndexType(*idx_iter++);
     }
-    return Map(ObjTypeMaker<ObjFaceType>::Make(idx_buf));
+    return ObjMap(ObjTypeMaker<ObjFaceType>::Make(idx_buf));
   };
 
-  const auto result = WriteHelper(pos_mapper, face_mapper, tex_mapper,
-                                  nml_mapper, write_tex_coords, write_normals);
+  const auto result = read_write_utils_internal::WriteHelper(
+      pos_mapper, face_mapper, tex_mapper, nml_mapper, write_tex_coords,
+      write_normals);
   const auto wr = result.write_result;
 
   // Some sanity checks...
@@ -452,11 +464,11 @@ template <typename IndexedMeshT>
 WriteResult WriteIndexGroupMesh(const IndexedMeshT& imesh,
                                 const bool write_tex_coords,
                                 const bool write_normals) {
-  using utils_internal::FaceSelector;
-  using utils_internal::ObjTypeMaker;
-  using utils_internal::WriteHelper;
-  using thinks::obj_io::End;
-  using thinks::obj_io::Map;
+  using thinks::ObjEnd;
+  using thinks::ObjMap;
+  using read_write_utils_internal::FaceSelector;
+  using read_write_utils_internal::ObjTypeMaker;
+  using read_write_utils_internal::WriteHelper;
 
   using MeshType = IndexedMeshT;
 
@@ -465,13 +477,12 @@ WriteResult WriteIndexGroupMesh(const IndexedMeshT& imesh,
   const auto pos_iend = std::end(imesh.positions);
   auto pos_mapper = [&pos_iter, pos_iend]() {
     using PositionType = MeshType::PositionType;
-    using ObjPositionType =
-        thinks::obj_io::Position<PositionType::ValueType,
-                                 VecSize<PositionType>::value>;
+    using ObjPositionType = thinks::ObjPosition<PositionType::ValueType,
+                                                VecSize<PositionType>::value>;
 
     return pos_iter == pos_iend
-               ? End<ObjPositionType>()
-               : Map(ObjTypeMaker<ObjPositionType>::Make(*pos_iter++));
+               ? ObjEnd<ObjPositionType>()
+               : ObjMap(ObjTypeMaker<ObjPositionType>::Make(*pos_iter++));
   };
 
   // Texture coordinates.
@@ -479,13 +490,12 @@ WriteResult WriteIndexGroupMesh(const IndexedMeshT& imesh,
   const auto tex_iend = std::end(imesh.tex_coords);
   auto tex_mapper = [&tex_iter, tex_iend]() {
     using TexCoordType = MeshType::TexCoordType;
-    using ObjTexCoordType =
-        thinks::obj_io::TexCoord<TexCoordType::ValueType,
-                                 VecSize<TexCoordType>::value>;
+    using ObjTexCoordType = thinks::ObjTexCoord<TexCoordType::ValueType,
+                                                VecSize<TexCoordType>::value>;
 
     return tex_iter == tex_iend
-               ? End<ObjTexCoordType>()
-               : Map(ObjTypeMaker<ObjTexCoordType>::Make(*tex_iter++));
+               ? ObjEnd<ObjTexCoordType>()
+               : ObjMap(ObjTypeMaker<ObjTexCoordType>::Make(*tex_iter++));
   };
 
   // Normals.
@@ -493,11 +503,11 @@ WriteResult WriteIndexGroupMesh(const IndexedMeshT& imesh,
   const auto nml_iend = std::end(imesh.normals);
   auto nml_mapper = [&nml_iter, nml_iend]() {
     using NormalType = MeshType::NormalType;
-    using ObjNormalType = thinks::obj_io::Normal<NormalType::ValueType>;
+    using ObjNormalType = thinks::ObjNormal<NormalType::ValueType>;
 
     return nml_iter == nml_iend
-               ? End<ObjNormalType>()
-               : Map(ObjTypeMaker<ObjNormalType>::Make(*nml_iter++));
+               ? ObjEnd<ObjNormalType>()
+               : ObjMap(ObjTypeMaker<ObjNormalType>::Make(*nml_iter++));
   };
 
   // Faces.
@@ -511,13 +521,14 @@ WriteResult WriteIndexGroupMesh(const IndexedMeshT& imesh,
                       tex_idx_iend, nml_idx_iend, write_tex_coords,
                       write_normals]() {
     using MeshIndexType = MeshType::IndexType;
-    using ObjIndexGroupType = thinks::obj_io::IndexGroup<MeshIndexType> ;
-    using ObjFaceType = FaceSelector<MeshType::IndicesPerFace, ObjIndexGroupType>::Type;
+    using ObjIndexGroupType = thinks::ObjIndexGroup<MeshIndexType>;
+    using ObjFaceType =
+        FaceSelector<MeshType::IndicesPerFace, ObjIndexGroupType>::Type;
 
     if (std::distance(pos_idx_iter, pos_idx_iend) < MeshType::IndicesPerFace ||
         std::distance(tex_idx_iter, tex_idx_iend) < MeshType::IndicesPerFace ||
         std::distance(nml_idx_iter, nml_idx_iend) < MeshType::IndicesPerFace) {
-      return End<ObjFaceType>();
+      return ObjEnd<ObjFaceType>();
     }
 
     auto idx_group_buf =
@@ -528,11 +539,12 @@ WriteResult WriteIndexGroupMesh(const IndexedMeshT& imesh,
       idx_group.tex_coord_index.second = write_tex_coords;
       idx_group.normal_index.second = write_normals;
     }
-    return Map(ObjTypeMaker<ObjFaceType>::Make(idx_group_buf));
+    return ObjMap(ObjTypeMaker<ObjFaceType>::Make(idx_group_buf));
   };
 
-  const auto result = WriteHelper(pos_mapper, face_mapper, tex_mapper,
-                                  nml_mapper, write_tex_coords, write_normals);
+  const auto result = read_write_utils_internal::WriteHelper(
+      pos_mapper, face_mapper, tex_mapper, nml_mapper, write_tex_coords,
+      write_normals);
   const auto wr = result.write_result;
 
   // Some sanity checks...
@@ -560,5 +572,3 @@ WriteResult WriteIndexGroupMesh(const IndexedMeshT& imesh,
 
   return result;
 }
-
-}  // namespace utils
