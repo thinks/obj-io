@@ -249,13 +249,11 @@ The tests for this distribution are written in the [catch2](https://github.com/c
 
 Running the tests is simple. In a terminal do the following (and similar for `Debug`):
 ```bash
-$ cd d:
-$ git clone git@github.com:/thinks/obj-io.git D:/obj-io
-$ mkdir build-obj-io
-$ cd build-obj-io
+$ git clone git@github.com:/thinks/obj-io.git
+$ mkdir build && cd build
 $ cmake ../obj-io
 $ cmake --build . --config Release
-$ ctest . -C Release
+$ ctest . -C Release --verbose
 ```
 For more detailed test output locate the test executable (_thinks_obj_io_test.exe_) in the build tree and run it directly.
 

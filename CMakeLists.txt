@@ -12,9 +12,8 @@ add_library(thinks_obj_io INTERFACE)
 target_sources(thinks_obj_io INTERFACE ${header_files})
 target_include_directories(thinks_obj_io INTERFACE include)
 
-string(TOLOWER "${CMAKE_CURRENT_SOURCE_DIR}" current_source_dir_lower)
-string(TOLOWER "${CMAKE_SOURCE_DIR}" source_dir_lower)
-if(current_source_dir_lower STREQUAL source_dir_lower)
+if($<LOWER_CASE:${CMAKE_CURRENT_SOURCE_DIR}> STREQUAL 
+   $<LOWER_CASE:${CMAKE_SOURCE_DIR}>)
     message(STATUS "obj-io: enable testing")
     enable_testing()
     add_subdirectory(test)
