@@ -5,6 +5,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <exception>
 #include <iostream>
 #include <sstream>
